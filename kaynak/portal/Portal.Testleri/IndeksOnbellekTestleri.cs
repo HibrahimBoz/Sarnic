@@ -32,7 +32,7 @@ public class IndeksOnbellekTestleri : IDisposable
 
     private DersKaydi OrnekDersDosyasiOlustur(string dersAdi)
     {
-        string dersKlasor = Path.Combine(_geciciKlasor, $"{dersAdi}_videoperisi");
+        string dersKlasor = Path.Combine(_geciciKlasor, $"{dersAdi}_islenmis");
         Directory.CreateDirectory(dersKlasor);
 
         string jsonYolu = Path.Combine(dersKlasor, $"{dersAdi}.json");

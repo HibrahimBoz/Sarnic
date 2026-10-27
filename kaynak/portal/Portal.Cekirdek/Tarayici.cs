@@ -1,14 +1,15 @@
 namespace Portal.Cekirdek;
 
 /// <summary>
-/// Video Perisi çıktı klasörlerini özyinelemeli olarak tarayan sınıf.
+/// Video Transkriptör çıktı klasörlerini özyinelemeli olarak tarayan sınıf.
 /// </summary>
 public static class Tarayici
 {
     private static readonly string[] VideoUzantilari = [".mp4", ".mkv", ".mov", ".avi"];
+    private static readonly string[] DersKlasoruEkleri = ["_islenmis", "_videoperisi"];
 
     /// <summary>
-    /// Kök klasör altındaki tüm *_videoperisi klasörlerini bulur ve ders kayıtlarını listeler.
+    /// Kök klasör altındaki yeni ve eski çıktı klasörlerini bulur ve ders kayıtlarını listeler.
     /// </summary>
     public static IReadOnlyList<DersKaydi> Tara(string kokKlasor)
     {
@@ -27,7 +28,7 @@ public static class Tarayici
         try
         {
             var dirInfo = new DirectoryInfo(mevcutDizin);
-            if (dirInfo.Name.EndsWith("_videoperisi", StringComparison.OrdinalIgnoreCase))
+            if (DersKlasoruEki(dirInfo.Name) is not null)
             {
                 KlasoruKayitOlarakIsle(dirInfo.FullName, sonuclar);
             }
@@ -66,9 +67,10 @@ public static class Tarayici
 
             string klasorAdi = Path.GetFileName(klasorYolu);
             string beklenenAd = string.Empty;
-            if (klasorAdi.EndsWith("_videoperisi", StringComparison.OrdinalIgnoreCase))
+            string? ek = DersKlasoruEki(klasorAdi);
+            if (ek is not null)
             {
-                beklenenAd = klasorAdi.Substring(0, klasorAdi.Length - "_videoperisi".Length);
+                beklenenAd = klasorAdi.Substring(0, klasorAdi.Length - ek.Length);
             }
 
             // Klasör adından türetilen JSON dosyası varsa öncelikle onu al
@@ -90,6 +92,12 @@ public static class Tarayici
         {
             // Klasör içi dosya listeleme hatasında atla
         }
+    }
+
+    private static string? DersKlasoruEki(string klasorAdi)
+    {
+        return DersKlasoruEkleri.FirstOrDefault(ek =>
+            klasorAdi.EndsWith(ek, StringComparison.OrdinalIgnoreCase));
     }
 
     private static void KayitEkle(string ad, string klasorYolu, string jsonYolu, List<DersKaydi> sonuclar)
@@ -116,7 +124,7 @@ public static class Tarayici
         }
         else
         {
-            // 2. Öncelik: _videoperisi klasörünün üstünde <ad>.* video uzantılarından ilki (.mp4 .mkv .mov .avi)
+            // 2. Öncelik: çıktı klasörünün üstünde <ad>.* video uzantılarından ilki (.mp4 .mkv .mov .avi)
             string? ustKlasor = Path.GetDirectoryName(klasorTam);
             if (!string.IsNullOrEmpty(ustKlasor) && Directory.Exists(ustKlasor))
             {

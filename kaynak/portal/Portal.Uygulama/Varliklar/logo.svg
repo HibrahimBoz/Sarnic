@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Video Transkriptör">
+  <defs>
+    <linearGradient id="orange" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FB923C"/>
+      <stop offset="0.48" stop-color="#FF8800"/>
+      <stop offset="1" stop-color="#F97316"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="248" height="248" rx="54" fill="url(#orange)" stroke="#7C2D12" stroke-opacity=".72" stroke-width="4"/>
+  <path d="M60 68 L113 98 L60 128 Z" fill="#FFF7ED"/>
+  <rect x="132" y="73" width="76" height="16" rx="8" fill="#FFF7ED"/>
+  <rect x="132" y="105" width="92" height="16" rx="8" fill="#FFF7ED"/>
+  <rect x="132" y="137" width="64" height="16" rx="8" fill="#FFF7ED"/>
+</svg>

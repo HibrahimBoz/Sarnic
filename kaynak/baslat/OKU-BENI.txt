@@ -1,4 +1,4 @@
-Video Perisi  —  KAPALI AĞ İÇİN HAZIR (Windows 10/11, 64 bit)
+Video Transkriptör  —  KAPALI AĞ İÇİN HAZIR (Windows 10/11, 64 bit)
 ================================================================
 KURULUM YOK. 7z dosyasını açın (örn. D:\VideoPerisi-Paketi) ve BASLAT.bat çift tıklayın.
   - Python, ffmpeg, modeller, Kdenlive: hepsi pakette. İnternet, yönetici yetkisi, ek yazılım GEREKMEZ.
@@ -21,6 +21,6 @@ DONANIM
 
 NOTLAR
   - Windows Defender/AppLocker taşınabilir .exe ve .dll'leri engellerse klasörü "izin verilen" listesine ekletin.
-  - İşlenen videoların yanında "<ad>_videoperisi" klasörü oluşur: .srt/.vtt/.txt transkript + TEK nihai video (<ad>_islenmis.mp4: ses temizlenmiş, istenirse görüntü de iyileştirilmiş).
+  - İşlenen videoların yanında "<ad>_islenmis" klasörü oluşur: .srt/.vtt/.txt transkript + TEK nihai video (<ad>_islenmis.mp4: ses temizlenmiş, istenirse görüntü de iyileştirilmiş). Portal eski "<ad>_videoperisi" klasörlerini de tarar.
     SRT dosyasını Kdenlive'da Kdenlive altyazı özelliğiyle (altyazı dosyası içe aktarma) ekleyebilirsiniz.
   - Kdenlive ilk açılışta ayar sorabilir; ağ gerektirmez.

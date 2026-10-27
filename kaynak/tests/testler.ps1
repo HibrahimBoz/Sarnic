@@ -137,8 +137,10 @@ Get-Process python -ErrorAction SilentlyContinue | Where-Object { $_.Path -like 
 $bittiAd = @(Get-ChildItem (Join-Path $Paket 'is\bitti') | Select-Object -ExpandProperty Name)
 $hataSay = @(Get-ChildItem (Join-Path $Paket 'is\hata') -ErrorAction SilentlyContinue).Count
 $yinelenen = @($bittiAd | Where-Object { $_ -like '*yinelenen*' }).Count
-$isDizin = @(Get-ChildItem (Join-Path $Paket 'is\bitti') -Directory).Count
-Kaydet 'f izleme (3 iş, 1 yinelenen, 0 hata)' ($isDizin -eq 3 -and $yinelenen -eq 1 -and $hataSay -eq 0) "bitti=[$($bittiAd -join ', ')] hata=$hataSay"
+$isDizinler = @(Get-ChildItem (Join-Path $Paket 'is\bitti') -Directory)
+$isDizin = $isDizinler.Count
+$islenmisEki = @($isDizinler | Where-Object { $_.Name -match '_islenmis(?:_\d+)?$' }).Count
+Kaydet 'f izleme (3 iş, 1 yinelenen, 0 hata)' ($isDizin -eq 3 -and $islenmisEki -eq 3 -and $yinelenen -eq 1 -and $hataSay -eq 0) "bitti=[$($bittiAd -join ', ')] _islenmis_dizin=$islenmisEki hata=$hataSay"
 
 if ($Atla -notcontains 'g') {
 # g: taşınabilirlik

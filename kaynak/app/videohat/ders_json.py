@@ -1,4 +1,4 @@
-"""Video Perisi - Çok kameralı ders tanımı (ders.json) saf mantık modülü."""
+"""Video Transkriptör - Çok kameralı ders tanımı (ders.json) saf mantık modülü."""
 from __future__ import annotations
 
 from dataclasses import dataclass, field

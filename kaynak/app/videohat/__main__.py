@@ -9,6 +9,13 @@ from . import yollar
 from .hatalar import AyarHatasi, OrtamHatasi
 
 VIDEO_UZANTILARI = {".mp4", ".mkv", ".mov", ".avi", ".m4a", ".wav", ".mp3"}
+CIKTI_KLASOR_EKLERI = ("_islenmis", "_videoperisi")
+
+
+def _cikti_klasoru_mu(ad: str) -> bool:
+    """Yeni ve eski çıktı klasörlerinin girdiler gibi taranmasını önler."""
+    kucuk = ad.lower()
+    return any(kucuk.endswith(ek) for ek in CIKTI_KLASOR_EKLERI)
 
 
 def _gunluk_kur(kok: Path) -> None:
@@ -28,10 +35,12 @@ def _gunluk_kur(kok: Path) -> None:
 
 def _topla(girdi: Path) -> list[Path]:
     if girdi.is_dir():
+        if _cikti_klasoru_mu(girdi.name):
+            return []
         return sorted(p for p in girdi.rglob("*")
                       if p.is_file() and p.suffix.lower() in VIDEO_UZANTILARI
                       and not p.stem.lower().endswith("_islenmis")
-                      and not any(a.endswith("_videoperisi") or a == "_ara"
+                      and not any(_cikti_klasoru_mu(a) or a == "_ara"
                                   for a in p.relative_to(girdi).parent.parts))
     return [girdi]
 
@@ -46,19 +55,19 @@ def _cikis_belirle(
     """
     Çıktı klasörünü belirler.
     Tek dosya girdisinde --cikis aynen korunur.
-    Klasör girdisinde <cikis>/<bagil>/<stem>_videoperisi düzeni ve çakışma koruması uygulanır.
+    Klasör girdisinde <cikis>/<bagil>/<stem>_islenmis düzeni ve çakışma koruması uygulanır.
     """
     if tek_dosya_mi:
-        return Path(cikis_arg) if cikis_arg else video.parent / f"{video.stem}_videoperisi"
+        return Path(cikis_arg) if cikis_arg else video.parent / f"{video.stem}_islenmis"
 
     if cikis_arg:
         try:
             bagil = video.relative_to(girdi_koku).parent
         except ValueError:
             bagil = Path()
-        hedef = Path(cikis_arg) / bagil / f"{video.stem}_videoperisi"
+        hedef = Path(cikis_arg) / bagil / f"{video.stem}_islenmis"
     else:
-        hedef = video.parent / f"{video.stem}_videoperisi"
+        hedef = video.parent / f"{video.stem}_islenmis"
 
     def _cakisiyor(p: Path) -> bool:
         if kullanilan is not None and p in kullanilan:
@@ -71,12 +80,12 @@ def _cikis_belirle(
         return False
 
     if _cakisiyor(hedef):
-        aday = hedef.parent / f"{video.stem}_{video.suffix.lstrip('.')}_videoperisi"
+        aday = hedef.parent / f"{video.stem}_{video.suffix.lstrip('.')}_islenmis"
         sayac = 1
         while _cakisiyor(aday):
             aday = (
                 hedef.parent
-                / f"{video.stem}_{video.suffix.lstrip('.')}_{sayac}_videoperisi"
+                / f"{video.stem}_{video.suffix.lstrip('.')}_{sayac}_islenmis"
             )
             sayac += 1
         hedef = aday
@@ -158,7 +167,7 @@ def parser_olustur() -> argparse.ArgumentParser:
     alt = ap.add_subparsers(dest="komut", required=True)
     i = alt.add_parser("isle", help="dosya veya klasör işle")
     i.add_argument("girdi", nargs="+")
-    i.add_argument("--cikis", help="çıktı klasörü (varsayılan: videonun yanında <ad>_videoperisi)")
+    i.add_argument("--cikis", help="çıktı klasörü (varsayılan: videonun yanında <ad>_islenmis)")
     i.add_argument("--agir-ses", action="store_true", help="DeepFilterNet ağır mod")
     i.add_argument("--goruntu", action="store_true", help="görüntü iyileştirme")
     i.add_argument("--upscale", action="store_true", help="Real-ESRGAN x2 (isteğe bağlı)")

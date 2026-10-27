@@ -47,7 +47,7 @@ $pk = Get-ChildItem $sp -Directory -Filter '*.dist-info' | ForEach-Object {
 } | Sort-Object
 $mod = foreach ($a in 'large-v3', 'medium', 'turbo') { "{0,-9}: {1}" -f $a, (Get-Content (Join-Path $vh "modeller\$a\commit_sha.txt") -Raw).Trim() }
 $sv = @"
-Video Perisi paketi - bilesen listesi ($(Get-Date -Format 'yyyy-MM-dd'))
+Video Transkriptör paketi - bilesen listesi ($(Get-Date -Format 'yyyy-MM-dd'))
 Bu dosya paket olusturulurken gercek dosyalardan uretilmistir.
 
 YAZILIM KAYNAKLARI (tumu resmi yayinci kanallarindan indirilmistir)
