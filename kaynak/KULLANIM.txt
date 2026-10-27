@@ -34,7 +34,7 @@ Tek paket her makinede çalışır: NVIDIA kart varsa (RTX 3060/3070...; sürüc
      is\gunluk\       günlük                        Aynı içerik ikinci kez atılırsa "_yinelenen" olarak atlanır.
    Durdurmak: Ctrl+C.
 
-4) ÇOK KAMERALI / GRUP DERS — grup.bat veya baslat.ps1 menüsü (8):
+4) ÇOK KAMERALI / GRUP DERS — grup.bat veya baslat.ps1 menüsü (7):
      grup.bat "D:\dersler\cok_kamerali_ders"
      grup.bat "D:\dersler\ders1" --model large-v3 --cihaz cuda --referans cam1
    Klasör düzeni:

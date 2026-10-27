@@ -8,14 +8,13 @@ KURULUM YOK. 7z dosyasını açın (örn. D:\VideoPerisi-Paketi) ve BASLAT.bat �
   BASLAT.bat          menüyü açar: video seç / klasör seç / izleme / Kdenlive / test
   VideoPerisi\        transkript + ses/görüntü iyileştirme motoru (KULLANIM.txt içinde ayrıntı)
   Kdenlive\           Kdenlive 26.08.1 (taşınabilir; Kdenlive\...\bin\kdenlive.exe)
-  Surucu\             NVIDIA 616.92 sürücüsü (yalnız eski/yoksa; BASLAT.bat -> 7). Ayrıntı: Surucu\SURUCU-OKU-BENI.txt
 
 İLK ÇALIŞTIRMA
   BASLAT.bat → 5 (kendi kendine test) → "SONUÇ: GEÇTİ" görmelisiniz.
 
 DONANIM
   NVIDIA kart (tercihen RTX 3060, 6 GB+ boş bellek): large-v3 modeli, GPU hızlandırma.
-    Kart sürücüsü en az 528.33 olmalı (CUDA 12). Eskiyse veya kart yoksa/yetersizse otomatik CPU'ya düşer.
+    Kart sürücüsü en az 528.33 olmalı (CUDA 12); pakette sürücü YOKTUR, gerekirse BT ile kurdurun. Eskiyse veya kart yoksa/yetersizse otomatik CPU'ya düşer.
   Kartsız/zayıf kart: medium modeli ile CPU'da çalışır (bu makinede gerçek süreye yakın hız, 8 çekirdekli i7'de ~0,75x).
   RAM: en az 8 GB (GPU modunda 16 GB önerilir).  Disk: paket ~8-9 GB açıldığında + işlenen videolar.
 

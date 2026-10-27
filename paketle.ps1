@@ -29,13 +29,6 @@ New-Item -ItemType Directory -Force (Join-Path $vh 'araclar') | Out-Null
 Copy-Item (Join-Path $proje 'kaynak\baslat\baslat.ps1') (Join-Path $vh 'araclar') -Force
 Copy-Item (Join-Path $proje 'kaynak\baslat\BASLAT.bat') $cikis -Force
 Copy-Item (Join-Path $proje 'kaynak\baslat\OKU-BENI.txt') $cikis -Force
-$surucu = Get-ChildItem (Join-Path $proje '_indir') -Filter '*-desktop-win10-win11-64bit-*-whql.exe' | Sort-Object Name | Select-Object -Last 1
-if ($surucu) {
-    $sd = Join-Path $cikis 'Surucu'
-    New-Item -ItemType Directory $sd | Out-Null
-    Copy-Item $surucu.FullName $sd
-    Copy-Item (Join-Path $proje 'kaynak\baslat\SURUCU-OKU-BENI.txt') $sd -Force
-} else { Write-Host 'UYARI: NVIDIA sürücüsü _indir\ içinde yok, pakete eklenmedi.' -ForegroundColor Yellow }
 
 # SURUMLER.txt: gerçek dosyalardan (dist-info, commit_sha.txt) yeniden üretilir; hazirla.ps1'in eski çıktısı atılır
 $sp = Join-Path $vh 'python\Lib\site-packages'
@@ -56,7 +49,6 @@ FFmpeg 9.0.2 essentials   : gyan.dev (ffmpeg-release-essentials.zip), GPLv3 derl
 DeepFilterNet v0.5.6      : github.com/Rikorose/DeepFilterNet (deep-filter-0.5.6-x86_64-pc-windows-msvc.exe) [istege bagli: --agir-ses]
 Real-ESRGAN ncnn-vulkan   : github.com/xinntao/Real-ESRGAN (v0.2.5.0, realesrgan-ncnn-vulkan-20220424-windows.zip) [istege bagli: --upscale]
 Kdenlive 26.08.1          : download.kde.org (kdenlive-26.08.1_standalone.exe), GPLv3
-NVIDIA surucusu 616.92    : us.download.nvidia.com (Surucu\ klasoru, istege bagli)
 Whisper CT2 modelleri     : huggingface.co - Systran/faster-whisper-large-v3, Systran/faster-whisper-medium, mobiuslabsgmbh/faster-whisper-large-v3-turbo
 
 MODEL COMMIT SHA

@@ -20,9 +20,6 @@ function Baslik {
     Write-Host ''
 }
 
-$surucuDizin = Join-Path $paketKok 'Surucu'
-$surucuDosya = Get-ChildItem $surucuDizin -Filter '*.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
-
 function Surucu-Surumu {
     $smi = Get-Command nvidia-smi -ErrorAction SilentlyContinue
     if (-not $smi) { return $null }
@@ -39,7 +36,7 @@ function Cihaz-Ozeti {
             Write-Host "  Ekran kartı: $($o | Select-Object -First 1)" -ForegroundColor Gray
             $sv = Surucu-Surumu
             if ($sv -and $sv -lt [version]'528.33') {
-                Write-Host "  UYARI: NVIDIA sürücüsü eski ($sv). GPU için en az 528.33 gerekir -> menüden 7 ile paketteki sürücüyü kurun." -ForegroundColor Yellow
+                Write-Host "  UYARI: NVIDIA sürücüsü eski ($sv). GPU için en az 528.33 gerekir -> sürücüyü güncelleyin (BT izni gerekebilir)." -ForegroundColor Yellow
             }
             return
         }
@@ -102,8 +99,7 @@ while ($true) {
     Write-Host '  4) Kdenlive''i aç (video düzenleme)'
     Write-Host '  5) Kendi kendine test (ilk çalıştırmada önerilir)'
     Write-Host '  6) Kullanım kılavuzunu aç'
-    Write-Host '  7) NVIDIA ekran kartı sürücüsünü kur (yalnız gerekirse; yönetici izni ister)'
-    Write-Host '  8) Çok kameralı grup ders klasörü işle (senkron + ders.json)'
+    Write-Host '  7) Çok kameralı grup ders klasörü işle (senkron + ders.json)'
     Write-Host '  0) Çıkış'
     Write-Host ''
     $s = Read-Host 'Seçiminiz'
@@ -124,17 +120,6 @@ while ($true) {
         '5' { & (Join-Path $kok 'kontrol.bat'); Read-Host 'Devam için Enter' | Out-Null }
         '6' { Start-Process notepad.exe -ArgumentList ('"' + (Join-Path $kok 'KULLANIM.txt') + '"') }
         '7' {
-            if (-not $surucuDosya) { Write-Host 'Pakette sürücü dosyası yok (VideoPerisi-Paketi\Surucu).' -ForegroundColor Red }
-            else {
-                $sv = Surucu-Surumu
-                Write-Host "Paketteki sürücü: $($surucuDosya.Name)" -ForegroundColor Gray
-                if ($sv) { Write-Host "Kurulu sürücü: $sv" -ForegroundColor Gray } else { Write-Host 'Kurulu NVIDIA sürücüsü bulunamadı.' -ForegroundColor Yellow }
-                Write-Host 'Kurulum Windows''un yönetici onayını (UAC) ister ve ekranı birkaç kez yeniler; bittikten sonra bilgisayarı yeniden başlatın.' -ForegroundColor Yellow
-                if (Evet-Mi 'Sürücü kurulum programı başlatılsın mı?' 'h') { Start-Process -FilePath $surucuDosya.FullName }
-            }
-            Read-Host 'Devam için Enter' | Out-Null
-        }
-        '8' {
             $k = Klasor-Sec
             if ($k.Count) {
                 $klasor = $k[0]
