@@ -15,11 +15,17 @@ Tek paket her makinede çalışır: NVIDIA kart varsa (RTX 3060/3070...; sürüc
      ders1.srt / .vtt / .txt / .json   transkript (zaman damgalı)
      ders1_islenmis.mp4                TEK nihai video: ses temizlenmiş (-16 LUFS); --goruntu seçildiyse
                                        görüntü de iyileştirilmiş (aksi halde görüntü aynen kopyalanır);
-                                       --upscale seçildiyse 2 kat büyütülmüş
+                                       --upscale seçildiyse 1080p'ye büyütülmüş (ayar.toml: hedef_yukseklik)
    Seçenekler:
      --agir-ses     DeepFilterNet ile güçlü gürültü giderme (çok gürültülü kayıtlarda)
      --goruntu      hqdn3d + eq + unsharp (hafif); tahta/ekran kaydında yazıyı bozmaz
-     --upscale      Real-ESRGAN x2 (isteğe bağlı, Vulkan ister; yazıyı bozabilir, önce küçük deneyin)
+     --upscale      Real-ESRGAN ile büyütme (isteğe bağlı, Vulkan ister). Video 120 sn'lik parçalarla işlenir:
+                    uzun videoda disk dolmaz, iş yarıda kalırsa tamamlanan parçalar yeniden işlenmez.
+                    Model seçimi: ayar.toml [goruntu] upscale_model = "hizli" | "genel" | "agir"
+                      hizli  realesr-animevideov3: en hızlı (ölçüldü: 480p->1080p ~24 kare/sn, RTX 3070 Laptop), 132 MB bellek
+                      genel  realesr-general-x4v3: daha keskin ve koyu yazı, ~17 kare/sn, 140 MB bellek
+                      agir   realesrgan-x4plus: ~1,4 kare/sn (hızlının ~17 katı yavaş), 1,3 GB bellek; harfleri bozabilir
+                    Kaynak yükseklik >= hedef_yukseklik ise büyütme atlanır.
      --model large-v3|medium|turbo     --cihaz cpu|cuda
 
 3) KLASÖR İZLEME — izle.bat çalıştırın, pencere açık kalsın. Videoları is\gelen\ klasörüne atın.

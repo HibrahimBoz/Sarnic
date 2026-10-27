@@ -547,6 +547,11 @@ print(f"MODEL_TAMAMLANDI:{resolved_sha}")
         Copy-Item -Path $deepFilterExe -Destination $hedefAraclar -Force
         if (Test-Path $realesrganDir) {
             Invoke-RobocopyMirror -Kaynak $realesrganDir -Hedef (Join-Path $hedefAraclar "realesrgan")
+            # "genel" model (realesr-general-x4v3, ncnn'e dönüştürülmüş; BSD-3, github.com/xinntao/Real-ESRGAN): upscale_model = "genel"
+            $genelModel = Join-Path $KaynakKlasoru "modeller-ncnn\genel"
+            if (Test-Path $genelModel) {
+                Invoke-RobocopyMirror -Kaynak $genelModel -Hedef (Join-Path $hedefAraclar "realesrgan\genel")
+            }
         }
 
         # 6. app\ kopyala (robocopy /MIR)
