@@ -72,8 +72,10 @@ def calistir() -> int:
     elif secim is not None:
         try:
             from .hat import Bayraklar, isle_tek
-            gecici = Path(tempfile.mkdtemp(prefix="videohat_kontrol_"))
+            gecici_kok = Path(tempfile.mkdtemp(prefix="videohat_kontrol_"))
+            gecici = gecici_kok / f"{wav.stem}_islenmis"
             try:
+                gecici.mkdir()
                 s = isle_tek(wav, gecici, ayar, Bayraklar())
                 if not s.basarili:
                     ekle("uçtan uca", False, s.hata or "?")
@@ -85,7 +87,7 @@ def calistir() -> int:
                          f"kelime eşleşmesi %{oran*100:.0f} (eşik %60), cihaz={s.cihaz}, "
                          f"süreler={ {k: round(v, 1) for k, v in s.sureler.items()} }")
             finally:
-                shutil.rmtree(gecici, ignore_errors=True)
+                shutil.rmtree(gecici_kok, ignore_errors=True)
         except Exception as e:  # noqa: BLE001
             ekle("uçtan uca", False, f"{type(e).__name__}: {e}")
 
@@ -97,7 +99,7 @@ def calistir() -> int:
     except Exception as e:  # noqa: BLE001
         ekle("ağ ihlali", False, str(e))
 
-    print("\n=== Video Perisi kontrol ===")
+    print("\n=== Video Transkriptör kontrol ===")
     for ad, tamam, ayrinti in satirlar:
         print(f"[{'TAMAM' if tamam else 'HATA '}] {ad}: {ayrinti}")
     gecti = all(t for _, t, _ in satirlar)

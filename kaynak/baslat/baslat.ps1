@@ -1,4 +1,4 @@
-﻿# Video Perisi başlatıcı menüsü (Windows 10/11, yerleşik PowerShell 5.1; kurulum gerektirmez).
+﻿# Video Transkriptör başlatıcı menüsü (Windows 10/11, yerleşik PowerShell 5.1; kurulum gerektirmez).
 # Etkileşimli: BASLAT.bat çift tıklanır. Otomatik test: -Dosya <yol> [-Agir e|h] [-Goruntu e|h]
 param(
     [string]$Dosya = '',
@@ -15,7 +15,7 @@ $env:VIDEOHAT_PAUSE = '0'
 function Baslik {
     Clear-Host
     Write-Host '=============================================' -ForegroundColor Cyan
-    Write-Host '  Video Perisi  -  Türkçe transkript + ses/görüntü' -ForegroundColor Cyan
+    Write-Host '  Video Transkriptör  -  Türkçe transkript + ses/görüntü' -ForegroundColor Cyan
     Write-Host '=============================================' -ForegroundColor Cyan
     Write-Host ''
 }
@@ -79,7 +79,7 @@ function Isle([string[]]$girdiler, [bool]$agir, [bool]$goruntu) {
     & (Join-Path $kok 'calistir.bat') @args2
     $kod = $LASTEXITCODE
     Write-Host ''
-    if ($kod -eq 0) { Write-Host 'BİTTİ. Çıktılar her videonun yanındaki "<ad>_videoperisi" klasöründe (tek video: <ad>_islenmis.mp4).' -ForegroundColor Green }
+    if ($kod -eq 0) { Write-Host 'BİTTİ. Çıktılar her videonun yanındaki "<ad>_islenmis" klasöründe (tek video: <ad>_islenmis.mp4).' -ForegroundColor Green }
     else { Write-Host "Hata oluştu (kod $kod). Ayrıntı: $kok\is\gunluk" -ForegroundColor Red }
     $ilk = $girdiler[0]
     $klasor = if (Test-Path $ilk -PathType Container) { $ilk } else { Split-Path -Parent $ilk }
@@ -150,7 +150,7 @@ while ($true) {
                 & $grupBat @args2
                 $kod = $LASTEXITCODE
                 Write-Host ''
-                if ($kod -eq 0) { Write-Host 'BİTTİ. Çıktılar ders klasöründe (<ad>_videoperisi\ders.json).' -ForegroundColor Green }
+                if ($kod -eq 0) { Write-Host 'BİTTİ. Çıktılar ders klasöründe (<ad>_islenmis\ders.json).' -ForegroundColor Green }
                 else { Write-Host "Hata oluştu (kod $kod). Ayrıntı: $kok\is\gunluk" -ForegroundColor Red }
                 if ($kod -eq 0 -and $klasor -and -not $Dosya) { Start-Process explorer.exe -ArgumentList ('"' + $klasor + '"') }
             }

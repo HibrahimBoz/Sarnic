@@ -9,6 +9,7 @@
     <AssemblyName>Portal.Uygulama</AssemblyName>
     <RootNamespace>Portal.Uygulama</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Varliklar\uygulama.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -22,6 +23,12 @@
 
   <ItemGroup>
     <Content Include="ayar.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="Varliklar\logo-256.png;Varliklar\uygulama.ico" />
+    <Resource Include="Varliklar\logo-256.png" />
+    <Resource Include="Varliklar\uygulama.ico" />
   </ItemGroup>
 
   <!-- Yayında yalnız win-x64 libvlc kalır (ölçüldü: x86 105 MB + arm64 91 MB gereksiz). -->

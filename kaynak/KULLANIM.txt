@@ -1,4 +1,4 @@
-Video Perisi — çevrimdışı Türkçe video transkript + ses/görüntü iyileştirme
+Video Transkriptör — çevrimdışı Türkçe video transkript + ses/görüntü iyileştirme
 ===========================================================================
 KURULUM YOK. Bu klasörü hedef makineye olduğu gibi kopyalayın (USB/robocopy). Python, ffmpeg,
 internet, yönetici yetkisi GEREKMEZ. Yol boşluk/Türkçe karakter içerebilir.
@@ -11,7 +11,7 @@ Tek paket her makinede çalışır: NVIDIA kart varsa (RTX 3060/3070...; sürüc
 2) TEK VİDEO / KLASÖR — calistir.bat dosyasının ÜSTÜNE video(lar)ı sürükleyin, ya da:
      calistir.bat "D:\dersler\ders1.mp4"
      calistir.bat "D:\dersler" --cikis "D:\cikti"
-   Çıktı (varsayılan: videonun yanında ders1_videoperisi\):
+   Çıktı (varsayılan: videonun yanında ders1_islenmis\; Portal eski _videoperisi klasörlerini de tarar):
      ders1.srt / .vtt / .txt / .json   transkript (zaman damgalı)
      ders1_islenmis.mp4                TEK nihai video: ses temizlenmiş (-16 LUFS); --goruntu seçildiyse
                                        görüntü de iyileştirilmiş (aksi halde görüntü aynen kopyalanır);
@@ -24,7 +24,7 @@ Tek paket her makinede çalışır: NVIDIA kart varsa (RTX 3060/3070...; sürüc
 
 3) KLASÖR İZLEME — izle.bat çalıştırın, pencere açık kalsın. Videoları is\gelen\ klasörüne atın.
    Dosya kopyalanması bitince otomatik işlenir (tek seferde bir iş).
-     is\bitti\<ad>\   sonuçlar (+ orijinal)        is\hata\<ad>\  hata.txt ile başarısızlar
+     is\bitti\<ad>_islenmis\   sonuçlar (+ orijinal)        is\hata\<ad>\  hata.txt ile başarısızlar
      is\gunluk\       günlük                        Aynı içerik ikinci kez atılırsa "_yinelenen" olarak atlanır.
    Durdurmak: Ctrl+C.
 
@@ -36,7 +36,7 @@ Tek paket her makinede çalışır: NVIDIA kart varsa (RTX 3060/3070...; sürüc
      - Düz klasörde parçalı/sayılı veya tekil dosyalar (kamera1_01.mp4, kamera2_01.mp4, ders.mp4, ses.wav).
    Ses tabanlı senkron (GCC-PHAT) ile ofset/drift hesaplanır, referans kanalın transkripti tam bantta
    çıkarılır ve portal ile uyumlu ders.json üretilir:
-     <ders_adi>_videoperisi\ders.json, .srt, .vtt, .txt, .json
+     <ders_adi>_islenmis\ders.json, .srt, .vtt, .txt, .json
 
 
 

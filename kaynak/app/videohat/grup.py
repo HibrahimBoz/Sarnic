@@ -1,4 +1,4 @@
-"""Video Perisi - Çok kameralı grup işleme ve orkestrasyon modülü."""
+"""Video Transkriptör - Çok kameralı grup işleme ve orkestrasyon modülü."""
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -25,6 +25,11 @@ gunluk = logging.getLogger("videohat")
 VIDEO_UZANTILARI = {".mp4", ".mkv", ".mov", ".avi", ".m4a", ".wav", ".mp3"}
 _UZANTI_DESENI = "|".join(sorted(re.escape(u.lstrip(".")) for u in VIDEO_UZANTILARI))
 KALIP_REGEX = re.compile(rf"^(.*?)[_-]?(\d+)\.({_UZANTI_DESENI})$", re.IGNORECASE)
+CIKTI_KLASOR_EKLERI = ("_islenmis", "_videoperisi")
+
+
+def _cikti_klasoru_mu(ad: str) -> bool:
+    return ad.lower().endswith(CIKTI_KLASOR_EKLERI)
 
 
 @dataclass
@@ -53,7 +58,7 @@ def kanallari_bul(klasor: str | Path) -> Dict[str, List[Path]]:
     # 1. Alt klasör düzeni kontrolü
     alt_klasorler = [
         d for d in klasor.iterdir()
-        if d.is_dir() and not d.name.startswith(".") and not d.name.endswith("_videoperisi")
+        if d.is_dir() and not d.name.startswith(".") and not _cikti_klasoru_mu(d.name)
     ]
     alt_harita: Dict[str, List[Path]] = {}
     video_bulundu = False
@@ -380,12 +385,12 @@ def isle_grup(
 ) -> GrupSonucu:
     """
     3-4 kameralı çok parçalı ders klasörünü orkestre ederek tek ders olarak işler.
-    Çıktıları <klasor>/<ders_adi>_videoperisi/ altına ve ders.json'u kaydeder.
+    Çıktıları <klasor>/<ders_adi>_islenmis/ altına ve ders.json'u kaydeder.
     Eksik/boş kanal durumunda çökmez, uyarı listesi döndürür.
     """
     klasor = Path(klasor)
     ders_adi = klasor.name
-    cikis_dir = klasor / f"{ders_adi}_videoperisi"
+    cikis_dir = klasor / f"{ders_adi}_islenmis"
     uyarilar: List[str] = []
 
     if not klasor.exists() or not klasor.is_dir():

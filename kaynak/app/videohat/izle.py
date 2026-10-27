@@ -94,11 +94,13 @@ def _geri_al(isleniyor: Path, gelen: Path, bitti: Path | None = None) -> None:
             shutil.move(str(p), str(hedef))
             log.warning("Yarım kalan iş geri alındı: %s", hedef.name)
             if bitti.exists():
-                adaylar = [bitti / p.stem]
-                n = 1
-                while (bitti / f"{p.stem}_{n}").exists():
-                    adaylar.append(bitti / f"{p.stem}_{n}")
-                    n += 1
+                adaylar = []
+                for kok in (f"{p.stem}_islenmis", f"{p.stem}_videoperisi", p.stem):
+                    adaylar.append(bitti / kok)
+                    n = 1
+                    while (bitti / f"{kok}_{n}").exists():
+                        adaylar.append(bitti / f"{kok}_{n}")
+                        n += 1
                 for yetim in adaylar:
                     if yetim.exists():
                         if yetim.is_dir():
@@ -157,7 +159,7 @@ def tek_tur(ayar: Ayar, gorulen: dict[Path, tuple[int, float, int]], bayrak: Bay
             continue
         calisan = _benzersiz(isleniyor, p.name)
         shutil.move(str(p), str(calisan))
-        cikis_kok = _benzersiz(bitti, calisan.stem)
+        cikis_kok = _benzersiz(bitti, f"{calisan.stem}_islenmis")
         cikis_kok.mkdir(parents=True, exist_ok=True)
         isaret = cikis_kok / ".yarim"
         try:

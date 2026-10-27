@@ -38,6 +38,7 @@ Video Portalı (kapalı ağ)
 KURULUM YOK. Bu klasörü yerel diske açın (örn. D:\VideoPortali). Portal.Uygulama.exe çalıştırın.
 - .NET ve libvlc klasörün içindedir. İnternet, yönetici yetkisi gerekmez.
 - ayar.json: "kok" alanına işlenmiş derslerin klasörünü yazın (boşsa portal sorar).
+- Yeni çıktı klasörleri _islenmis ekiyle bulunur; eski _videoperisi klasörleri de okunur.
 - Ağ paylaşımından çalıştırmayın (Windows güvenlik uyarısı). Yerel diskten çalıştırın.
 - Video açılmazsa: libvlc\win-x64\libvlc.dll ve libvlc\win-x64\plugins\ klasörü yerinde mi bakın.
 "@ | Set-Content (Join-Path $cikis 'OKU-BENI.txt') -Encoding UTF8

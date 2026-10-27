@@ -1,5 +1,5 @@
 """
-Video Perisi - Parça Zinciri Modülü
+Video Transkriptör - Parça Zinciri Modülü
 Kamera parça dosyalarını sanal zaman çizelgesine dönüştüren saf mantık bileşeni.
 """
 

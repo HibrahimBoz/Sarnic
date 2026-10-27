@@ -229,9 +229,14 @@ public partial class CokAciliOynaticiPenceresi : Window
             else
             {
                 string klasorAdi = Path.GetFileName(_klasor);
-                if (klasorAdi.EndsWith("_videoperisi", StringComparison.OrdinalIgnoreCase))
+                string ek = klasorAdi.EndsWith("_islenmis", StringComparison.OrdinalIgnoreCase)
+                    ? "_islenmis"
+                    : klasorAdi.EndsWith("_videoperisi", StringComparison.OrdinalIgnoreCase)
+                        ? "_videoperisi"
+                        : string.Empty;
+                if (ek.Length > 0)
                 {
-                    string beklenen = klasorAdi.Substring(0, klasorAdi.Length - "_videoperisi".Length);
+                    string beklenen = klasorAdi.Substring(0, klasorAdi.Length - ek.Length);
                     string adayVpJson = Path.Combine(_klasor, beklenen + ".json");
                     if (File.Exists(adayVpJson))
                     {
