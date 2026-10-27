@@ -308,19 +308,25 @@ def upscale(video: Path, cikis: Path, ayar: Ayar) -> None:
     if not plan:
         raise UpscaleHatasi(f"Parça planı oluşturulamadı (toplam kare: {toplam_kare})")
 
+    if ayar.goruntu.ara_format.lower() not in ("jpg", "png"):
+        raise UpscaleHatasi(f"Geçersiz ara_format: {ayar.goruntu.ara_format} (jpg veya png)")
+    hedef = ayar.goruntu.hedef_yukseklik // 2 * 2  # yuv420p tek yüksekliği kodlayamaz
     ad = video.stem
     ara_dizin = cikis.parent / "_ara"
     ara_dizin.mkdir(parents=True, exist_ok=True)
     kareler_ana_dizin = ara_dizin / f"kareler_{ad}"
     concat_listesi = ara_dizin / f"concat_{ad}.txt"
+    # Parça adı video + ayar imzası taşır: başka video ya da başka ayarın eski parçası devam sırasında karışmaz.
+    imza = f"{ad}_{ayar.goruntu.upscale_model}_{hedef}_{ayar.goruntu.parca_sn}"
     parca_dosyalari: list[Path] = []
     basarili = False
 
     try:
         for indeks, kare_sayisi, baslangic_sn in plan:
             gunluk.info("Upscale parça %d/%d", indeks + 1, len(plan))
-            parca_mp4 = ara_dizin / f"parca_{indeks:04d}.mp4"
-            parca_gecici = ara_dizin / f"parca_{indeks:04d}.tmp.mp4"
+            parca_mp4 = ara_dizin / f"parca_{imza}_{indeks:04d}.mp4"
+            parca_gecici = ara_dizin / f"parca_{imza}_{indeks:04d}.tmp.mp4"
+            parca_gecici.unlink(missing_ok=True)
             parca_dosyalari.append(parca_mp4)
 
             if parca_mp4.exists() and parca_mp4.stat().st_size > 0:
@@ -335,6 +341,7 @@ def upscale(video: Path, cikis: Path, ayar: Ayar) -> None:
             p_dizin = kareler_ana_dizin / f"p{indeks:04d}"
             giris_dizin = p_dizin / "giris"
             cikis_dizin = p_dizin / "cikis"
+            shutil.rmtree(p_dizin, ignore_errors=True)  # çökmüş önceki koşudan kalan kareler karışmasın
             giris_dizin.mkdir(parents=True, exist_ok=True)
             cikis_dizin.mkdir(parents=True, exist_ok=True)
 
@@ -345,7 +352,8 @@ def upscale(video: Path, cikis: Path, ayar: Ayar) -> None:
             komut_kare = [
                 str(yollar.ffmpeg()),
                 "-y",
-                "-ss", f"{baslangic_sn:.6f}",
+                # Yarım kare erken: yuvarlama hedef zamanı kare PTS'sinin ötesine taşırsa ilk kare atlanmasın.
+                "-ss", f"{max(0.0, baslangic_sn - 0.5 / fps):.6f}",
                 "-i", str(video),
                 "-frames:v", str(kare_sayisi),
             ]
@@ -371,6 +379,11 @@ def upscale(video: Path, cikis: Path, ayar: Ayar) -> None:
 
             giris_kareler = list(giris_dizin.glob(f"*.{ara_format}"))
             if not giris_kareler:
+                if indeks > 0 and indeks == len(plan) - 1:
+                    # Kare sayısı süre*fps ile tahmin edildiyse son parça videonun ötesine düşebilir.
+                    gunluk.info("Son parça boş (kare sayısı tahmini fazla), atlandı.")
+                    parca_dosyalari.pop()
+                    break
                 raise UpscaleHatasi(f"Parça {indeks} için videodan hiç kare çıkarılamadı.")
 
             komut_re = _re_komutu(
@@ -402,8 +415,11 @@ def upscale(video: Path, cikis: Path, ayar: Ayar) -> None:
                 raise UpscaleHatasi(f"Real-ESRGAN yürütülemedi: {e}") from e
 
             cikis_kareler = list(cikis_dizin.glob(f"*.{ara_format}"))
-            if not cikis_kareler:
-                raise UpscaleHatasi(f"Real-ESRGAN büyütülmüş kareler üretmedi (parça {indeks}).")
+            if len(cikis_kareler) != len(giris_kareler):
+                raise UpscaleHatasi(
+                    f"Real-ESRGAN eksik kare üretti (parça {indeks}): {len(cikis_kareler)}/{len(giris_kareler)} "
+                    "(disk dolu ya da GPU belleği yetmemiş olabilir)."
+                )
 
             if ayar.goruntu.nvenc and _nvenc_destegi_var() and _nvidia_smi_calisiyor():
                 vcodec = [
@@ -423,7 +439,7 @@ def upscale(video: Path, cikis: Path, ayar: Ayar) -> None:
                 "-y",
                 "-framerate", fps_metni,
                 "-i", str(cikis_desen),
-                "-vf", f"scale=-2:{ayar.goruntu.hedef_yukseklik}:flags=lanczos",
+                "-vf", f"scale=-2:{hedef}:flags=lanczos",
             ] + vcodec + [
                 "-pix_fmt", "yuv420p",
                 str(parca_gecici),
@@ -448,7 +464,8 @@ def upscale(video: Path, cikis: Path, ayar: Ayar) -> None:
             parca_gecici.replace(parca_mp4)  # yarım kalan parça "tamam" sayılmasın: kodlama bitince adlandırılır
             shutil.rmtree(p_dizin, ignore_errors=True)
 
-        satirlar = [f"file '{p.resolve().as_posix()}'\n" for p in parca_dosyalari]
+        # concat listesi parçalarla aynı dizinde: yalnız dosya adı yazılır; tek tırnak ffmpeg kuralıyla kaçırılır.
+        satirlar = ["file '" + p.name.replace("'", "'\\''") + "'\n" for p in parca_dosyalari]
         concat_listesi.write_text("".join(satirlar), encoding="utf-8")
 
         komut_birlestir = [
@@ -487,6 +504,8 @@ def upscale(video: Path, cikis: Path, ayar: Ayar) -> None:
             shutil.rmtree(kareler_ana_dizin, ignore_errors=True)
         if concat_listesi.exists():
             concat_listesi.unlink(missing_ok=True)
+        for gecici in ara_dizin.glob(f"parca_{imza}_*.tmp.mp4"):
+            gecici.unlink(missing_ok=True)
         if basarili:
             for p_mp4 in parca_dosyalari:
                 if p_mp4.exists():

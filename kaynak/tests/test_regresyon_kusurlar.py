@@ -395,6 +395,27 @@ class TestKusur8GeriAlYetimKlasor(unittest.TestCase):
         self.assertTrue(bitmis_bitti.exists())
 
 
+    def test_geri_al_bos_veya_isaretli_yarim_klasoru_siler(self):
+        """İçinde çıktı olmayan boş klasör veya yarım işaret dosyası taşıyan klasör silinir."""
+        yarim_video = self.isleniyor / "ders.mp4"
+        yarim_video.write_text("sahte video")
+
+        bos_bitti = self.bitti / "ders"
+        bos_bitti.mkdir()
+
+        izle._geri_al(self.isleniyor, self.gelen, self.bitti)
+        self.assertFalse(bos_bitti.exists())
+
+        yarim_video2 = self.isleniyor / "ders2.mp4"
+        yarim_video2.write_text("sahte video 2")
+        isaretli_bitti = self.bitti / "ders2"
+        isaretli_bitti.mkdir()
+        (isaretli_bitti / ".yarim").touch()
+
+        izle._geri_al(self.isleniyor, self.gelen, self.bitti)
+        self.assertFalse(isaretli_bitti.exists())
+
+
 class TestIzleCikisKlasoru(unittest.TestCase):
     def test_tek_tur_yeni_eki_ve_video_adini_korur(self):
         kok = Path(tempfile.mkdtemp())
@@ -424,26 +445,6 @@ class TestIzleCikisKlasoru(unittest.TestCase):
             self.assertTrue((cikis / "ders.mp4").exists())
         finally:
             shutil.rmtree(kok, ignore_errors=True)
-
-    def test_geri_al_bos_veya_isaretli_yarim_klasoru_siler(self):
-        """İçinde çıktı olmayan boş klasör veya yarım işaret dosyası taşıyan klasör silinir."""
-        yarim_video = self.isleniyor / "ders.mp4"
-        yarim_video.write_text("sahte video")
-
-        bos_bitti = self.bitti / "ders"
-        bos_bitti.mkdir()
-
-        izle._geri_al(self.isleniyor, self.gelen, self.bitti)
-        self.assertFalse(bos_bitti.exists())
-
-        yarim_video2 = self.isleniyor / "ders2.mp4"
-        yarim_video2.write_text("sahte video 2")
-        isaretli_bitti = self.bitti / "ders2"
-        isaretli_bitti.mkdir()
-        (isaretli_bitti / ".yarim").touch()
-
-        izle._geri_al(self.isleniyor, self.gelen, self.bitti)
-        self.assertFalse(isaretli_bitti.exists())
 
 
 if __name__ == "__main__":
