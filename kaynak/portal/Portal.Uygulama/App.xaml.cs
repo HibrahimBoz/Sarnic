@@ -21,6 +21,20 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
+        if (e.Args.Contains("--vlc-onbellek", StringComparer.Ordinal))
+        {
+            try
+            {
+                LibVlcAyarlari.EklentiOnbellegiOlustur();
+                Shutdown(0);
+            }
+            catch
+            {
+                Shutdown(1);
+            }
+            return;
+        }
+
         // Yakalanmamış istisnalar için genel dinleyiciler
         SetupHataYakali();
 

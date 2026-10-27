@@ -84,8 +84,6 @@
                            Foreground="{DynamicResource SolukMetinFircasi}" FontSize="11" Text="00:00" />
                 <Slider x:Name="AramaKaydiraci" Grid.Column="1" Style="{DynamicResource VlcSlider}"
                         Minimum="0" Maximum="1" ValueChanged="AramaKaydiraci_DegerDegisti"
-                        PreviewMouseLeftButtonDown="AramaKaydiraci_SuruklemeBasladi"
-                        PreviewMouseLeftButtonUp="AramaKaydiraci_SuruklemeBitti"
                         MouseMove="AramaKaydiraci_FareHareketi" />
                 <TextBlock x:Name="ToplamSure" Grid.Column="2" VerticalAlignment="Center"
                            HorizontalAlignment="Right" Foreground="{DynamicResource SolukMetinFircasi}"

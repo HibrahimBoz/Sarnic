@@ -15,7 +15,8 @@ public partial class VlcKontrolCubugu : UserControl
             typeof(VlcKontrolCubugu), new PropertyMetadata(null, OynaticiDegisti));
 
     private readonly DispatcherTimer _zamanlayici;
-    private bool _surukleniyor;
+    private readonly ZamanKaydiraciDavranisi _aramaDavranisi;
+    private bool Surukleniyor => _aramaDavranisi?.Surukleniyor == true;
     private bool _programatikGuncelleme;
     private bool _hariciZamanKullaniliyor;
     private bool _yuklendi;
@@ -34,7 +35,7 @@ public partial class VlcKontrolCubugu : UserControl
         set => SetValue(OynaticiProperty, value);
     }
 
-    public bool AramaSurukleniyor => _surukleniyor;
+    public bool AramaSurukleniyor => Surukleniyor;
     public double AramaZamani => AramaKaydiraci.Value;
     public double AramaAzami => AramaKaydiraci.Maximum;
 
@@ -47,14 +48,17 @@ public partial class VlcKontrolCubugu : UserControl
     public void ZamanBilgisiniGuncelle(double zaman, double toplamSure)
     {
         _hariciZamanKullaniliyor = true;
-        _hariciZaman = Math.Max(0, zaman);
-        _hariciToplamSure = Math.Max(0, toplamSure);
+        _hariciZaman = double.IsFinite(zaman) ? Math.Max(0, zaman) : 0;
+        _hariciToplamSure = double.IsFinite(toplamSure) ? Math.Max(0, toplamSure) : 0;
         Guncelle();
     }
 
     public VlcKontrolCubugu()
     {
         InitializeComponent();
+        _aramaDavranisi = new ZamanKaydiraciDavranisi(AramaKaydiraci,
+            () => _hariciZamanKullaniliyor ? _hariciToplamSure : Oynatici?.ToplamSure ?? 0,
+            zaman => Oynatici?.Ara(zaman));
         _zamanlayici = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
         _zamanlayici.Tick += (_, _) => Guncelle();
     }
@@ -153,8 +157,8 @@ public partial class VlcKontrolCubugu : UserControl
             {
                 double disToplam = Math.Max(0, _hariciToplamSure);
                 double disZaman = Math.Clamp(_hariciZaman, 0, disToplam > 0 ? disToplam : double.MaxValue);
-                AramaKaydiraci.Maximum = Math.Max(1, disToplam);
-                if (!_surukleniyor)
+                AramaKaydiraci.Maximum = disToplam > 0 ? disToplam : 1;
+                if (!Surukleniyor)
                 {
                     AramaKaydiraci.Value = Math.Min(disZaman, AramaKaydiraci.Maximum);
                 }
@@ -177,8 +181,8 @@ public partial class VlcKontrolCubugu : UserControl
 
             double toplam = Math.Max(0, oynatici.ToplamSure);
             double zaman = Math.Clamp(oynatici.Zaman, 0, toplam > 0 ? toplam : double.MaxValue);
-            AramaKaydiraci.Maximum = Math.Max(1, toplam);
-            if (!_surukleniyor)
+            AramaKaydiraci.Maximum = toplam > 0 ? toplam : 1;
+            if (!Surukleniyor)
             {
                 AramaKaydiraci.Value = Math.Min(zaman, AramaKaydiraci.Maximum);
             }
@@ -251,21 +255,9 @@ public partial class VlcKontrolCubugu : UserControl
 
     private void AramaKaydiraci_DegerDegisti(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
-        if (_surukleniyor && !_programatikGuncelleme)
+        if (Surukleniyor && !_programatikGuncelleme)
         {
             GecenSure.Text = SureBiçimle(AramaKaydiraci.Value);
-        }
-    }
-
-    private void AramaKaydiraci_SuruklemeBasladi(object sender, MouseButtonEventArgs e) => _surukleniyor = true;
-
-    private void AramaKaydiraci_SuruklemeBitti(object sender, MouseButtonEventArgs e)
-    {
-        if (_surukleniyor)
-        {
-            Oynatici?.Ara(AramaKaydiraci.Value);
-            _surukleniyor = false;
-            Guncelle();
         }
     }
 

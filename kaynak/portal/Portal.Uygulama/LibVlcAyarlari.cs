@@ -28,10 +28,10 @@ public static class LibVlcAyarlari
 
     private static readonly Lazy<LibVLC> _paylasilan = new(Olustur, LazyThreadSafetyMode.ExecutionAndPublication);
 
-    /// <summary>Uygulama genelinde tek LibVLC örneği (pencere açılışında 260 ms'lik kurulum maliyetini ödemez).</summary>
+    /// <summary>Uygulama genelinde tek LibVLC örneği; her pencerede yeniden kurulmaz.</summary>
     public static LibVLC Paylasilan => _paylasilan.Value;
 
-    /// <summary>LibVLC'yi arka planda önceden kurar; ilk oynatıcı penceresi anında açılır.</summary>
+    /// <summary>LibVLC'yi arka planda önceden kurar.</summary>
     public static void OnIsit()
     {
         _ = Task.Run(() =>
@@ -42,6 +42,14 @@ public static class LibVlcAyarlari
     }
 
     public static string[] SecenekleriBirlestir(IEnumerable<string>? ek) => VlcSecenekleri.Birlestir(ek);
+
+    /// <summary>Yayın klasöründe, kullanıcı arayüzü açmadan eklenti önbelleğini üretir.</summary>
+    public static void EklentiOnbellegiOlustur()
+    {
+        CoreBaslat();
+        using var vlc = new LibVLC("--intf=dummy", "--ignore-config", "--reset-plugins-cache",
+            "--no-video-title-show", "--no-osd", "--no-stats");
+    }
 
     private static IEnumerable<string>? AyarDosyasindanOku()
     {

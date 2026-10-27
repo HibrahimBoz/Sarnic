@@ -12,6 +12,7 @@ using System.Windows.Input;
 using System.Windows.Threading;
 using LibVLCSharp.Shared;
 using Portal.Cekirdek;
+using Portal.Uygulama.Temalar;
 
 /// <summary>
 /// Tek video oynatıcı penceresi ve transkript paneli (T11B).
@@ -35,10 +36,6 @@ public partial class OynaticiPenceresi : Window
     private bool _programatikSecimYapiliyor;
     private double _toplamSureSn;
     private bool _kapatildi;
-
-    private WindowState _oncekiWindowState = WindowState.Normal;
-    private WindowStyle _oncekiWindowStyle = WindowStyle.SingleBorderWindow;
-    private ResizeMode _oncekiResizeMode = ResizeMode.CanResize;
 
     private readonly DispatcherTimer _yoklamaZamanlayici;
     private readonly ParolaGecikmeSayaci _parolaSayaci = ParolaGecikmeSayaci.Paylasilan;
@@ -110,7 +107,7 @@ public partial class OynaticiPenceresi : Window
         _tamEkranKontrolZamanlayici.Tick += (_, _) =>
         {
             _tamEkranKontrolZamanlayici.Stop();
-            if (_tamEkran) Kontrol.Visibility = Visibility.Collapsed;
+            if (_tamEkran && !Kontrol.AramaSurukleniyor) Kontrol.Visibility = Visibility.Collapsed;
         };
 
         // Transkript ve videoyu yükle
@@ -488,21 +485,11 @@ public partial class OynaticiPenceresi : Window
     private void TamEkranModunaGec()
     {
         if (_tamEkran) return;
-        _tamEkran = true;
+        PencereYerlesimi.TamEkraniAyarla(this, true);
+        _tamEkran = PencereYerlesimi.GetTamEkran(this);
+        if (!_tamEkran) return;
         _tamEkranOncekiSpu = _oynatici.MediaPlayer.Spu;
         _tamEkranSrtParcasiSecildi = false;
-
-        _oncekiWindowState = WindowState;
-        _oncekiWindowStyle = WindowStyle;
-        _oncekiResizeMode = ResizeMode;
-
-        WindowStyle = WindowStyle.None;
-        WindowState = WindowState.Maximized;
-        ResizeMode = ResizeMode.NoResize;
-
-        // Transkript paneli ve bölücüyü gizle
-        GridSplitterBolucu.Visibility = Visibility.Collapsed;
-        TranskriptPaneli.Visibility = Visibility.Collapsed;
 
         Kontrol.Visibility = Visibility.Visible;
         Kontrol.TamEkranDurumunuGuncelle(true);
@@ -517,12 +504,7 @@ public partial class OynaticiPenceresi : Window
         if (!_tamEkran) return;
         _tamEkran = false;
 
-        WindowStyle = _oncekiWindowStyle;
-        WindowState = _oncekiWindowState == WindowState.Maximized ? WindowState.Normal : _oncekiWindowState;
-        ResizeMode = _oncekiResizeMode;
-
-        GridSplitterBolucu.Visibility = Visibility.Visible;
-        TranskriptPaneli.Visibility = Visibility.Visible;
+        PencereYerlesimi.TamEkraniAyarla(this, false);
 
         _tamEkranKontrolZamanlayici.Stop();
         Kontrol.Visibility = Visibility.Visible;
@@ -693,7 +675,8 @@ public partial class OynaticiPenceresi : Window
 
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (Keyboard.FocusedElement is System.Windows.Controls.Primitives.TextBoxBase)
+        if (Keyboard.FocusedElement is System.Windows.Controls.Primitives.TextBoxBase ||
+            Keyboard.FocusedElement is Slider && e.Key is Key.Left or Key.Right or Key.Up or Key.Down)
         {
             return;
         }

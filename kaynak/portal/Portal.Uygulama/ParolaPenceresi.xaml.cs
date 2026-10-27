@@ -11,6 +11,8 @@ using Portal.Cekirdek;
 /// </summary>
 public partial class ParolaPenceresi : Window
 {
+    public const string VarsayilanParola = "ehpm";
+
     private readonly string? _kokKlasor;
     private readonly ParolaGecikmeSayaci? _sayac;
 
@@ -86,70 +88,16 @@ public partial class ParolaPenceresi : Window
     /// <summary>
     /// Kök klasör ve üst klasörlerinde .portal/parola.json dosyasını doğrular.
     /// </summary>
-    public static bool ParolaDogrulaKok(string kokKlasor, string girilenParola)
-    {
-        if (string.IsNullOrEmpty(girilenParola))
-        {
-            return false;
-        }
-
-        string? dosyaYolu = ParolaDosyasiBul(kokKlasor);
-        if (dosyaYolu == null)
-        {
-            return false;
-        }
-
-        string? klasor = Path.GetDirectoryName(dosyaYolu);
-        if (klasor != null && Path.GetFileName(klasor).Equals(".portal", StringComparison.OrdinalIgnoreCase))
-        {
-            string? ust = Path.GetDirectoryName(klasor);
-            if (ust != null && Parola.Dogrula(ust, girilenParola))
-            {
-                return true;
-            }
-        }
-
-        return Parola.Dogrula(kokKlasor, girilenParola);
-    }
+    public static bool ParolaDogrulaKok(string kokKlasor, string girilenParola) =>
+        DuzenlemeParolasi.DogrulaKok(kokKlasor, girilenParola, VarsayilanParola);
 
     /// <summary>
     /// Kök klasörde veya üst dizinlerinde .portal/parola.json dosyasını arar.
     /// </summary>
-    public static string? ParolaDosyasiBul(string? kokKlasor)
-    {
-        if (string.IsNullOrWhiteSpace(kokKlasor))
-        {
-            kokKlasor = Directory.GetCurrentDirectory();
-        }
-
-        string? mevcut = Path.GetFullPath(kokKlasor);
-        while (!string.IsNullOrEmpty(mevcut))
-        {
-            string aday = Path.Combine(mevcut, ".portal", "parola.json");
-            if (File.Exists(aday))
-            {
-                return aday;
-            }
-
-            var ust = Directory.GetParent(mevcut);
-            if (ust == null || ust.FullName == mevcut)
-            {
-                break;
-            }
-            mevcut = ust.FullName;
-        }
-
-        string simdikiPortal = Path.Combine(Directory.GetCurrentDirectory(), ".portal", "parola.json");
-        if (File.Exists(simdikiPortal))
-        {
-            return simdikiPortal;
-        }
-
-        return null;
-    }
+    public static string? ParolaDosyasiBul(string? kokKlasor) => DuzenlemeParolasi.DosyaBul(kokKlasor);
 
     /// <summary>
-    /// Oturum için parola doğrulaması yapar. Parola tanımlı değilse veya yanlışsa kullanıcıyı bilgilendirir.
+    /// Oturum için parola doğrulaması yapar. Yanlış girişte kullanıcıyı bilgilendirir.
     /// 5 yanlışta 30 saniye kilit uygular.
     /// </summary>
     public static bool DogrulaVeIzinVer(Window? sahip, string? kokKlasor, ref bool oturumDogrulandi, ParolaGecikmeSayaci sayac)
@@ -157,31 +105,6 @@ public partial class ParolaPenceresi : Window
         if (oturumDogrulandi)
         {
             return true;
-        }
-
-        string? parolaDosyasi = ParolaDosyasiBul(kokKlasor);
-        if (parolaDosyasi == null)
-        {
-            if (sahip != null)
-            {
-                MessageBox.Show(
-                    sahip,
-                    "Parola tanımlı değil — yöneticiye başvurun",
-                    "Düzenleme Kapalı",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning
-                );
-            }
-            else
-            {
-                MessageBox.Show(
-                    "Parola tanımlı değil — yöneticiye başvurun",
-                    "Düzenleme Kapalı",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning
-                );
-            }
-            return false;
         }
 
         if (sayac.KilitliMi())

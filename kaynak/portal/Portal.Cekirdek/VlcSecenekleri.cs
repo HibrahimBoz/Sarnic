@@ -9,8 +9,9 @@ public static class VlcSecenekleri
         "--no-video-title-show",
         "--no-snapshot-preview",
         "--no-osd",
-        "--file-caching=1500",
-        "--network-caching=1500",
+        "--no-stats",
+        "--file-caching=300",
+        "--network-caching=500",
         "--drop-late-frames",
         "--skip-frames",
         "--sub-autodetect-file"
@@ -21,7 +22,15 @@ public static class VlcSecenekleri
         return Varsayilan
             .Concat(ek ?? Array.Empty<string>())
             .Where(secenek => !string.IsNullOrWhiteSpace(secenek))
-            .Distinct(StringComparer.Ordinal)
+            .Select(secenek => secenek.Trim())
+            .GroupBy(Anahtar, StringComparer.Ordinal)
+            .Select(grup => grup.Last())
             .ToArray();
+    }
+
+    private static string Anahtar(string secenek)
+    {
+        string ad = secenek.Split('=', 2)[0];
+        return ad.StartsWith("--no-", StringComparison.Ordinal) ? "--" + ad[5..] : ad;
     }
 }

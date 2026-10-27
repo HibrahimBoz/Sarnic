@@ -20,6 +20,17 @@ $eklenti = @(Get-ChildItem (Join-Path $vlc 'plugins') -Recurse -Filter '*.dll' -
 if (-not (Test-Path $dll) -or $eklenti -lt 100) { throw "libvlc eksik: libvlc.dll var mı=$(Test-Path $dll), eklenti dll=$eklenti" }
 Write-Host "  libvlc.dll var, eklenti dll: $eklenti"
 
+# İlk açılışta tüm eklentileri taramaması için önbelleği yayının kendi LibVLC'siyle üret.
+$onbellekIslemi = Start-Process -FilePath (Join-Path $cikis 'Portal.Uygulama.exe') -ArgumentList '--vlc-onbellek' -WindowStyle Hidden -PassThru
+if (-not $onbellekIslemi.WaitForExit(60000)) {
+    $onbellekIslemi.Kill()
+    throw 'LibVLC eklenti önbelleği üretimi zaman aşımına uğradı.'
+}
+$onbellek = Join-Path $vlc 'plugins\plugins.dat'
+if ($onbellekIslemi.ExitCode -ne 0 -or -not (Test-Path $onbellek) -or (Get-Item $onbellek).Length -eq 0) {
+    throw 'LibVLC plugins.dat üretilemedi; eksik önbellekle paket hazırlanmadı.'
+}
+
 Write-Host '[3/4] ayar.json ve OKU-BENI...'
 if ($Kok) { Set-Content (Join-Path $cikis 'ayar.json') (@{ kok = $Kok } | ConvertTo-Json) -Encoding UTF8 }
 @"

@@ -1,5 +1,6 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:yerlesim="clr-namespace:Portal.Uygulama.Temalar"
                     x:Class="Portal.Uygulama.Temalar.PencereKabugu">
 
     <ResourceDictionary.MergedDictionaries>
@@ -68,6 +69,7 @@
 
     <!-- Portal Pencere Ana Stili (WindowChrome + Özel Başlık Çubuğu) -->
     <Style x:Key="PortalPencere" TargetType="{x:Type Window}">
+        <Setter Property="yerlesim:PencereYerlesimi.Etkin" Value="True"/>
         <Setter Property="Background" Value="{DynamicResource ArkaPlanFircasi}"/>
         <Setter Property="Foreground" Value="{DynamicResource MetinFircasi}"/>
         <Setter Property="WindowChrome.WindowChrome">
@@ -83,17 +85,18 @@
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type Window}">
                     <Border x:Name="PencereKoku"
+                            Padding="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=(yerlesim:PencereYerlesimi.IcerikPayi)}"
                             Background="{DynamicResource ArkaPlanFircasi}"
                             BorderBrush="{DynamicResource KenarlikFircasi}"
                             BorderThickness="1">
                         <Grid>
                             <Grid.RowDefinitions>
-                                <RowDefinition Height="40"/>
+                                <RowDefinition x:Name="BaslikSatiri" Height="40"/>
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
 
                             <!-- Üst Özel Başlık Çubuğu (#101216 zemin, 1px alt kenarlık) -->
-                            <Border Grid.Row="0"
+                            <Border x:Name="BaslikCubugu" Grid.Row="0"
                                     Background="#101216"
                                     BorderBrush="{DynamicResource KenarlikFircasi}"
                                     BorderThickness="0,0,0,1">
@@ -156,12 +159,16 @@
                         </Grid>
                     </Border>
                     <ControlTemplate.Triggers>
-                        <!-- Ekranı kaplama taşma payı düzeltmesi (7px) ve simge değişimi -->
+                        <!-- Taşma payını ortak yardımcı monitörün DPI'siyle hesaplar. -->
                         <Trigger Property="WindowState" Value="Maximized">
-                            <Setter TargetName="PencereKoku" Property="Padding" Value="7"/>
                             <Setter TargetName="PencereKoku" Property="BorderThickness" Value="0"/>
                             <Setter TargetName="BuyutDugmesiSimge" Property="Text" Value="&#xE923;"/>
                             <Setter TargetName="BuyutDugmesi" Property="ToolTip" Value="Önceki boyuta getir"/>
+                        </Trigger>
+                        <Trigger Property="yerlesim:PencereYerlesimi.TamEkran" Value="True">
+                            <Setter TargetName="BaslikSatiri" Property="Height" Value="0"/>
+                            <Setter TargetName="BaslikCubugu" Property="Visibility" Value="Collapsed"/>
+                            <Setter TargetName="PencereKoku" Property="BorderThickness" Value="0"/>
                         </Trigger>
                         <!-- Yeniden boyutlanmayan pencerelerde küçült/büyüt butonlarını gizle -->
                         <Trigger Property="ResizeMode" Value="NoResize">

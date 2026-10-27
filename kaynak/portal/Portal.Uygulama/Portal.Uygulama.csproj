@@ -8,6 +8,7 @@
     <UseWPF>true</UseWPF>
     <AssemblyName>Portal.Uygulama</AssemblyName>
     <RootNamespace>Portal.Uygulama</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
 
   <ItemGroup>
