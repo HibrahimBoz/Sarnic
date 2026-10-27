@@ -69,6 +69,7 @@ public static class PencereYerlesimi
 
         private void KaynakHazir(object? sender, EventArgs e)
         {
+            if (_kaynak != null) return;
             _kaynak = HwndSource.FromHwnd(new WindowInteropHelper(_pencere).Handle);
             _kaynak?.AddHook(PencereMesaji);
             _kabuk = WindowChrome.GetWindowChrome(_pencere)?.CloneCurrentValue() as WindowChrome;
@@ -128,8 +129,11 @@ public static class PencereYerlesimi
                 bilgi.AzamiKonum = new NOKTA { X = sinir.X, Y = sinir.Y };
                 bilgi.AzamiBoyut = new NOKTA { X = sinir.Genislik, Y = sinir.Yukseklik };
                 var dpi = VisualTreeHelper.GetDpi(_pencere);
-                bilgi.AsgariIzBoyutu.X = Math.Min(sinir.Genislik, (int)Math.Ceiling(_pencere.MinWidth * dpi.DpiScaleX));
-                bilgi.AsgariIzBoyutu.Y = Math.Min(sinir.Yukseklik, (int)Math.Ceiling(_pencere.MinHeight * dpi.DpiScaleY));
+                // Sistem alt sınırı korunur: MinWidth/MinHeight 0 ise pencere 0x0'a küçülemez.
+                bilgi.AsgariIzBoyutu.X = Math.Min(sinir.Genislik,
+                    Math.Max(bilgi.AsgariIzBoyutu.X, (int)Math.Ceiling(_pencere.MinWidth * dpi.DpiScaleX)));
+                bilgi.AsgariIzBoyutu.Y = Math.Min(sinir.Yukseklik,
+                    Math.Max(bilgi.AsgariIzBoyutu.Y, (int)Math.Ceiling(_pencere.MinHeight * dpi.DpiScaleY)));
                 bilgi.AzamiIzBoyutu.X = Math.Max(bilgi.AzamiIzBoyutu.X, sinir.Genislik);
                 bilgi.AzamiIzBoyutu.Y = Math.Max(bilgi.AzamiIzBoyutu.Y, sinir.Yukseklik);
                 Marshal.StructureToPtr(bilgi, lParam, false);

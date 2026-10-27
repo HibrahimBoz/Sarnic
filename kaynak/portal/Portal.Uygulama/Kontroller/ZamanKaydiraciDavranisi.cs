@@ -26,7 +26,6 @@ public sealed class ZamanKaydiraciDavranisi
         kaydirac.PreviewMouseLeftButtonUp += Birakildi;
         kaydirac.LostMouseCapture += (_, _) => Surukleniyor = false;
         kaydirac.Unloaded += (_, _) => Bitir();
-        kaydirac.PreviewKeyDown += TusBasildi;
     }
 
     private Track? Iz => _kaydirac.Template?.FindName("PART_Track", _kaydirac) as Track;
@@ -49,7 +48,8 @@ public sealed class ZamanKaydiraciDavranisi
         }
         if (KonumdanZaman(e) is not double zaman) return;
 
-        _kaydirac.Focus();
+        // Odak kaydıraca verilmez: pencere kısayolları (ok tuşları, ses) tıklamadan sonra da çalışır.
+        _sonAranan = null;
         Surukleniyor = _kaydirac.CaptureMouse();
         Ara(zaman);
     }
@@ -73,29 +73,17 @@ public sealed class ZamanKaydiraciDavranisi
     private void Bitir()
     {
         Surukleniyor = false;
+        _sonAranan = null;
         if (_kaydirac.IsMouseCaptured) _kaydirac.ReleaseMouseCapture();
     }
 
-    private void TusBasildi(object sender, KeyEventArgs e)
-    {
-        double sure = _sure();
-        double? zaman = e.Key switch
-        {
-            Key.Left or Key.Down => _kaydirac.Value - _kaydirac.SmallChange,
-            Key.Right or Key.Up => _kaydirac.Value + _kaydirac.SmallChange,
-            Key.PageDown => _kaydirac.Value - _kaydirac.LargeChange,
-            Key.PageUp => _kaydirac.Value + _kaydirac.LargeChange,
-            Key.Home => 0,
-            Key.End => sure,
-            _ => null
-        };
-        if (zaman is null) return;
-        e.Handled = true;
-        if (double.IsFinite(sure) && sure > 0) Ara(Math.Clamp(zaman.Value, 0, sure));
-    }
+    private double? _sonAranan;
 
     private void Ara(double zaman)
     {
+        // Aynı konuma art arda arama (basma + bırakma) yapılmaz.
+        if (_sonAranan is double son && Math.Abs(son - zaman) < 0.001) return;
+        _sonAranan = zaman;
         _kaydirac.SetCurrentValue(Slider.ValueProperty, zaman);
         _ara(zaman);
     }
