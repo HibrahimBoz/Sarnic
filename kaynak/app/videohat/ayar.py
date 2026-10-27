@@ -43,11 +43,29 @@ class SesAyar:
     agir_kuru_oran: float = 0.2
 
 
+_GECERLI_UPSCALE_MODELLER = {"hizli", "agir", "genel"}
+_GECERLI_ARA_FORMATLAR = {"jpg", "png"}
+
+
 @dataclass
 class GoruntuAyar:
     etkin: bool = False
     crf: int = 20
     nvenc: bool = True
+    upscale_model: str = "hizli"
+    hedef_yukseklik: int = 1080
+    parca_sn: int = 120
+    ara_format: str = "jpg"
+
+    def __post_init__(self) -> None:
+        if self.upscale_model not in _GECERLI_UPSCALE_MODELLER:
+            raise AyarHatasi(f"Bilinmeyen upscale_model: {self.upscale_model}")
+        if self.ara_format not in _GECERLI_ARA_FORMATLAR:
+            raise AyarHatasi(f"Bilinmeyen ara_format: {self.ara_format}")
+        if self.hedef_yukseklik <= 0:
+            raise AyarHatasi(f"Geçersiz hedef_yukseklik: {self.hedef_yukseklik}")
+        if self.parca_sn <= 0:
+            raise AyarHatasi(f"Geçersiz parca_sn: {self.parca_sn}")
 
 
 @dataclass

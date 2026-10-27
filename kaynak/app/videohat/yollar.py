@@ -52,6 +52,13 @@ def realesrgan() -> Path:
     return exe
 
 
+def genel_model_dizini() -> Path:
+    return _gerekli(
+        kok() / "araclar" / "realesrgan" / "genel" / "models",
+        "realesrgan genel model dizini (models)",
+    )
+
+
 def is_dizini(alt: str) -> Path:
     d = kok() / "is" / alt
     d.mkdir(parents=True, exist_ok=True)

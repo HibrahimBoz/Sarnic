@@ -32,6 +32,11 @@ agir_kuru_oran = 0.2
 etkin = false
 crf = 20
 nvenc = true
+# upscale_model: "hizli" (realesr-animevideov3), "agir" (realesrgan-x4plus), "genel" (realesr-general-x4v3)
+upscale_model = "hizli"
+hedef_yukseklik = 1080
+parca_sn = 120
+ara_format = "jpg"
 [izle]
 yoklama_sn = 5
 sabit_tur = 3
