@@ -79,6 +79,15 @@ class YayinTest(GeciciTest):
         self.assertNotEqual(ilk, sonraki)
         self.assertFalse(list((self.depo / "yayin").glob("*.tmp")))
 
+    def test_son_surum_varken_ozet_hesaplanmaz(self):
+        # 15. bulgu: self.son_surum is not None iken her yayında _ozet hesaplanmaz
+        ilk = self.yayinci.yayinla()
+        self.assertIsNotNone(self.yayinci.son_surum)
+        self.degistir(55)
+        with patch.object(Yayinci, "_ozet", side_effect=AssertionError("Gereksiz özet hesaplandı")):
+            yeni = self.yayinci.yayinla()
+            self.assertIsNotNone(yeni)
+
     def test_sema_aynen_yuklenir(self):
         self.assertEqual(self.db.execute("PRAGMA foreign_keys").fetchone()[0], 1)
         self.assertEqual(self.db.execute("PRAGMA journal_mode").fetchone()[0], "wal")

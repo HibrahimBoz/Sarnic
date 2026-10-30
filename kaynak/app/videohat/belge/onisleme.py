@@ -46,6 +46,10 @@ def egiklik(gri):
     if np.count_nonzero(bw) < 20:
         return 0.0
     h, w = bw.shape
+    var_y = float(np.var(np.sum(bw, axis=1)))
+    var_x = float(np.var(np.sum(bw, axis=0)))
+    if var_x > 2.0 * var_y and var_x > 50:
+        return 0.0
     en_aci, en_puan = 0.0, float(np.sum(np.sum(bw / 255, axis=1) ** 2))
     ilk = en_puan
     for aci in np.arange(-15.0, 15.01, 0.5):
@@ -54,7 +58,19 @@ def egiklik(gri):
         puan = float(np.sum(np.sum(donuk / 255, axis=1) ** 2))
         if puan > en_puan:
             en_aci, en_puan = float(aci), puan
-    return en_aci if en_puan > ilk * 1.03 else 0.0
+    aday_araliklar = [np.arange(en_aci - 0.5, en_aci + 0.51, 0.1)]
+    if abs(en_aci) > 0.6:
+        aday_araliklar.append(np.arange(-0.6, 0.61, 0.1))
+    for aralik in aday_araliklar:
+        for aci in aralik:
+            if abs(aci) > 15.0:
+                continue
+            m = cv2.getRotationMatrix2D((w / 2, h / 2), float(aci), 1)
+            donuk = cv2.warpAffine(bw, m, (w, h), flags=cv2.INTER_NEAREST)
+            puan = float(np.sum(np.sum(donuk / 255, axis=1) ** 2))
+            if puan > en_puan:
+                en_aci, en_puan = float(aci), puan
+    return round(en_aci, 2) if en_puan > ilk * 1.03 else 0.0
 
 
 def hazirla(gorsel):

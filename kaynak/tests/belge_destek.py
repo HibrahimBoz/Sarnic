@@ -25,6 +25,20 @@ def gorsel():
         return np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.height, pix.width, 3).copy()
 
 
+def gorsel_cok_satirli():
+    import numpy as np
+    with pymupdf.open() as d:
+        p = d.new_page(width=500, height=220)
+        if FONT.exists():
+            p.insert_font(fontname="arial", fontfile=str(FONT))
+        fname = "arial" if FONT.exists() else "helv"
+        p.insert_text((20, 50), "Radar frekansı", fontname=fname, fontsize=18)
+        p.insert_text((20, 100), "Sistem ölçümü", fontname=fname, fontsize=18)
+        p.insert_text((20, 150), "Veri güvenlik", fontname=fname, fontsize=18)
+        pix = p.get_pixmap(matrix=pymupdf.Matrix(1.5, 1.5), alpha=False)
+        return np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.height, pix.width, 3).copy()
+
+
 def pdf_yaz(yol, sayi=1, taranmis=False, donus=0):
     with pymupdf.open() as d:
         for i in range(sayi):

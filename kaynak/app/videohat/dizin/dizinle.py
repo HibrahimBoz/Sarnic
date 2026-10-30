@@ -17,8 +17,8 @@ log = logging.getLogger("videohat")
 def icerikleri_isle(db, depo, ayar, havuz, yayinci=None):
     hatali, son_yayin = 0, time.monotonic()
     koruma_var = db.execute("SELECT 1 FROM sqlite_temp_master WHERE name=?", ("korunan",)).fetchone()
-    koruma = (" AND NOT EXISTS (SELECT 1 FROM korunan k WHERE dosya.yol=k.yol "
-              "OR dosya.yol LIKE k.desen ESCAPE '!')") if koruma_var else ""
+    koruma = (" AND NOT EXISTS (SELECT 1 FROM korunan k WHERE kanon(dosya.yol)=k.yol "
+              "OR kanon(dosya.yol) LIKE k.desen ESCAPE '!')") if koruma_var else ""
 
     def ilerleme():
         nonlocal son_yayin
@@ -87,11 +87,17 @@ def _dongu(ayar, kokler, depo, db_yol, bir_kez, yalniz_ad, zorla_sil):
                 tarama = tara(db, kokler, ayar.dizin.haric, zorla_sil, [depo, db_yol.parent])
                 etkin_yayinci = yayinci if tarama.yayin_uygun else None
                 if etkin_yayinci:
-                    yayinci.yayinla()
+                    try:
+                        yayinci.yayinla()
+                    except (OSError, sqlite3.Error, IsHatasi) as e:
+                        log.warning("Tarama sonu yayın yapılamadı: %s", e)
                 if not yalniz_ad:
                     hatali += icerikleri_isle(db, depo, ayar, havuz, etkin_yayinci)
                 if etkin_yayinci:
-                    yayinci.yayinla()
+                    try:
+                        yayinci.yayinla()
+                    except (OSError, sqlite3.Error, IsHatasi) as e:
+                        log.warning("İçerik sonu yayın yapılamadı: %s", e)
                 if bir_kez:
                     return 1 if hatali else 0
                 time.sleep(ayar.dizin.tarama_dk * 60)

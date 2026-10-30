@@ -14,6 +14,7 @@ class SozlukTest(GeciciTest):
         self.assertEqual(s.duzelt("yapilmalidir", .99), "yapilmalidir")
         self.assertEqual(s.duzelt("yapilmalidir", .96), "yapılmalıdır")  # ölçüldü: hatalı satır güveni 0,96
         self.assertEqual(s.duzelt("iletișim", .9), "iletişim")
+        self.assertEqual(s.duzelt("KLAŚÖR üzerínde sözcűk", .9), "KLAŞÖR üzerinde sözcük")  # ölçüldü: yabancı işaretli harf
         u = Sozluk()
         for kelime in ("komutan", "alın", "geliyor"):
             u.ekle(kelime)
@@ -53,6 +54,23 @@ class SozlukTest(GeciciTest):
                          ["BAŞLIK", "sol0", "sol1", "sol2", "sağ0", "sağ1", "sağ2"])
         ayni = [OcrSatir("ikinci", .8, (60, 10, 100, 30)), OcrSatir("ilk", 1, (10, 10, 50, 30))]
         self.assertEqual(birlestir(sirala(ayni, (100, 40))), "ilk ikinci")
+
+    def test_iki_sutun_cok_satir_ve_altbilgi_zikzak_onleme(self):
+        # 2. bulgu: 4. satırdan sonra başlık veya sayfa altında altbilgi varken zikzak okunmaz
+        kutular = []
+        for i in range(5):
+            kutular.append(OcrSatir(f"sol{i}", .9, (20, 50 + i * 40, 450, 80 + i * 40)))
+            kutular.append(OcrSatir(f"sağ{i}", .9, (550, 50 + i * 40, 980, 80 + i * 40)))
+        kutular.append(OcrSatir("ALTBİLGİ", 1, (10, 260, 990, 290)))
+        sonuc = sirala(list(reversed(kutular)), (1000, 300))
+        beklenen = [f"sol{i}" for i in range(5)] + [f"sağ{i}" for i in range(5)] + ["ALTBİLGİ"]
+        self.assertEqual([s.metin for s in sonuc], beklenen)
+
+    def test_ayni_satir_hafif_ortusen_kutular_boslukla_birlesir(self):
+        # 3. bulgu: aynı satırda kutusu hafif örtüşen (b[0] < a[2]) sözcükler \n yerine boşlukla birleşir
+        s1 = OcrSatir("radar", .9, (10, 20, 60, 40))
+        s2 = OcrSatir("frekansı", .9, (58, 20, 120, 40))  # 2 piksel örtüşüyor (58 < 60)
+        self.assertEqual(birlestir([s1, s2]), "radar frekansı")
 
     def test_girinti_sutun_degil_ve_agirlikli_guven(self):
         s = [OcrSatir("a", .5, (200, 0, 700, 20)), OcrSatir("uzun metin", 1, (10, 30, 900, 50)),

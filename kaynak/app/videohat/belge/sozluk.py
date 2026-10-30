@@ -7,6 +7,8 @@ from ..terimler import kucuk
 
 _SOZCUK = re.compile(r"[^\W_]+", re.UNICODE)
 _KALIN, _INCE = set("aıou"), set("eiöü")
+_YABANCI_HARF = str.maketrans("șȘśŚşźżŹŻćĆáàäÁÀÄéèëÉÈËíìïÍÌÏóòÓÒőŐúùÚÙűŰýÝňŇřŘ",
+                              "şŞşŞşzzZZçÇaaaAAAeeeEEEiiiİİİooOOöÖuuUUüÜyYnNrR")
 # Ünlü uyumuna uymayan ekler: bunlarla biten sözcüğe uyum kuralı uygulanmaz.
 _UYUMSUZ_EKLER = ("yor", "yordu", "yorlar", "ken", "ki", "leyin", "gil")
 # OCR Türkçe işareti düşürür, nadiren yanlış ekler: yalnız işaret EKLEYEN değişime izin verilir (ı->i yasak).
@@ -99,7 +101,8 @@ class Sozluk:
         # Ölçüldü: 150 dpi taramada ı/i karışan satırların güveni 0,96 çıktı; eşik yalnız kusursuz satırı atlar.
         if guven >= 0.99:
             return metin
-        metin = metin.replace("ș", "ş").replace("Ș", "Ş")  # Rumence virgüllü s, Türkçe ş ile karışır
+        # Çok dilli model Türkçede olmayan işaretli harf üretebilir (ölçüldü: ś, í, ű, ș): Türkçe/ASCII karşılığı
+        metin = metin.translate(_YABANCI_HARF)
 
         def yerine(m):
             ham = m.group()

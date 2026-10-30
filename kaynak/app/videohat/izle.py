@@ -108,7 +108,8 @@ def _geri_al(isleniyor: Path, gelen: Path, bitti: Path | None = None) -> None:
                     if yetim.exists():
                         if yetim.is_dir():
                             if (p.suffix.lower() in BELGE_UZANTILARI and "_belge" in yetim.name
-                                    and (yetim / "_ara").is_dir()):
+                                    and (yetim / "_ara").is_dir()
+                                    and any((yetim / "_ara").rglob("sayfa_*.json"))):
                                 log.info("Belge sayfa önbelleği korundu: %s", yetim)
                                 continue
                             if not _yetim_silinebilir_mi(yetim):
@@ -168,7 +169,7 @@ def tek_tur(ayar: Ayar, gorulen: dict[Path, tuple[int, float, int]], bayrak: Bay
         shutil.move(str(p), str(calisan))
         belge_mi = calisan.suffix.lower() in BELGE_UZANTILARI
         yarim_belge = bitti / f"{calisan.stem}_belge"
-        if belge_mi and (yarim_belge / ".yarim").exists() and (yarim_belge / "_ara").is_dir():
+        if belge_mi and (yarim_belge / ".yarim").exists() and (yarim_belge / "_ara").is_dir() and any((yarim_belge / "_ara").rglob("sayfa_*.json")):
             cikis_kok = yarim_belge
         else:
             cikis_kok = _benzersiz(bitti, f"{calisan.stem}_belge" if belge_mi else f"{calisan.stem}_islenmis")
@@ -201,6 +202,10 @@ def tek_tur(ayar: Ayar, gorulen: dict[Path, tuple[int, float, int]], bayrak: Bay
             log.info("İş bitti: %s sureler=%s", calisan.name,
                      {k: round(v, 1) for k, v in s.sureler.items()})
         else:
+            try:
+                isaret.unlink(missing_ok=True)
+            except OSError:
+                pass
             hata_dir = _benzersiz(hata, calisan.stem)
             hata_dir.mkdir(parents=True, exist_ok=True)
             shutil.move(str(calisan), str(hata_dir / calisan.name))

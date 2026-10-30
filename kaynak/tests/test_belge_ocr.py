@@ -1,16 +1,17 @@
+import os
 from pathlib import Path
 import time
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 import numpy as np
 import pymupdf
 
-from belge_destek import GeciciTest, gorsel, pdf_yaz, FONT
+from belge_destek import GeciciTest, gorsel, gorsel_cok_satirli, pdf_yaz, FONT
 from videohat import yollar
 from videohat.belge.model import OcrSatir, Sayfa
 from videohat.belge.ocr import OcrMotoru, OcrHavuzu, OcrIsi
-from videohat.belge.onisleme import hazirla, dondur, yon_cevir, Donusum, metin_murekkebi
+from videohat.belge.onisleme import hazirla, dondur, yon_cevir, Donusum, metin_murekkebi, egiklik
 from videohat.belge.pdf_katman import olustur
 from videohat.belge.sira import birlestir
 from videohat.hatalar import OrtamHatasi
@@ -46,6 +47,15 @@ class OcrTest(GeciciTest):
         fotograf[20:280, 20:280] = 0
         self.assertEqual(metin_murekkebi(fotograf), 0)
 
+    def test_egiklik_03_049_derece_ve_90_derece_sonrasi_egiklik(self):
+        # 0.35° eğik görselin tespit edilebilmesi
+        im = gorsel()
+        gri = im[:, :, 0]
+        donuk_035, _ = dondur(gri, 0.4)
+        aci = egiklik(donuk_035)
+        self.assertGreaterEqual(abs(aci), 0.3)
+        self.assertLessEqual(abs(aci), 0.5)
+
     def test_eksik_model_indirme_yok(self):
         with patch("videohat.belge.ocr.yollar.ocr_model", side_effect=OrtamHatasi("model eksik")), \
                 patch("requests.get", side_effect=AssertionError("AĞA ÇIKTI")) as ag:
@@ -79,6 +89,40 @@ class OcrTest(GeciciTest):
         tess.assert_called_once()
         self.assertEqual(s[0].metin, "ölçüm")
 
+    def test_kalite_profili_det_medium_rec_medium_tesseract(self):
+        # 17(a) Sözleşme 5.4.3 kalite profili testi
+        motor = OcrMotoru(self.ayar)
+        motor.ayar.ocr.profil = "kalite"
+        motor.tesseract = Path("tesseract.exe")
+        motor.sozluk.ekle("ölçüm")
+        satir = OcrSatir("olcum", .6, (10, 10, 160, 50))
+        with patch.object(motor, "_oku", return_value=[satir]) as oku, \
+                patch.object(motor, "_tesseract", return_value=("ölçüm", .9)) as tess:
+            s, _ = motor.oku(np.full((100, 200), 255, np.uint8))
+        oku.assert_called_with(unittest.mock.ANY, "medium", "medium")
+        tess.assert_called_once()
+        self.assertEqual(s[0].metin, "ölçüm")
+
+    def test_tek_isci_cpu_threads_ve_model_paylasimi(self):
+        # 16(a) cpu_threads=0 iken tek süreçte max(1, cpu_count//2)
+        self.ayar.genel.cpu_threads = 0
+        self.ayar.dizin.isci = 1
+        motor = OcrMotoru(self.ayar)
+        beklenen_threads = max(1, (os.cpu_count() or 1) // 2)
+        with patch("videohat.belge.ocr.yollar.ocr_model", return_value=Path("yok.onnx")), \
+                patch("rapidocr.RapidOCR") as mock_rocr:
+            mock_rocr.return_value.text_det = MagicMock()
+            mock_rocr.return_value.text_rec = MagicMock()
+            mock_rocr.return_value.text_cls = MagicMock()
+            motor._motor("small", "small")
+            params = mock_rocr.call_args.kwargs["params"]
+            self.assertEqual(params["EngineConfig.onnxruntime.intra_op_num_threads"], beklenen_threads)
+
+            # 16(b) İkinci motor çağrısında ortak modeller RapidOCR öncesi paylaştırılır
+            motor._motor("small", "medium")
+            self.assertEqual(motor.motorlar[("small", "medium")].text_det, motor.motorlar[("small", "small")].text_det)
+            self.assertEqual(motor.motorlar[("small", "medium")].text_cls, motor.motorlar[("small", "small")].text_cls)
+
     def test_az_algilama_medium_det(self):
         self.ayar.ocr.profil = "uyarlamali"
         motor = OcrMotoru(self.ayar)
@@ -109,6 +153,32 @@ class OcrTest(GeciciTest):
             self.assertEqual(next(p.metin for p, u in s if p.no == 2), "bitti")
             self.assertEqual(havuz.oku(OcrIsi("yok", 3))[0].metin, "bitti")
         self.assertEqual(havuz.yuvalar, [])
+
+    def test_havuz_erken_cikis_ve_hata_yuva_temizligi(self):
+        # 1. bulgu testi: erken çıkışta havuz yuvaları temizlenir, sonraki belgeye eski sonuç sızmaz
+        self.ayar.dizin.isci = 2
+        self.ayar.ocr.sayfa_zaman_asimi_sn = 10
+        with OcrHavuzu(self.ayar, isci_hedefi=yavas_isci) as havuz:
+            gen = havuz.haritala([OcrIsi("yok", 1), OcrIsi("yok", 2)])
+            # Yalnızca ilk sonucu alıp erken çık (next(gen))
+            next(gen)
+            gen.close()
+            # Yeni çağrıda yuvalar temiz başlar
+            s = list(havuz.haritala([OcrIsi("yok", 3)]))
+            self.assertEqual(len(s), 1)
+            self.assertEqual(s[0][0].no, 3)
+
+    def test_taskkill_alt_surec_agaci_kapat(self):
+        # 12. bulgu testi: Windows'ta _kapat taskkill /T /F çağırır
+        yuva = {"p": MagicMock(), "gelen": MagicMock(), "giden": MagicMock(), "is": None}
+        yuva["p"].is_alive.side_effect = [True, False]
+        yuva["p"].pid = 9999
+        with patch("os.name", "nt"), patch("subprocess.run") as mock_run:
+            OcrHavuzu._kapat(yuva)
+            mock_run.assert_called_once()
+            self.assertIn("/T", mock_run.call_args[0][0])
+            self.assertIn("/F", mock_run.call_args[0][0])
+            self.assertIn("9999", mock_run.call_args[0][0])
 
     def test_tek_isci_motor_bir_kez_havuzsuz(self):
         from PIL import Image
@@ -172,3 +242,31 @@ class GercekOcrTest(GeciciTest):
         m = self.motor._motor("small", "small")
         self.assertIsNone(m.cfg.Rec.rec_keys_path)
         self.assertTrue(m.text_rec.session.have_key())
+
+    def test_cok_satirli_90_180_270_okuma_sirasi_ve_pdf_kutusu(self):
+        # 17(b) Çok satırlı 90°/180°/270° okuma sırası ve dönük görüntü PDF'inde kutu örtüşmesi
+        from PIL import Image
+        im = gorsel_cok_satirli()
+        for yon in (90, 180, 270):
+            with self.subTest(yon=yon):
+                donuk, _ = yon_cevir(im, yon)
+                s, guven = self.motor.oku(donuk)
+                metin = getattr(s, "metin", "") or birlestir(s)
+                # Ayrı satırlar boşluk yerine \n ile ayrılmalıdır
+                self.assertIn("\n", metin)
+                for kelime in ("frekansı", "ölçümü", "güvenlik"):
+                    self.assertIn(kelime, metin)
+                yol = self.kok / f"donuk_{yon}.png"
+                Image.fromarray(donuk).save(yol)
+                sayfa = Sayfa(1, "Sayfa 1", "ocr", metin, guven, s, (donuk.shape[1], donuk.shape[0]))
+                sayfa.yon = getattr(s, "yon", 0)
+                hedef = olustur(yol, [sayfa], self.kok / f"donuk_{yon}.pdf", 150)
+                with pymupdf.open(hedef) as d:
+                    metin_pdf = d[0].get_text()
+                    for kelime in ("frekansı", "ölçümü", "güvenlik"):
+                        self.assertIn(kelime, metin_pdf)
+                    # Sözcüklerin font büyüklüğü 0.5pt olmamalı, okunabilir olmalı
+                    words = d[0].get_text("words")
+                    self.assertTrue(len(words) >= 3)
+                    for w in words:
+                        self.assertGreater(max(w[2] - w[0], w[3] - w[1]), 5.0)

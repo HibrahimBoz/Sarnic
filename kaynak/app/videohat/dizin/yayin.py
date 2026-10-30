@@ -47,6 +47,12 @@ class Yayinci:
             return None
         yayin = self.depo / "yayin"
         yayin.mkdir(parents=True, exist_ok=True)
+        # Eski yarıda kalmış .tmp dosyalarını temizle
+        for p in yayin.glob("*.tmp"):
+            try:
+                p.unlink(missing_ok=True)
+            except OSError:
+                pass
         with tempfile.TemporaryDirectory(prefix="yayin-", dir=self.yol.parent) as tmp:
             yerel = Path(tmp) / "dizin.db"
             self.db.execute("VACUUM INTO ?", (str(yerel),))
@@ -54,20 +60,22 @@ class Yayinci:
                 sonuc = denetim.execute("PRAGMA quick_check").fetchall()
                 if sonuc != [("ok",)]:
                     raise IsHatasi("Dizin bütünlük denetimi başarısız")
-            ozet = self._ozet(yerel)
-            # Yeniden başlatmada data_version sıfırlanır. Yerel, sıkıştırılmış VT
-            # özeti değişmediyse aynı yayını ağa yeniden kopyalama.
-            onceki_ad = self.onceki.get("ad", "")
-            if (self.onceki.get("ozet") == ozet and self.onceki.get("depo") == str(self.depo.resolve())
-                    and onceki_ad and Path(onceki_ad).name == onceki_ad):
-                try:
-                    ayni = ((yayin / "guncel.txt").read_text(encoding="utf-8").strip() == onceki_ad
-                            and (yayin / onceki_ad).is_file())
-                except OSError:
-                    ayni = False
-                if ayni:
-                    self.son_surum = surum
-                    return None
+            ozet = None
+            if self.son_surum is None:
+                ozet = self._ozet(yerel)
+                # Yeniden başlatmada data_version sıfırlanır. Yerel, sıkıştırılmış VT
+                # özeti değişmediyse aynı yayını ağa yeniden kopyalama.
+                onceki_ad = self.onceki.get("ad", "")
+                if (self.onceki.get("ozet") == ozet and self.onceki.get("depo") == str(self.depo.resolve())
+                        and onceki_ad and Path(onceki_ad).name == onceki_ad):
+                    try:
+                        ayni = ((yayin / "guncel.txt").read_text(encoding="utf-8").strip() == onceki_ad
+                                and (yayin / onceki_ad).is_file())
+                    except OSError:
+                        ayni = False
+                    if ayni:
+                        self.son_surum = surum
+                        return None
             # Aynı saniyede yeniden başlatma veya çok yayın ad çakıştırmaz.
             while True:
                 self.sira += 1
@@ -76,15 +84,19 @@ class Yayinci:
                 if not hedef.exists():
                     break
             gecici = hedef.with_name(ad + ".tmp")
-            shutil.copyfile(yerel, gecici)
-            os.replace(gecici, hedef)
+            try:
+                shutil.copyfile(yerel, gecici)
+                os.replace(gecici, hedef)
+            except BaseException:
+                gecici.unlink(missing_ok=True)
+                raise
             isaret = yayin / "guncel.txt.tmp"
             with isaret.open("w", encoding="utf-8", newline="\n") as f:
                 f.write(ad + "\n")
                 f.flush()
                 os.fsync(f.fileno())
             os.replace(isaret, yayin / "guncel.txt")
-            self.onceki = {"ozet": ozet, "ad": ad, "depo": str(self.depo.resolve())}
+            self.onceki = {"ozet": ozet or self.onceki.get("ozet"), "ad": ad, "depo": str(self.depo.resolve())}
             json_yaz(self.durum_yolu, self.onceki)
         self.son_surum = surum
         eskiler = sorted(yayin.glob("dizin-*.db"), reverse=True)

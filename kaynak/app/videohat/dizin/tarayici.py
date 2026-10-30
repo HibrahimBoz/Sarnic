@@ -6,6 +6,7 @@ from pathlib import Path
 
 from ..belge import BELGE_UZANTILARI, GORUNTU_UZANTILARI
 from .normal import dosya_normalle
+from .vt import _kanon
 
 log = logging.getLogger("videohat")
 VIDEO = frozenset(".mp4 .mkv .mov .avi .m4a .wav .mp3".split())
@@ -19,10 +20,18 @@ class TaramaSonucu:
     yayin_uygun: bool = True
 
 
+TRANSKRIPT_UZANTILARI = {".json", ".srt", ".vtt", ".txt"}
+
+
 def tur_bul(yol, klasor=False):
     if klasor:
         return "klasor"
     uz = yol.suffix.lower()
+    # Ders çıktı klasörünün doğrudan içindeki transkript dosyaları (json/srt/vtt/txt) belge değildir:
+    # içerikleri video aramasında zaten var; belge olarak işlenirse ham JSON sonuçlara karışır (ölçüldü).
+    if (uz in TRANSKRIPT_UZANTILARI
+            and yol.parent.name.lower().endswith(("_islenmis", "_videoperisi"))):
+        return "diger"
     return ("goruntu" if uz in GORUNTU_UZANTILARI else "belge" if uz in BELGE_UZANTILARI
             else "video" if uz in VIDEO else "diger")
 
@@ -47,6 +56,18 @@ def _alt_deseni(yol):
     return str(yol).rstrip("\\/").replace("!", "!!").replace("%", "!%").replace("_", "!_") + os.sep + "%"
 
 
+def _kok_erisim_kontrol(kok):
+    try:
+        it = os.scandir(kok)
+    except OSError:
+        return False
+    try:
+        return True
+    finally:
+        if hasattr(it, "close"):
+            it.close()
+
+
 def tara(db, kokler, haric=(), zorla_sil=False, haric_yollar=()):
     sonuc = TaramaSonucu()
     haric = {s.casefold() for s in haric}
@@ -58,17 +79,23 @@ def tara(db, kokler, haric=(), zorla_sil=False, haric_yollar=()):
 
     def koru(yol, e):
         log.warning("Taranamadı, eski kayıtlar korundu: %s (%s)", yol, e)
-        db.execute("INSERT OR IGNORE INTO korunan(yol,desen) VALUES (?,?)", (str(yol), _alt_deseni(yol)))
+        k_yol = _kanon(yol)
+        db.execute("INSERT OR IGNORE INTO korunan(yol,desen) VALUES (?,?)", (k_yol, _alt_deseni(k_yol)))
 
     def satir(yol, st, klasor):
         s = str(yol)
-        db.execute("INSERT OR IGNORE INTO gorulen(yol) VALUES (?)", (s,))
+        kanon_s = _kanon(s)
+        db.execute("INSERT OR IGNORE INTO gorulen(yol) VALUES (?)", (kanon_s,))
         sonuc.gorulen += 1
         tur = tur_bul(yol, klasor)
         boyut = 0 if klasor else st.st_size
         degisme = int(st.st_mtime)
         ders = ders_bul(yol)
-        eski = db.execute("SELECT id,boyut,degisme,tur,ders FROM dosya WHERE yol=?", (s,)).fetchone()
+        eski = db.execute("SELECT id,yol,boyut,degisme,tur,ders FROM dosya WHERE yol=?", (s,)).fetchone()
+        if eski is None:
+            eski = db.execute("SELECT id,yol,boyut,degisme,tur,ders FROM dosya WHERE kanon(yol)=?", (kanon_s,)).fetchone()
+            if eski is not None and eski["yol"] != s:
+                db.execute("UPDATE dosya SET yol=?, norm_yol=? WHERE id=?", (s, dosya_normalle(s), eski["id"]))
         durum = "bekliyor" if tur in ("belge", "goruntu") else "yok"
         if eski is None:
             db.execute("""INSERT INTO dosya(yol,ad,klasor,uzanti,boyut,degisme,tur,durum,ders,norm_ad,norm_yol)
@@ -102,15 +129,14 @@ def tara(db, kokler, haric=(), zorla_sil=False, haric_yollar=()):
                     continue
                 except OSError as hata:
                     koru(ust, hata)
-                    if ust == klasor:
+                    if ust == klasor or not _kok_erisim_kontrol(klasor):
                         sonuc.yayin_uygun = False
                     it.close()
                     yigin.pop()
                     continue
                 yol = Path(e.path)
                 if e.name.casefold() in haric or os.path.normcase(os.path.abspath(yol)) in haric_yollar:
-                    # Ayar değişince hariç tutulan eski kayıtlar da korunur.
-                    db.execute("INSERT OR IGNORE INTO korunan(yol,desen) VALUES (?,?)", (str(yol), _alt_deseni(yol)))
+                    # Hariç tutulan klasörler taranmaz; korunan tablosuna eklenmez
                     continue
                 try:
                     st = e.stat(follow_symlinks=False)
@@ -120,6 +146,8 @@ def tara(db, kokler, haric=(), zorla_sil=False, haric_yollar=()):
                         yigin.append((yol, os.scandir(yol)))
                 except OSError as hata:
                     koru(yol, hata)
+                    if not _kok_erisim_kontrol(klasor):
+                        sonuc.yayin_uygun = False
         finally:
             for _, it in yigin:
                 it.close()
@@ -138,17 +166,19 @@ def tara(db, kokler, haric=(), zorla_sil=False, haric_yollar=()):
         acilan_kokler.append(kok)
     # Bütün kökler bittikten sonra sil; görülen yolların tamamı diskte kalır.
     for kok in acilan_kokler:
-        desen = _alt_deseni(kok)
-        toplam = db.execute("SELECT count(*) FROM dosya WHERE yol LIKE ? ESCAPE '!'", (desen,)).fetchone()[0]
-        sorgu = """SELECT id FROM dosya d WHERE d.yol LIKE ? ESCAPE '!'
-                    AND NOT EXISTS (SELECT 1 FROM gorulen g WHERE g.yol=d.yol)
-                    AND NOT EXISTS (SELECT 1 FROM korunan k WHERE d.yol=k.yol OR d.yol LIKE k.desen ESCAPE '!')"""
-        silinecek = db.execute("SELECT count(*) FROM (" + sorgu + ")", (desen,)).fetchone()[0]
+        k_kok = _kanon(kok)
+        desen = _alt_deseni(k_kok)
+        toplam = db.execute("SELECT count(*) FROM dosya WHERE kanon(yol)=? OR kanon(yol) LIKE ? ESCAPE '!'",
+                            (k_kok, desen)).fetchone()[0]
+        sorgu = """SELECT id FROM dosya d WHERE (kanon(d.yol)=? OR kanon(d.yol) LIKE ? ESCAPE '!')
+                    AND NOT EXISTS (SELECT 1 FROM gorulen g WHERE g.yol=kanon(d.yol))
+                    AND NOT EXISTS (SELECT 1 FROM korunan k WHERE kanon(d.yol)=k.yol OR kanon(d.yol) LIKE k.desen ESCAPE '!')"""
+        silinecek = db.execute("SELECT count(*) FROM (" + sorgu + ")", (k_kok, desen)).fetchone()[0]
         if silinecek > toplam * .5 and not zorla_sil:
             log.warning("Silme koruması: %s, %d/%d kayıt; --zorla-sil ile aşılabilir", kok, silinecek, toplam)
         else:
             while True:
-                ids = db.execute(sorgu + " LIMIT ?", (desen, 1000)).fetchall()
+                ids = db.execute(sorgu + " LIMIT ?", (k_kok, desen, 1000)).fetchall()
                 if not ids:
                     break
                 db.executemany("DELETE FROM dosya WHERE id=?", [(r[0],) for r in ids])

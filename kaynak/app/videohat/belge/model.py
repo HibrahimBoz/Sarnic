@@ -10,6 +10,11 @@ class OcrSatir:
     kutu: tuple[float, float, float, float]
 
 
+class SatirListesi(list):
+    metin: str = ""
+    yon: int = 0
+
+
 @dataclass
 class Sayfa:
     no: int

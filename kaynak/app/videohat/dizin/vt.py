@@ -10,6 +10,10 @@ from ..hatalar import OrtamHatasi
 from .normal import icerik_normalle
 
 
+def _kanon(p):
+    return os.path.normcase(os.path.abspath(str(p))) if p else ""
+
+
 @contextmanager
 def yazar_kilidi(yol):
     yol = Path(yol)
@@ -43,6 +47,7 @@ def ac(yol) -> sqlite3.Connection:
     yol.parent.mkdir(parents=True, exist_ok=True)
     db = sqlite3.connect(yol, timeout=30)
     db.row_factory = sqlite3.Row
+    db.create_function("kanon", 1, _kanon)
     db.execute("PRAGMA journal_mode=WAL")
     db.execute("PRAGMA foreign_keys=ON")
     db.execute("PRAGMA temp_store=FILE")

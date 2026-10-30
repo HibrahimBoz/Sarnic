@@ -4,6 +4,8 @@ from email import policy
 from html.parser import HTMLParser
 import io
 from pathlib import Path
+import xml.etree.ElementTree as ET
+import zlib
 
 from ..ayar import Ayar
 from ..hatalar import IsHatasi
@@ -158,7 +160,7 @@ def _ekleri_isle(ekler, sonuc, ayar, havuz, ara, derinlik):
         yol = ek_ara / (f"ek_{i}" + (uzanti if uzanti in UZANTILAR else ".bin"))
         yol.write_bytes(veri)
         try:
-            alt = _cikar(yol, ayar, havuz, ek_ara / "_ara", derinlik + 1)
+            alt = cikar(yol, ayar, havuz, ek_ara / "_ara", derinlik + 1)
         except IsHatasi as e:
             sonuc.uyarilar.append(f"Ek: {guvenli_ad}: {e}")
             continue
@@ -194,7 +196,10 @@ def _ileti(yol, sonuc, ayar, havuz, ara, derinlik):
             sonuc.durum, sonuc.hata = "desteklenmiyor", "MSG: extract-msg bulunamadı"
             return
         with extract_msg.openMsg(str(yol)) as ileti:
-            metin = ileti.body or html_metin(metin_oku(ileti.htmlBody or b""))
+            metin = ileti.body
+            if not metin and ileti.htmlBody:
+                metin = html_metin(ileti.htmlBody if isinstance(ileti.htmlBody, str) else metin_oku(ileti.htmlBody))
+            metin = metin or ""
             ekler = []
             for i, ek in enumerate(ileti.attachments, 1):
                 if isinstance(ek.data, bytes):
@@ -248,10 +253,10 @@ def _cikar(yol, ayar, havuz, ara, derinlik):
     return sonuc
 
 
-def cikar(yol: Path, ayar: Ayar, havuz: OcrHavuzu | None, ara: Path) -> BelgeSonucu:
+def cikar(yol: Path, ayar: Ayar, havuz: OcrHavuzu | None, ara: Path, derinlik: int = 0) -> BelgeSonucu:
     try:
-        return _cikar(yol, ayar, havuz, ara, 0)
+        return _cikar(yol, ayar, havuz, ara, derinlik)
     except (IsHatasi, KeyboardInterrupt):
         raise
-    except (OSError, ValueError, KeyError, EOFError) as e:
+    except (OSError, ValueError, KeyError, EOFError, RuntimeError, ET.ParseError, LookupError, zlib.error, TypeError) as e:
         raise IsHatasi(f"Belge okunamadı: {e}") from e

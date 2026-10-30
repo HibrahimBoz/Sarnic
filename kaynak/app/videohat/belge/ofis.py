@@ -63,12 +63,20 @@ def docx_bolumleri(yol):
     uzunluk = sum(len(p) + 1 for p in parcalar)
     for eleman in belge.element.body:
         if eleman.tag == qn("w:tbl"):
-            metinler = [("\t".join(c.text for c in r.cells), []) for r in Table(eleman, belge).rows]
+            rows = Table(eleman, belge).rows
+            metinler = [("\t".join(c.text for c in r.cells), []) for r in rows]
+            tbl_resimler = []
             for e in eleman.iter(qn("a:blip")):
                 rel = e.get(qn("r:embed"))
                 if rel in belge.part.related_parts:
-                    metinler[-1][1].append(belge.part.related_parts[rel].blob)
-        else:
+                    blob = belge.part.related_parts[rel].blob
+                    if metinler:
+                        metinler[-1][1].append(blob)
+                    else:
+                        tbl_resimler.append(blob)
+            if not metinler and tbl_resimler:
+                metinler = [("", tbl_resimler)]
+        elif eleman.tag == qn("w:p"):
             metinler, buf, resimler = [], [], []
             for e in eleman.iter():
                 if e.tag == qn("w:t"):
@@ -85,6 +93,8 @@ def docx_bolumleri(yol):
                     if rel in belge.part.related_parts:
                         resimler.append(belge.part.related_parts[rel].blob)
             metinler.append(("".join(buf), resimler))
+        else:
+            continue
         for metin, resimler in metinler:
             if metin is None or (not acik_sayfa and parcalar and uzunluk + len(metin) > 3000):
                 yield f"{etiket} {no}", "\n".join(parcalar), gorseller
@@ -152,6 +162,8 @@ _NS = {k: f"urn:oasis:names:tc:opendocument:xmlns:{v}:1.0" for k, v in
 def _od_metin(e):
     parcalar = [e.text or ""]
     for alt in e:
+        if alt.tag in (f"{{{_NS['text']}}}p", f"{{{_NS['text']}}}h"):
+            continue
         if alt.tag == f"{{{_NS['text']}}}s":
             parcalar.append(" " * int(alt.get(f"{{{_NS['text']}}}c", "1")))
         elif alt.tag == f"{{{_NS['text']}}}tab":
@@ -172,14 +184,13 @@ def odf_parcalari(yol):
         for tablo in kok.findall(".//table:table", _NS):
             ad = tablo.get(f"{{{_NS['table']}}}name", "Tablo")
             satirlar, bas, no = [], 1, 0
-            for r in tablo.findall("table:table-row", _NS):
+            for r in tablo.findall(".//table:table-row", _NS):
                 hucreler = []
                 for c in r:
                     metin = "\n".join(_od_metin(p) for p in c.findall("text:p", _NS))
                     hucreler.extend([metin] * int(c.get(f"{{{_NS['table']}}}number-columns-repeated", "1")))
                 metin = "\t".join(hucreler).rstrip("\t")
                 tekrar = int(r.get(f"{{{_NS['table']}}}number-rows-repeated", "1"))
-                # Sondaki milyon boş satır metin üretmez, fakat satır numarası korunur.
                 if not metin.strip() and tekrar > 200:
                     if satirlar:
                         yield f"{ad} (satır {bas}-{no})", "\n".join(satirlar), []
@@ -193,7 +204,7 @@ def odf_parcalari(yol):
                     if no - bas + 1 == 200:
                         yield f"{ad} (satır {bas}-{no})", "\n".join(satirlar), []
                         bas, satirlar = no + 1, []
-            if bas <= no or no == 0:
+            if satirlar or (no == 0 and bas == 1):
                 yield f"{ad} (satır {bas}-{max(bas, no)})", "\n".join(satirlar), []
     elif yol.suffix.lower() == ".odp":
         for i, s in enumerate(kok.findall(".//draw:page", _NS), 1):

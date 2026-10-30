@@ -1,4 +1,5 @@
 import os
+import unittest
 from pathlib import Path
 from unittest.mock import patch
 
@@ -47,6 +48,50 @@ class TaramaTest(GeciciTest):
                          [str(self.agac / "ders_islenmis"), str(self.agac / "eski_videoperisi"),
                           str(self.agac / "ders_islenmis"), str(self.agac / "ders_islenmis")])
         self.assertIsNone(self.kayit(self.agac / ".GIT/gizli.txt"))
+
+    def test_haric_korunana_eklenmez(self):
+        # 9. bulgu: haric klasörleri korunan tablosuna eklenmez
+        self.yaz(".git/config", "repo")
+        self.yaz("node_modules/pkg/index.js", "js")
+        self.tara()
+        korunan_sayisi = self.db.execute("SELECT count(*) FROM korunan").fetchone()[0]
+        self.assertEqual(korunan_sayisi, 0)
+
+    def test_ag_kopmasinda_kok_dogrulama_ve_yayin_koruma(self):
+        # 4(a) bulgu: alt klasörde OSError olunca kök erişimi yeniden doğrulanır, ağ kopmuşsa yayin_uygun False olur
+        alt = self.yaz("alt/dosya.txt")
+        gercek_scandir = os.scandir
+
+        def sahte_scandir(p):
+            if Path(p) == alt.parent:
+                raise OSError("ağ koptu")
+            return gercek_scandir(p)
+
+        with patch("videohat.dizin.tarayici.os.scandir", side_effect=sahte_scandir), \
+                patch("videohat.dizin.tarayici._kok_erisim_kontrol", return_value=False):
+            sonuc = self.tara()
+            self.assertFalse(sonuc.yayin_uygun)
+
+    def test_kanonik_yol_ve_buyuk_kucuk_harf_eslesmesi(self):
+        # 4(b) bulgu: kök veya dosya harf büyüklüğü değişirse çift kayıt açılmaz, sayfalar silinmez
+        yol = self.yaz("ışık.txt", "içerik")
+        self.tara()
+        self.isle()
+        id1 = self.kayit(yol)["id"]
+        kok_farkli = Path(str(self.agac).upper())
+        tara(self.db, [kok_farkli], self.ayar.dizin.haric)
+        id2 = self.db.execute("SELECT id FROM dosya WHERE kanon(yol)=kanon(?)", (str(yol),)).fetchone()[0]
+        self.assertEqual(id1, id2)
+        toplam = self.db.execute("SELECT count(*) FROM dosya").fetchone()[0]
+        self.assertEqual(toplam, 1)
+
+    def test_dongu_yayin_hatasinda_cokmez(self):
+        # 6. bulgu: _dongu içindeki yayinla() çağrıları ağ hatasında süreci çökertmez
+        self.yaz("a.txt")
+        self.ayar.dizin.calisma_db = str(self.kok / "yerel" / "dizin.db")
+        with patch("videohat.dizin.yayin.Yayinci.yayinla", side_effect=OSError("ağ hatası")):
+            kod = calistir(self.ayar, [self.agac], self.depo, bir_kez=True)
+            self.assertIn(kod, (0, 1))
 
     def test_degisen_belge_sayfa_fts_temizligi_silme(self):
         yol = self.yaz("ışık.txt", "Eski içerik güvenlik")
@@ -99,6 +144,8 @@ class TaramaTest(GeciciTest):
             def __iter__(self): return self
             def __next__(self): return Girdi(next(self.it))
             def close(self): self.it.close()
+            def __enter__(self): return self
+            def __exit__(self, *args): self.close()
 
         def tara_sahte(p):
             if Path(p).name == "koru": raise PermissionError("paylaşım kapalı")
@@ -186,3 +233,15 @@ class TaramaTest(GeciciTest):
                 patch("videohat.dizin.yayin.Yayinci.yayinla") as yayin:
             calistir(self.ayar, [self.agac], self.depo, bir_kez=True, yalniz_ad=True)
         yayin.assert_not_called()
+
+
+class TranskriptTurTest(unittest.TestCase):
+    def test_ders_klasorundeki_transkript_belge_sayilmaz(self):
+        from videohat.dizin.tarayici import tur_bul
+        ders = Path("D:/k/ders1_islenmis")
+        for ad in ("ders1.json", "ders1.srt", "ders1.vtt", "ders1.txt"):
+            self.assertEqual(tur_bul(ders / ad), "diger")
+        self.assertEqual(tur_bul(ders / "belgeler" / "notlar.txt"), "belge")  # alt klasördeki belge işlenir
+        self.assertEqual(tur_bul(ders / "sunum.pdf"), "belge")
+        self.assertEqual(tur_bul(Path("D:/k/notlar.txt")), "belge")
+

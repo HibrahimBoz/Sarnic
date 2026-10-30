@@ -9,6 +9,7 @@ import pymupdf
 from belge_destek import GeciciTest, SahteHavuz, pdf_yaz
 from videohat.belge.hat import isle_belge, disa_yaz, sha256
 from videohat.belge.cikar import cikar
+from videohat.hatalar import IsHatasi
 from videohat.__main__ import main
 
 
@@ -52,6 +53,23 @@ class HatTest(GeciciTest):
         (ilk.hedef / "belge.json").write_text(json.dumps(eski), encoding="utf-8")
         self.assertEqual(isle_belge(yol, depo, self.ayar).veri["surum"], 1)
 
+    def test_belge_json_yalniz_durum_tamam_ve_bicim_eslesmesi(self):
+        # 5. bulgu: durum != 'tamam' iken belge.json yazılmaz; önbellekten okurken biçim eşleşmeli
+        depo = self.kok / "depo"
+        doc = self.kok / "a.doc"
+        doc.write_bytes(b"bos")
+        with patch("videohat.belge.ofis.yollar.libreoffice", return_value=None):
+            kayit = isle_belge(doc, depo, self.ayar)
+        self.assertEqual(kayit.veri["durum"], "desteklenmiyor")
+        self.assertFalse((kayit.hedef / "belge.json").exists())
+
+        # Aynı baytlı txt dosyasının önbellekten hatalı okunmaması (biçim eşleşmesi)
+        txt = self.kok / "b.txt"
+        txt.write_bytes(b"bos")
+        kayit_txt = isle_belge(txt, depo, self.ayar)
+        self.assertEqual(kayit_txt.veri["durum"], "tamam")
+        self.assertTrue((kayit_txt.hedef / "belge.json").exists())
+
     def test_1000_sayfa_gorseller_bellekte_birikmez(self):
         yol = self.kok / "bin.pdf"
         with pymupdf.open() as d:
@@ -76,6 +94,30 @@ class HatTest(GeciciTest):
         self.assertTrue((kayit.hedef / "belge.json").exists())
         self.assertFalse((kayit.hedef / "aranabilir.pdf").exists())
         self.assertFalse((kayit.hedef / "_ara").exists())
+
+    def test_disa_yaz_hata_durumunda_ara_temizlenir(self):
+        # 14. bulgu: disa_yaz hata fırlattığında _ara temizlenir
+        cikti = self.kok / "cikti_hata"
+        with patch("videohat.belge.hat.isle_belge", side_effect=IsHatasi("test hatası")):
+            with self.assertRaises(IsHatasi):
+                disa_yaz(self.kok / "a.txt", cikti, self.ayar)
+        self.assertFalse((cikti / "_ara").exists())
+
+    def test_izle_bos_ara_korunmaz_ve_yarim_temizlenir(self):
+        # 14. bulgu: izle._geri_al içinde boş _ara koruma altına alınmaz
+        from videohat import izle
+        bitti = self.kok / "is" / "bitti"
+        isleniyor = self.kok / "is" / "isleniyor"
+        gelen = self.kok / "is" / "gelen"
+        for d in (bitti, isleniyor, gelen):
+            d.mkdir(parents=True, exist_ok=True)
+        yetim_belge = bitti / "a_belge"
+        yetim_belge.mkdir()
+        (yetim_belge / "_ara").mkdir()  # Boş _ara
+        (yetim_belge / ".yarim").touch()
+        (isleniyor / "a.pdf").touch()
+        izle._geri_al(isleniyor, gelen, bitti)
+        self.assertFalse(yetim_belge.exists())
 
     def test_cli_belge_ve_hata_kodlari(self):
         yol = self.kok / "a.txt"
