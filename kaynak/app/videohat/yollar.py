@@ -75,8 +75,34 @@ def tesseract() -> Path | None:
 
 
 def libreoffice() -> Path | None:
-    p = kok() / "araclar" / "libreoffice" / "program" / "soffice.exe"
-    return p if p.is_file() else None
+    adaylar = [kok() / "araclar" / "libreoffice" / "program" / "soffice.exe"]
+    adaylar.extend(p / "LibreOffice" / "program" / "soffice.exe" for p in _program_dizinleri())
+    return next((p for p in adaylar if p.is_file()), None)
+
+
+def _program_dizinleri(adlar=("ProgramFiles", "ProgramFiles(x86)")):
+    return [Path(os.environ[ad]) for ad in adlar if os.environ.get(ad)]
+
+
+def artcraft_cli(ad: str) -> Path | None:
+    ad = ad.lower()
+    uygulama = {"wordcraft": "WordCraft", "gridcraft": "GridCraft"}[ad]
+    adaylar = sorted((kok() / "artcraft" / ad).glob(f"**/{ad}-cli.exe"))
+    adaylar.extend(p / uygulama / f"{ad}-cli.exe" for p in _program_dizinleri(("ProgramFiles",)))
+    return next((p for p in adaylar if p.is_file()), None)
+
+
+def djvulibre(ad: str) -> Path | None:
+    adaylar = [kok() / "araclar" / "djvulibre" / f"{ad}.exe"]
+    adaylar.extend(p / "DjVuLibre" / f"{ad}.exe"
+                   for p in _program_dizinleri(("ProgramFiles(x86)", "ProgramFiles")))
+    return next((p for p in adaylar if p.is_file()), None)
+
+
+def yedizip() -> Path | None:
+    adaylar = [kok() / "araclar" / "7z" / "7z.exe"]
+    adaylar.extend(p / "7-Zip" / "7z.exe" for p in _program_dizinleri(("ProgramFiles",)))
+    return next((p for p in adaylar if p.is_file()), None)
 
 
 def ortak(ad: str) -> Path:

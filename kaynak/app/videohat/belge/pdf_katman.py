@@ -3,7 +3,8 @@ import io
 import os
 from pathlib import Path
 
-from . import GORUNTU_UZANTILARI
+from . import DJVU_UZANTILARI, GORUNTU_UZANTILARI
+from .gorsel import kare_oku
 
 
 def _metin_ekle(sayfa, kayit, dpi, font, font_ad, font_yol):
@@ -37,7 +38,7 @@ def _metin_ekle(sayfa, kayit, dpi, font, font_ad, font_yol):
 def olustur(yol: Path, sayfalar, hedef: Path, dpi: int):
     import pymupdf
     uz = yol.suffix.lower()
-    if uz != ".pdf" and uz not in GORUNTU_UZANTILARI:
+    if uz in DJVU_UZANTILARI or (uz != ".pdf" and uz not in GORUNTU_UZANTILARI):
         return None
     if uz == ".pdf" and not any(s.kaynak == "ocr" for s in sayfalar):
         return None
@@ -55,11 +56,8 @@ def olustur(yol: Path, sayfalar, hedef: Path, dpi: int):
                 if s.kaynak == "ocr":
                     _metin_ekle(belge[s.no - 1], s, dpi, font, font_ad, font_yol)
         else:
-            from PIL import Image, ImageOps
-            with Image.open(yol) as im:
-                for s in sayfalar:
-                    im.seek(s.no - 1)
-                    kare = ImageOps.exif_transpose(im).convert("RGB")
+            for s in sayfalar:
+                with kare_oku(yol, s.no) as kare:
                     sayfa = belge.new_page(width=kare.width * 72 / dpi, height=kare.height * 72 / dpi)
                     with io.BytesIO() as buf:
                         kare.save(buf, format="PNG")

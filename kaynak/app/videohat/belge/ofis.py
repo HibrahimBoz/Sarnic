@@ -7,6 +7,7 @@ import xml.etree.ElementTree as ET
 
 from .. import yollar
 from ..hatalar import IsHatasi
+from . import ESKI_OFIS_HEDEFLERI
 from .surec import calistir
 
 
@@ -220,16 +221,33 @@ def odf_parcalari(yol):
             yield f"Bölüm {i}", metin, []
 
 
+ARTCRAFT_YEDEKLERI = {".doc": "wordcraft", ".xls": "gridcraft"}
+
+
+def eski_arac_eksik(uzanti):
+    yedek = ARTCRAFT_YEDEKLERI.get(uzanti)
+    arac = "LibreOffice" + (f" veya {yedek}-cli" if yedek else "")
+    return f"Eski {uzanti} biçimi: {arac} bulunamadı"
+
+
 def eski_cevir(yol, ara):
+    yol, ara = Path(yol), Path(ara)
+    uzanti = ESKI_OFIS_HEDEFLERI[yol.suffix.lower()]
     exe = yollar.libreoffice()
-    if exe is None:
+    yedek = ARTCRAFT_YEDEKLERI.get(yol.suffix.lower())
+    cli = yollar.artcraft_cli(yedek) if exe is None and yedek else None
+    if exe is None and cli is None:
         return None
-    uzanti = {".doc": "docx", ".xls": "xlsx", ".ppt": "pptx"}[yol.suffix.lower()]
     ara.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix=f"lo_profil_{os.getpid()}_", dir=ara) as tmp:
-        calistir([exe, f"-env:UserInstallation={Path(tmp).resolve().as_uri()}", "--headless",
-                  "--convert-to", uzanti, "--outdir", ara, yol], 120, "LibreOffice")
     sonuc = ara / (yol.stem + "." + uzanti)
+    sonuc.unlink(missing_ok=True)  # Yarım kalmış dönüşümün çıktısı başarı sayılmasın.
+    if exe is not None:
+        # SHA deposunun derin yolunda LibreOffice profil dosyaları Windows sınırını aşabilir.
+        with tempfile.TemporaryDirectory(prefix=f"lo_profil_{os.getpid()}_") as tmp:
+            calistir([exe, f"-env:UserInstallation={Path(tmp).resolve().as_uri()}", "--headless", "--norestore",
+                      "--convert-to", uzanti, "--outdir", ara, yol], 120, "LibreOffice")
+    else:
+        calistir([cli, "convert", yol, sonuc], 120, f"{yedek}-cli")
     if not sonuc.is_file():
-        raise IsHatasi("LibreOffice çıktı oluşturmadı")
+        raise IsHatasi(f"{'LibreOffice' if exe is not None else yedek + '-cli'} çıktı oluşturmadı")
     return sonuc

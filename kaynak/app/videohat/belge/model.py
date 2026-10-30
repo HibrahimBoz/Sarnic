@@ -35,6 +35,7 @@ class BelgeSonucu:
     aranabilir_pdf: Path | None = None
     durum: str = "tamam"
     hata: str | None = None
+    duzenlenebilir: Path | None = None
 
 
 @dataclass

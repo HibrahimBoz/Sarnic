@@ -301,10 +301,11 @@ class CikarmaTest(GeciciTest):
         from docx import Document
         yol = self.kok / "eski.doc"
         yol.write_bytes(b"eski")
-        with patch("videohat.belge.ofis.yollar.libreoffice", return_value=None):
+        with patch("videohat.belge.ofis.yollar.libreoffice", return_value=None), \
+                patch("videohat.belge.ofis.yollar.artcraft_cli", return_value=None):
             s = self.oku(yol)
         self.assertEqual(s.durum, "desteklenmiyor")
-        self.assertEqual(s.hata, "Eski Office biçimi: LibreOffice bulunamadı")
+        self.assertEqual(s.hata, "Eski .doc biçimi: LibreOffice veya wordcraft-cli bulunamadı")
 
         def donustur(komut, sn, ad):
             self.assertEqual(sn, 120)

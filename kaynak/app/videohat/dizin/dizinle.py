@@ -75,7 +75,7 @@ def calistir(ayar, kokler=None, depo=None, bir_kez=False, yalniz_ad=False, zorla
     kokler = [Path(p).absolute() for p in (kokler or ayar.dizin.kokler)]
     if not kokler:
         raise AyarHatasi("En az bir --kok veya dizin.kokler gerekli")
-    depo = Path(depo or ayar.dizin.depo or kokler[0] / "_bulgu").absolute()
+    depo = Path(depo or ayar.dizin.depo or kokler[0] / "_veridedektifi").absolute()
     db_yol = Path(ayar.dizin.calisma_db or ayar.kok / "is" / "dizin" / "dizin.db").absolute()
     with vt.yazar_kilidi(db_yol):
         return _dongu(ayar, kokler, depo, db_yol, bir_kez, yalniz_ad, zorla_sil)

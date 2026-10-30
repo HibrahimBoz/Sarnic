@@ -36,6 +36,8 @@ class TaramaTest(GeciciTest):
     def test_turler_haric_ve_ders_baglari(self):
         dosyalar = [self.yaz("a.txt"), self.yaz("b.png"), self.yaz("c.mp4"), self.yaz("d.bin")]
         self.yaz(".GIT/gizli.txt")
+        self.yaz("_veridedektifi/gizli.txt")
+        self.yaz("_bulgu/gizli.txt")
         bagli = [self.yaz("ders_islenmis/dosya.txt"), self.yaz("eski_videoperisi/dosya.txt"),
                  self.yaz("ders_belgeler/belge.txt"), self.yaz("ders.mp4")]
         s = self.tara()
@@ -48,6 +50,8 @@ class TaramaTest(GeciciTest):
                          [str(self.agac / "ders_islenmis"), str(self.agac / "eski_videoperisi"),
                           str(self.agac / "ders_islenmis"), str(self.agac / "ders_islenmis")])
         self.assertIsNone(self.kayit(self.agac / ".GIT/gizli.txt"))
+        self.assertIsNone(self.kayit(self.agac / "_veridedektifi"))
+        self.assertIsNone(self.kayit(self.agac / "_bulgu"))
 
     def test_haric_korunana_eklenmez(self):
         # 9. bulgu: haric klasörleri korunan tablosuna eklenmez
@@ -209,7 +213,8 @@ class TaramaTest(GeciciTest):
         self.ayar.dizin.max_dosya_mb = 1
         with buyuk.open("wb") as f: f.truncate(2 * 1024 * 1024)
         self.tara()
-        with patch("videohat.belge.ofis.yollar.libreoffice", return_value=None):
+        with patch("videohat.belge.ofis.yollar.libreoffice", return_value=None), \
+                patch("videohat.belge.ofis.yollar.artcraft_cli", return_value=None):
             self.assertEqual(self.isle(), 1)
         self.assertEqual(self.kayit(buyuk)["hata"], "Dosya çok büyük")
         self.assertEqual(self.kayit(eski)["durum"], "desteklenmiyor")
@@ -244,4 +249,3 @@ class TranskriptTurTest(unittest.TestCase):
         self.assertEqual(tur_bul(ders / "belgeler" / "notlar.txt"), "belge")  # alt klasördeki belge işlenir
         self.assertEqual(tur_bul(ders / "sunum.pdf"), "belge")
         self.assertEqual(tur_bul(Path("D:/k/notlar.txt")), "belge")
-

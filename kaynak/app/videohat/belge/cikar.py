@@ -4,16 +4,20 @@ from email import policy
 from html.parser import HTMLParser
 import io
 from pathlib import Path
+import tempfile
 import xml.etree.ElementTree as ET
 import zlib
 
 from ..ayar import Ayar
+from .. import yollar
 from ..hatalar import IsHatasi
-from . import GORUNTU_UZANTILARI, UZANTILAR
+from . import DJVU_UZANTILARI, ESKI_OFIS_HEDEFLERI, GORUNTU_UZANTILARI, UZANTILAR, YEREL_UZANTILARI
+from .gorsel import sayfa_sayisi
 from .model import BelgeSonucu, Sayfa
 from .ocr import OcrHavuzu, OcrIsi
 from .onbellek import sayfa_oku, sayfa_yaz
-from .ofis import bolumler, docx_bolumleri, pptx_slaytlari, xlsx_parcalari, odf_parcalari, eski_cevir
+from .ofis import bolumler, docx_bolumleri, pptx_slaytlari, xlsx_parcalari, odf_parcalari, eski_cevir, eski_arac_eksik
+from .surec import calistir
 
 # Görsel kaplı PDF'de yalnız kısa üst/alt bilgi bulunması da OCR gerektirir.
 PDF_AZ_METIN_KATI = 2
@@ -49,12 +53,23 @@ def html_metin(s):
 
 
 def metin_oku(ham):
+    if ham.startswith((b"\xff\xfe\x00\x00", b"\x00\x00\xfe\xff")):
+        return ham.decode("utf-32")
     if ham.startswith((b"\xff\xfe", b"\xfe\xff")):
         return ham.decode("utf-16")
     try:
         return ham.decode("utf-8-sig")
     except UnicodeDecodeError:
-        return ham.decode("cp1254", errors="replace")
+        pass
+    adaylar = []
+    for kodlama in ("cp1254", "iso-8859-9", "cp857"):
+        metin = ham.decode(kodlama, errors="replace")
+        turkce = sum(c in "çğıöşüÇĞİÖŞÜ" for c in metin)
+        harf_orani = sum(c.isalpha() for c in metin) / max(1, len(metin))
+        kutu = sum("\u2500" <= c <= "\u257f" for c in metin) if kodlama == "cp857" else 0
+        bozuk = sum(c == "\ufffd" or "\x80" <= c <= "\x9f" for c in metin)
+        adaylar.append((turkce + harf_orani + 2 * kutu - 3 * bozuk, metin))
+    return max(adaylar, key=lambda a: a[0])[1]
 
 
 def _sakla(sonuc, sayfa, ara, ayar, uyarilar=()):
@@ -108,6 +123,68 @@ def _pdf(yol, ayar, havuz, ara, sonuc):
                     _sakla(sonuc, Sayfa(no, f"Sayfa {no}", "metin", metin), ara, ayar)
 
         _ocr_isleri(sonuc, isler(), havuz, ara, ayar)
+
+
+def _djvu(yol, ayar, havuz, ara, sonuc):
+    araclar = {ad: yollar.djvulibre(ad) for ad in ("djvused", "djvutxt", "ddjvu")}
+    eksik = [ad for ad in ("djvused", "djvutxt") if araclar[ad] is None]
+    if eksik:
+        sonuc.durum = "desteklenmiyor"
+        sonuc.hata = f"DjVu: DjVuLibre ({', '.join(eksik)}) bulunamadı"
+        return
+    sayi = int(calistir([araclar["djvused"], yol, "-e", "n"], 120, "djvused").strip())
+    if sayi < 1:
+        raise IsHatasi("DjVu sayfa sayısı geçersiz")
+
+    def isler():
+        for no in range(1, sayi + 1):
+            if havuz and getattr(havuz, "ilerleme", None):
+                havuz.ilerleme()
+            if _onbellekten(sonuc, ara, no, ayar):
+                continue
+            ham = calistir([araclar["djvutxt"], f"--page={no}", yol], 120, "djvutxt")
+            metin = ham.decode("utf-8", errors="replace").strip()
+            if metin:
+                _sakla(sonuc, Sayfa(no, f"Sayfa {no}", "metin", metin), ara, ayar)
+            elif araclar["ddjvu"] is None:
+                sonuc.durum = "desteklenmiyor"
+                sonuc.hata = "DjVu OCR: DjVuLibre (ddjvu) bulunamadı"
+                return
+            else:
+                tiff = ara / f"djvu_{no:05d}.tiff"
+                calistir([araclar["ddjvu"], "-format=tiff", f"-page={no}", yol, tiff], 120, "ddjvu")
+                yield OcrIsi(str(tiff), no, girdi_no=1)
+
+    _ocr_isleri(sonuc, isler(), havuz, ara, ayar)
+
+
+def _web_arsivi(yol):
+    with yol.open("rb") as f:
+        ileti = email.message_from_binary_file(f, policy=policy.default)
+    for tur in ("text/html", "text/plain"):
+        parca = next((p for p in ileti.walk() if p.get_content_type() == tur), None)
+        if parca is not None:
+            ham = parca.get_payload(decode=True) or b""
+            kodlama = parca.get_content_charset()
+            try:
+                metin = ham.decode(kodlama) if kodlama else metin_oku(ham)
+            except (LookupError, UnicodeDecodeError):
+                metin = metin_oku(ham)
+            return html_metin(metin) if tur == "text/html" else metin
+    return ""
+
+
+def _chm(yol, ayar, havuz, ara, sonuc):
+    exe = yollar.yedizip()
+    if exe is None:
+        sonuc.durum, sonuc.hata = "desteklenmiyor", "CHM: 7-Zip bulunamadı"
+        return
+    with tempfile.TemporaryDirectory(prefix="chm_", dir=ara) as tmp:
+        calistir([exe, "x", f"-o{tmp}", "-y", yol], 120, "7-Zip")
+        dosyalar = sorted((p for p in Path(tmp).rglob("*") if p.is_file() and p.suffix.lower() in (".htm", ".html")),
+                          key=lambda p: p.relative_to(tmp).as_posix().casefold())
+        _ofis(((f"Bölüm {no}", html_metin(metin_oku(p.read_bytes())), [])
+               for no, p in enumerate(dosyalar, 1)), sonuc, ayar, havuz, ara)
 
 
 def _gomulu(bloblar, ayar, havuz, ara, no):
@@ -215,12 +292,12 @@ def _cikar(yol, ayar, havuz, ara, derinlik):
     sonuc = BelgeSonucu(uz.lstrip("."))
     if uz not in UZANTILAR:
         sonuc.durum, sonuc.hata = "desteklenmiyor", f"Desteklenmeyen biçim: {uz}"
-    elif uz == ".pdf":
+    elif uz == ".pdf" or uz in YEREL_UZANTILARI:
         _pdf(yol, ayar, havuz, ara, sonuc)
+    elif uz in DJVU_UZANTILARI:
+        _djvu(yol, ayar, havuz, ara, sonuc)
     elif uz in GORUNTU_UZANTILARI:
-        from PIL import Image
-        with Image.open(yol) as im:
-            sayi = getattr(im, "n_frames", 1)
+        sayi = sayfa_sayisi(yol)
         isler = (OcrIsi(str(yol), no) for no in range(1, sayi + 1)
                  if not _onbellekten(sonuc, ara, no, ayar))
         _ocr_isleri(sonuc, isler, havuz, ara, ayar)
@@ -229,23 +306,27 @@ def _cikar(yol, ayar, havuz, ara, derinlik):
               pptx_slaytlari if uz in (".pptx", ".pptm") else
               xlsx_parcalari if uz in (".xlsx", ".xlsm") else odf_parcalari)
         _ofis(fn(yol), sonuc, ayar, havuz, ara)
-    elif uz in (".doc", ".xls", ".ppt"):
+    elif uz in ESKI_OFIS_HEDEFLERI:
         yeni = eski_cevir(yol, ara / "ofis")
         if yeni is None:
             sonuc.durum = "desteklenmiyor"
-            sonuc.hata = "Eski Office biçimi: LibreOffice bulunamadı"
+            sonuc.hata = eski_arac_eksik(uz)
         else:
             sonuc = _cikar(yeni, ayar, havuz, ara / "cevrilen", derinlik)
             sonuc.bicim = uz.lstrip(".")
+            sonuc.duzenlenebilir = yeni
     elif uz in (".eml", ".msg"):
         _ileti(yol, sonuc, ayar, havuz, ara, derinlik)
+    elif uz == ".chm":
+        _chm(yol, ayar, havuz, ara, sonuc)
     else:
-        ham = yol.read_bytes()
-        if uz == ".rtf":
+        if uz in (".mht", ".mhtml"):
+            metin = _web_arsivi(yol)
+        elif uz == ".rtf":
             from .rtf import soy
-            metin = soy(ham)
+            metin = soy(yol.read_bytes())
         else:
-            metin = metin_oku(ham)
+            metin = metin_oku(yol.read_bytes())
         if uz in (".html", ".htm"):
             metin = html_metin(metin)
         _ofis(((f"Bölüm {i}", s, []) for i, s in enumerate(bolumler(metin.splitlines()), 1)),

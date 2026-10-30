@@ -10,6 +10,7 @@ import time
 
 from .. import yollar
 from ..hatalar import IsHatasi
+from . import ESKI_OFIS_HEDEFLERI
 from .cikar import cikar
 from .model import BelgeKaydi
 from .ocr import OcrHavuzu
@@ -39,7 +40,11 @@ def isle_belge(yol: Path, depo: Path, ayar, havuz: OcrHavuzu | None = None) -> B
             veri = json.loads(belge_json.read_text(encoding="utf-8"))
             if (veri.get("surum") == SURUM
                     and veri.get("durum") == "tamam"
-                    and veri.get("bicim") == yol.suffix.lower().lstrip(".")):
+                    and veri.get("bicim") == yol.suffix.lower().lstrip(".")
+                    and (yol.suffix.lower() not in ESKI_OFIS_HEDEFLERI
+                         or (veri.get("duzenlenebilir")
+                             and (hedef / veri["duzenlenebilir"]).is_file()))):
+                veri.setdefault("duzenlenebilir", None)
                 return BelgeKaydi(sha, hedef, veri)
         except (OSError, ValueError):
             pass
@@ -50,8 +55,15 @@ def isle_belge(yol: Path, depo: Path, ayar, havuz: OcrHavuzu | None = None) -> B
     # Çıkarma sırasında değişen dosyayı eski SHA altında yayımlama.
     if sha256(yol) != sha:
         raise IsHatasi("Belge işlenirken değişti; yeniden taranmalı")
+    duzenlenebilir = None
     if sonuc.durum == "tamam":
-        sonuc.aranabilir_pdf = olustur(yol, sonuc.sayfalar, hedef / "aranabilir.pdf", ayar.ocr.dpi)
+        if sonuc.duzenlenebilir is not None:
+            duzenlenebilir = "duzenlenebilir" + sonuc.duzenlenebilir.suffix.lower()
+            gecici = hedef / (duzenlenebilir + ".tmp")
+            shutil.copyfile(sonuc.duzenlenebilir, gecici)
+            os.replace(gecici, hedef / duzenlenebilir)
+        pdf_kaynak = sonuc.duzenlenebilir or yol
+        sonuc.aranabilir_pdf = olustur(pdf_kaynak, sonuc.sayfalar, hedef / "aranabilir.pdf", ayar.ocr.dpi)
         metin_gecici = hedef / "metin.txt.tmp"
         with metin_gecici.open("w", encoding="utf-8", newline="\n") as f:
             for i, s in enumerate(sonuc.sayfalar):
@@ -64,6 +76,7 @@ def isle_belge(yol: Path, depo: Path, ayar, havuz: OcrHavuzu | None = None) -> B
     veri = {"surum": SURUM, "sha": sha, "kaynak_ad": yol.name, "bicim": sonuc.bicim,
             "sayfa_sayisi": len(sonuc.sayfalar), "ocr_sayfa": sum(s.kaynak == "ocr" for s in sonuc.sayfalar),
             "aranabilir_pdf": "aranabilir.pdf" if sonuc.aranabilir_pdf else None,
+            "duzenlenebilir": duzenlenebilir,
             "sure_sn": round(time.monotonic() - bas, 3),
             "motor": {"ocr": "PP-OCRv6 " + ayar.ocr.profil,
                       "tesseract": str(yollar.tesseract()) if ayar.ocr.tesseract and yollar.tesseract() else None},
@@ -86,7 +99,8 @@ def disa_yaz(yol, cikis, ayar, havuz=None):
     bitti = False
     try:
         kayit = isle_belge(yol, depo, ayar, havuz)
-        for ad in ("metin.txt", "aranabilir.pdf", "belge.json"):
+        kopya = kayit.veri.get("duzenlenebilir")
+        for ad in ("metin.txt", "aranabilir.pdf") + ((kopya,) if kopya else ()) + ("belge.json",):
             kaynak = kayit.hedef / ad
             if kaynak.is_file():
                 gecici = cikis / (ad + ".tmp")

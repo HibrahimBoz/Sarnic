@@ -1,1 +1,1 @@
-"""Bulgu dosya kataloğu ve sayfa dizini."""
+"""Veri Fırını dosya kataloğu ve sayfa dizini."""

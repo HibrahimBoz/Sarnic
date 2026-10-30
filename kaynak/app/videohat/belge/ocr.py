@@ -204,21 +204,22 @@ class OcrIsi:
     no: int = 1
     tur: str = "goruntu"
     etiket: str = ""
+    girdi_no: int | None = None
 
 
 def _is_oku(motor, is_, ayar):
     import numpy as np
+    no = is_.girdi_no or is_.no
     if is_.tur == "pdf":
         import pymupdf
         with pymupdf.open(is_.yol) as belge:
-            pix = belge[is_.no - 1].get_pixmap(dpi=ayar.ocr.dpi, colorspace=pymupdf.csRGB, alpha=False)
+            pix = belge[no - 1].get_pixmap(dpi=ayar.ocr.dpi, colorspace=pymupdf.csRGB, alpha=False)
             gorsel = np.frombuffer(pix.samples, np.uint8).reshape(pix.height, pix.width, 3)[:, :, ::-1].copy()
             del pix
     else:
-        from PIL import Image, ImageOps
-        with Image.open(is_.yol) as im:
-            im.seek(is_.no - 1)
-            gorsel = np.asarray(ImageOps.exif_transpose(im).convert("RGB"))[:, :, ::-1].copy()
+        from .gorsel import kare_oku
+        with kare_oku(is_.yol, no) as im:
+            gorsel = np.asarray(im)[:, :, ::-1].copy()
     satirlar, guven = motor.oku(gorsel)
     metin = getattr(satirlar, "metin", "") or birlestir(satirlar)
     sayfa = Sayfa(is_.no, is_.etiket or f"Sayfa {is_.no}", "ocr", metin, guven,

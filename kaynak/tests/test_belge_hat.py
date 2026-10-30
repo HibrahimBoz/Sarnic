@@ -58,7 +58,8 @@ class HatTest(GeciciTest):
         depo = self.kok / "depo"
         doc = self.kok / "a.doc"
         doc.write_bytes(b"bos")
-        with patch("videohat.belge.ofis.yollar.libreoffice", return_value=None):
+        with patch("videohat.belge.ofis.yollar.libreoffice", return_value=None), \
+                patch("videohat.belge.ofis.yollar.artcraft_cli", return_value=None):
             kayit = isle_belge(doc, depo, self.ayar)
         self.assertEqual(kayit.veri["durum"], "desteklenmiyor")
         self.assertFalse((kayit.hedef / "belge.json").exists())

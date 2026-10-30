@@ -26,7 +26,7 @@ def soy(ham: bytes) -> str:
         elif kelime == "u" and sayi:
             if not atla:
                 cikti.append(chr(int(sayi) & 0xFFFF))
-            yedek = uc
+                yedek = uc
         elif not atla:
             if kelime in ("par", "line", "page"):
                 cikti.append("\n")
