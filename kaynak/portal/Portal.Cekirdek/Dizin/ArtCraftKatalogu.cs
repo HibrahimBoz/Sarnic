@@ -142,7 +142,13 @@ public sealed class ArtCraftKatalogu
 
         Directory.CreateDirectory(hedefKlasor);
 
-        string govde = Path.GetFileNameWithoutExtension(ozgunAd);
+        string temizAd = ozgunAd;
+        foreach (char c in Path.GetInvalidFileNameChars())
+        {
+            temizAd = temizAd.Replace(c, '_');
+        }
+
+        string govde = Path.GetFileNameWithoutExtension(temizAd);
         string uzanti = Path.GetExtension(kaynak);
         if (!string.IsNullOrEmpty(uzanti) && !uzanti.StartsWith('.'))
         {
@@ -187,7 +193,7 @@ public sealed class ArtCraftKatalogu
             {
                 try
                 {
-                    foreach (string dosya in Directory.EnumerateFiles(paketKlasor, exeAdi, SearchOption.AllDirectories))
+                    foreach (string dosya in Directory.EnumerateFiles(paketKlasor, exeAdi, new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = true }))
                     {
                         Version surum = SurumBelirle(dosya);
                         adaylar.Add(new ArtCraftUygulamasi(tanim.Ad, Path.GetFullPath(dosya), surum, tanim.Uzantilar, Paketli: true));
@@ -246,45 +252,54 @@ public sealed class ArtCraftKatalogu
             try
             {
                 var v = kanca(exeYolu);
-                return v ?? new Version(0, 0);
+                return v ?? new Version(0, 0, 0, 0);
             }
             catch
             {
-                return new Version(0, 0);
+                return new Version(0, 0, 0, 0);
             }
         }
 
         try
         {
             var info = FileVersionInfo.GetVersionInfo(exeYolu);
-            Version? parsed = AyristirSurum(info.ProductVersion);
-            if (parsed != null)
+            var parsed = SurumAyristir(info.ProductVersion);
+            if (parsed != new Version(0, 0, 0, 0))
             {
                 return parsed;
             }
 
-            parsed = AyristirSurum(info.FileVersion);
-            if (parsed != null)
+            parsed = SurumAyristir(info.FileVersion);
+            if (parsed != new Version(0, 0, 0, 0))
             {
                 return parsed;
             }
         }
         catch
         {
-            // Okuma hatası durumunda 0.0 döner
+            // Okuma hatası durumunda 0.0.0.0 döner
         }
 
-        return new Version(0, 0);
+        return new Version(0, 0, 0, 0);
     }
 
-    private static Version? AyristirSurum(string? raw)
+    /// <summary>
+    /// Sürüm metnini 4 bileşenli Version nesnesine ayrıştırır. Eksik bileşenler 0 yapılır.
+    /// Baştaki 'v'/'V' ve '+' ya da '-' sonrası ekler atılır.
+    /// </summary>
+    public static Version SurumAyristir(string? metin)
     {
-        if (string.IsNullOrWhiteSpace(raw))
+        if (string.IsNullOrWhiteSpace(metin))
         {
-            return null;
+            return new Version(0, 0, 0, 0);
         }
 
-        string temiz = raw.Trim();
+        string temiz = metin.Trim();
+        if (temiz.StartsWith('v') || temiz.StartsWith('V'))
+        {
+            temiz = temiz[1..].Trim();
+        }
+
         int arti = temiz.IndexOf('+');
         int eksi = temiz.IndexOf('-');
         int kesim = -1;
@@ -299,15 +314,22 @@ public sealed class ArtCraftKatalogu
 
         if (Version.TryParse(temiz, out var v))
         {
-            return v;
+            return NormalizeDortBilesen(v);
         }
 
         if (int.TryParse(temiz, out int tekSayi))
         {
-            return new Version(tekSayi, 0);
+            return new Version(tekSayi, 0, 0, 0);
         }
 
-        return null;
+        return new Version(0, 0, 0, 0);
+    }
+
+    private static Version NormalizeDortBilesen(Version v)
+    {
+        int build = v.Build >= 0 ? v.Build : 0;
+        int revision = v.Revision >= 0 ? v.Revision : 0;
+        return new Version(v.Major, v.Minor, build, revision);
     }
 
     private static List<string> VarsayilanAramaKokleri()

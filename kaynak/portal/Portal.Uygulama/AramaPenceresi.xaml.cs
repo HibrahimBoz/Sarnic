@@ -582,15 +582,42 @@ public partial class AramaPenceresi : Window
         }
     }
 
+    private void DosyaListesi_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.OriginalSource is DependencyObject dep)
+        {
+            var item = ItemsControl.ContainerFromElement(DosyaListesi, dep) as ListViewItem;
+            if (item != null)
+            {
+                item.IsSelected = true;
+                item.Focus();
+            }
+        }
+    }
+
+    private void BelgeListesi_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.OriginalSource is DependencyObject dep)
+        {
+            var item = ItemsControl.ContainerFromElement(BelgeListesi, dep) as ListViewItem;
+            if (item != null)
+            {
+                item.IsSelected = true;
+                item.Focus();
+            }
+        }
+    }
+
     private void DosyaContextMenu_Opened(object sender, RoutedEventArgs e)
     {
-        if (sender is not ContextMenu menu || DosyaListesi.SelectedItem is not DosyaGorunumu dg)
+        if (sender is not ContextMenu menu)
         {
             return;
         }
 
         MenuItem? duzenleMenu = null;
         MenuItem? kopyaMenu = null;
+        MenuItem? belgeMenu = null;
 
         foreach (var item in menu.Items)
         {
@@ -608,23 +635,66 @@ public partial class AramaPenceresi : Window
                 }
                 else if (string.Equals(mi.Header?.ToString(), "Belgede göster", StringComparison.OrdinalIgnoreCase))
                 {
-                    mi.Visibility = string.Equals(dg.Durum, "tamam", StringComparison.OrdinalIgnoreCase)
-                        ? Visibility.Visible
-                        : Visibility.Collapsed;
+                    belgeMenu = mi;
                 }
             }
+        }
+
+        if (DosyaListesi.SelectedItem is not DosyaGorunumu dg)
+        {
+            foreach (var item in menu.Items)
+            {
+                if (item is MenuItem mi)
+                {
+                    mi.IsEnabled = false;
+                }
+            }
+            if (duzenleMenu != null)
+            {
+                duzenleMenu.Items.Clear();
+                duzenleMenu.Header = "Düzenle";
+                duzenleMenu.Tag = null;
+            }
+            if (kopyaMenu != null)
+            {
+                kopyaMenu.Header = "Düzenlenebilir kopyayı aç";
+                kopyaMenu.Tag = null;
+                kopyaMenu.Visibility = Visibility.Collapsed;
+            }
+            if (belgeMenu != null)
+            {
+                belgeMenu.Visibility = Visibility.Collapsed;
+            }
+            return;
+        }
+
+        foreach (var item in menu.Items)
+        {
+            if (item is MenuItem mi)
+            {
+                mi.IsEnabled = true;
+            }
+        }
+
+        if (belgeMenu != null)
+        {
+            belgeMenu.Visibility = string.Equals(dg.Durum, "tamam", StringComparison.OrdinalIgnoreCase)
+                ? Visibility.Visible
+                : Visibility.Collapsed;
         }
 
         if (duzenleMenu != null)
         {
             duzenleMenu.Items.Clear();
+            duzenleMenu.Header = "Düzenle";
+            duzenleMenu.Tag = null;
             var apps = _artCraftKatalogu.UzantiIcin(dg.Uzanti);
             if (apps.Count > 0)
             {
                 foreach (var app in apps)
                 {
                     var item = new MenuItem { Header = $"{app.Ad} {app.Surum}" };
-                    item.Click += (_, _) => ArtCraftIleAc(app, dg.Yol);
+                    item.Click += (_, _) => ArtCraftIleAc(app, dg.Yol, dg.Ad);
                     duzenleMenu.Items.Add(item);
                 }
             }
@@ -636,6 +706,7 @@ public partial class AramaPenceresi : Window
 
         if (kopyaMenu != null)
         {
+            kopyaMenu.Tag = null;
             string? depo = _dizinKaynagi?.DizinKlasoru ?? DizinAyari.Coz(_kokKlasor);
             string? duzenlenebilirYol = !string.IsNullOrWhiteSpace(dg.Sha) && !string.IsNullOrWhiteSpace(depo)
                 ? BelgeYollari.Duzenlenebilir(depo, dg.Sha)
@@ -674,7 +745,7 @@ public partial class AramaPenceresi : Window
 
     private void BelgeContextMenu_Opened(object sender, RoutedEventArgs e)
     {
-        if (sender is not ContextMenu menu || BelgeListesi.SelectedItem is not BelgeSonucGorunumu bg)
+        if (sender is not ContextMenu menu)
         {
             return;
         }
@@ -699,9 +770,43 @@ public partial class AramaPenceresi : Window
             }
         }
 
+        if (BelgeListesi.SelectedItem is not BelgeSonucGorunumu bg)
+        {
+            foreach (var item in menu.Items)
+            {
+                if (item is MenuItem mi)
+                {
+                    mi.IsEnabled = false;
+                }
+            }
+            if (duzenleMenu != null)
+            {
+                duzenleMenu.Items.Clear();
+                duzenleMenu.Header = "Düzenle";
+                duzenleMenu.Tag = null;
+            }
+            if (kopyaMenu != null)
+            {
+                kopyaMenu.Header = "Düzenlenebilir kopyayı aç";
+                kopyaMenu.Tag = null;
+                kopyaMenu.Visibility = Visibility.Collapsed;
+            }
+            return;
+        }
+
+        foreach (var item in menu.Items)
+        {
+            if (item is MenuItem mi)
+            {
+                mi.IsEnabled = true;
+            }
+        }
+
         if (duzenleMenu != null)
         {
             duzenleMenu.Items.Clear();
+            duzenleMenu.Header = "Düzenle";
+            duzenleMenu.Tag = null;
             string uzanti = Path.GetExtension(bg.Yol);
             var apps = _artCraftKatalogu.UzantiIcin(uzanti);
             if (apps.Count > 0)
@@ -709,7 +814,7 @@ public partial class AramaPenceresi : Window
                 foreach (var app in apps)
                 {
                     var item = new MenuItem { Header = $"{app.Ad} {app.Surum}" };
-                    item.Click += (_, _) => ArtCraftIleAc(app, bg.Yol);
+                    item.Click += (_, _) => ArtCraftIleAc(app, bg.Yol, bg.Ad);
                     duzenleMenu.Items.Add(item);
                 }
             }
@@ -721,6 +826,7 @@ public partial class AramaPenceresi : Window
 
         if (kopyaMenu != null)
         {
+            kopyaMenu.Tag = null;
             string? depo = _dizinKaynagi?.DizinKlasoru ?? DizinAyari.Coz(_kokKlasor);
             string? duzenlenebilirYol = !string.IsNullOrWhiteSpace(bg.Sha) && !string.IsNullOrWhiteSpace(depo)
                 ? BelgeYollari.Duzenlenebilir(depo, bg.Sha)
@@ -803,7 +909,7 @@ public partial class AramaPenceresi : Window
         }
     }
 
-    private void ArtCraftIleAc(ArtCraftUygulamasi app, string dosyaYolu)
+    private void ArtCraftIleAc(ArtCraftUygulamasi app, string dosyaYolu, string ozgunAd)
     {
         if (!File.Exists(dosyaYolu))
         {
@@ -811,9 +917,36 @@ public partial class AramaPenceresi : Window
             return;
         }
 
+        var sonuc = MessageBox.Show(
+            this,
+            "Arşivdeki özgün dosyayı açıyorsunuz. Kaydederseniz arşivdeki dosya değişir.\n\nEvet: kopyada düzenle (önerilen)\nHayır: özgün dosyayı düzenle\nİptal: vazgeç",
+            "Özgün dosya düzenlenecek",
+            MessageBoxButton.YesNoCancel,
+            MessageBoxImage.Question,
+            MessageBoxResult.Yes);
+
+        if (sonuc == MessageBoxResult.Cancel)
+        {
+            return;
+        }
+
+        string acilacakYol = dosyaYolu;
+        if (sonuc == MessageBoxResult.Yes)
+        {
+            try
+            {
+                acilacakYol = ArtCraftKatalogu.DuzenlenebilirKopyaHazirla(dosyaYolu, ozgunAd);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, "Kopya hazırlanamadı:\n" + ex.Message, "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+        }
+
         try
         {
-            Process.Start(ArtCraftKatalogu.AcmaBilgisi(app, dosyaYolu));
+            Process.Start(ArtCraftKatalogu.AcmaBilgisi(app, acilacakYol));
         }
         catch (Exception ex)
         {
@@ -829,9 +962,19 @@ public partial class AramaPenceresi : Window
             return;
         }
 
+        string kopya;
         try
         {
-            string kopya = ArtCraftKatalogu.DuzenlenebilirKopyaHazirla(duzenlenebilirYol, ozgunAd);
+            kopya = ArtCraftKatalogu.DuzenlenebilirKopyaHazirla(duzenlenebilirYol, ozgunAd);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, "Kopya hazırlanamadı:\n" + ex.Message, "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        try
+        {
             Process.Start(ArtCraftKatalogu.AcmaBilgisi(app, kopya));
         }
         catch (Exception ex)

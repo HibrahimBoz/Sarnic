@@ -16,6 +16,7 @@ param(
 # Hata durumunda hemen durdur ve indirme çubuğunu gizle
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 try {
     # --------------------------------------------------------------------------
@@ -644,7 +645,11 @@ print(f"MODEL_TAMAMLANDI:{resolved_sha}")
                     $downloadUrl = $asset.browser_download_url
                     if ($asset.digest) {
                         $beklenenDigest = ($asset.digest -replace '^sha256:', '').Trim()
+                    } else {
+                        Write-Warning "${adKucuk}: GitHub özeti (digest) yok, doğrulanmadı"
                     }
+                } else {
+                    Write-Warning "${adKucuk}: '$assetAdi' varlığı (asset) bulunamadı"
                 }
             }
         } catch {
@@ -653,7 +658,14 @@ print(f"MODEL_TAMAMLANDI:{resolved_sha}")
 
         # Eğer API'den sürüm alınamadıysa önbellekte mevcut zip ara
         if (-not $surum) {
-            $onbellekZip = Get-ChildItem -Path $artcraftIndirKlasoru -Filter "$adKucuk-*-windows-x64-portable.zip" -ErrorAction SilentlyContinue | Select-Object -Last 1
+            $onbellekZip = Get-ChildItem -Path $artcraftIndirKlasoru -Filter "$adKucuk-*-windows-x64-portable.zip" -ErrorAction SilentlyContinue |
+                Where-Object {
+                    $raw = $_.Name -replace "^$adKucuk-","" -replace "-windows-x64-portable\.zip$",""
+                    $v = $null
+                    [version]::TryParse($raw, [ref]$v)
+                } |
+                Sort-Object { [version](($_.Name -replace "^$adKucuk-","" -replace "-windows-x64-portable\.zip$","")) } |
+                Select-Object -Last 1
             if ($onbellekZip -and $onbellekZip.Name -match "^$adKucuk-(.+)-windows-x64-portable\.zip$") {
                 $surum = $Matches[1]
                 $assetAdi = $onbellekZip.Name
@@ -662,6 +674,7 @@ print(f"MODEL_TAMAMLANDI:{resolved_sha}")
 
         if ($assetAdi) {
             $hedefZip = Join-Path $artcraftIndirKlasoru $assetAdi
+            $hedefZipTmp = "$hedefZip.tmp"
 
             if (Test-Path $hedefZip) {
                 if ($beklenenDigest) {
@@ -682,19 +695,22 @@ print(f"MODEL_TAMAMLANDI:{resolved_sha}")
             if (-not $zipGecerli -and $downloadUrl) {
                 try {
                     Write-Host "  -> ArtCraft $adKucuk indiriliyor: $downloadUrl"
-                    Invoke-WebRequest -Uri $downloadUrl -OutFile $hedefZip -UseBasicParsing -TimeoutSec 60
+                    Invoke-WebRequest -Uri $downloadUrl -OutFile $hedefZipTmp -UseBasicParsing -TimeoutSec 60
                     if ($beklenenDigest) {
-                        $inenHash = (Get-FileHash -Path $hedefZip -Algorithm SHA256).Hash
+                        $inenHash = (Get-FileHash -Path $hedefZipTmp -Algorithm SHA256).Hash
                         if (-not $inenHash.Equals($beklenenDigest, [System.StringComparison]::OrdinalIgnoreCase)) {
-                            Remove-Item -Path $hedefZip -Force -ErrorAction SilentlyContinue
+                            Remove-Item -Path $hedefZipTmp -Force -ErrorAction SilentlyContinue
                             Write-Warning "ArtCraft ($adKucuk) SHA256 uyuşmazlığı! Dosya silindi. Beklenen: $beklenenDigest, Alınan: $inenHash"
                         } else {
+                            Move-Item -Path $hedefZipTmp -Destination $hedefZip -Force
                             $zipGecerli = $true
                         }
                     } else {
+                        Move-Item -Path $hedefZipTmp -Destination $hedefZip -Force
                         $zipGecerli = $true
                     }
                 } catch {
+                    Remove-Item -Path $hedefZipTmp -Force -ErrorAction SilentlyContinue
                     Write-Warning "ArtCraft ($adKucuk) indirme hatası: $($_.Exception.Message)"
                 }
             }
@@ -813,9 +829,10 @@ print(f"MODEL_TAMAMLANDI:{resolved_sha}")
         foreach ($acKey in $artcraftZipleri.Keys) {
             $acItem = $artcraftZipleri[$acKey]
             $hedefArtcraft = Join-Path $PaketHedefYolu "artcraft\$acKey"
-            if (-not (Test-Path $hedefArtcraft)) {
-                New-Item -ItemType Directory -Path $hedefArtcraft -Force | Out-Null
+            if (Test-Path $hedefArtcraft) {
+                Remove-Item -Path $hedefArtcraft -Recurse -Force
             }
+            New-Item -ItemType Directory -Path $hedefArtcraft -Force | Out-Null
             try {
                 Expand-Archive -Path $acItem.Zip -DestinationPath $hedefArtcraft -Force
             } catch {

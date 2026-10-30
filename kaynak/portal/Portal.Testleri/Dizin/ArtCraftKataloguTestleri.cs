@@ -9,6 +9,7 @@ using Xunit;
 /// <summary>
 /// ArtCraftKatalogu keşif, sürümleme, uzantı eşleme ve kopya hazırlama testleri.
 /// </summary>
+[Collection("ArtCraftKanca")]
 public sealed class ArtCraftKataloguTestleri : IDisposable
 {
     private readonly string _geciciKlasor;
@@ -285,5 +286,82 @@ public sealed class ArtCraftKataloguTestleri : IDisposable
         Directory.CreateDirectory(yeniVeriDedektifi);
         string yol3 = DizinAyari.Coz(testKok);
         Assert.Equal(yeniVeriDedektifi, yol3);
+    }
+
+    [Theory]
+    [InlineData("0.12.0", 0, 12, 0, 0)]
+    [InlineData("v0.12.0", 0, 12, 0, 0)]
+    [InlineData("0.12.0+abc", 0, 12, 0, 0)]
+    [InlineData("0.12.0-beta", 0, 12, 0, 0)]
+    [InlineData("1.2", 1, 2, 0, 0)]
+    [InlineData("", 0, 0, 0, 0)]
+    [InlineData("bozuk dize", 0, 0, 0, 0)]
+    public void SurumAyristir_CesitliGirdileriDortBileseneNormalizeEder(string? girdi, int major, int minor, int build, int revision)
+    {
+        var sonuc = ArtCraftKatalogu.SurumAyristir(girdi);
+        Assert.Equal(new Version(major, minor, build, revision), sonuc);
+    }
+
+    [Fact]
+    public void SurumAyristir_UcIleDortBilesenliKarsilastirma()
+    {
+        var v3 = ArtCraftKatalogu.SurumAyristir("0.12.0");
+        var v4 = ArtCraftKatalogu.SurumAyristir("0.12.0.0");
+
+        Assert.Equal(v3, v4);
+        Assert.Equal(0, v3.CompareTo(v4));
+
+        var vYuksek = ArtCraftKatalogu.SurumAyristir("0.12.1");
+        var vDusuk = ArtCraftKatalogu.SurumAyristir("0.12.0.9");
+        Assert.True(vYuksek > vDusuk);
+        Assert.True(vYuksek.CompareTo(vDusuk) > 0);
+    }
+
+    [Fact]
+    public void DuzenlenebilirKopyaHazirla_GecersizKarakterliAd()
+    {
+        string kaynak = Path.Combine(_geciciKlasor, "kaynak.docx");
+        File.WriteAllText(kaynak, "örnek");
+
+        string hedefKlasor = Path.Combine(_geciciKlasor, "gecersiz_ad_hedef");
+        string gecersizAd = "sozlesme:2024*ozet?.doc";
+        string sonucYol = ArtCraftKatalogu.DuzenlenebilirKopyaHazirla(kaynak, gecersizAd, hedefKlasor);
+
+        Assert.True(File.Exists(sonucYol));
+        string dosyaAdi = Path.GetFileName(sonucYol);
+        foreach (char c in Path.GetInvalidFileNameChars())
+        {
+            Assert.DoesNotContain(c, dosyaAdi);
+        }
+        Assert.Equal("sozlesme_2024_ozet_.docx", dosyaAdi);
+    }
+
+    [Fact]
+    public void Tara_IceIceKlasorlerdeIgnoreInaccessibleDavranisi()
+    {
+        // paket\artcraft\wordcraft\alt1\alt2\wordcraft.exe
+        string paketKlasoru = Path.Combine(_geciciKlasor, "paket_derin");
+        string derinKlasor = Path.Combine(paketKlasoru, "artcraft", "wordcraft", "alt1", "alt2");
+        Directory.CreateDirectory(derinKlasor);
+        string wordcraftDerin = Path.Combine(derinKlasor, "wordcraft.exe");
+        File.WriteAllText(wordcraftDerin, string.Empty);
+
+        ArtCraftKatalogu.SurumOkuyucu = _ => new Version(0, 15, 0);
+
+        try
+        {
+            var katalog = new ArtCraftKatalogu(paketKlasoru, []);
+            var uygulamalar = katalog.Uygulamalar;
+
+            var wc = uygulamalar.FirstOrDefault(u => u.Ad == "WordCraft");
+            Assert.NotNull(wc);
+            Assert.True(wc.Paketli);
+            Assert.Equal(Path.GetFullPath(wordcraftDerin), wc.ExeYolu);
+            Assert.Equal(new Version(0, 15, 0), wc.Surum);
+        }
+        finally
+        {
+            ArtCraftKatalogu.SurumOkuyucu = null;
+        }
     }
 }

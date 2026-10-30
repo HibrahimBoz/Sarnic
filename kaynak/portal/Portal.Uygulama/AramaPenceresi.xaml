@@ -218,6 +218,7 @@
                               VirtualizingPanel.IsVirtualizing="True"
                               VirtualizingPanel.VirtualizationMode="Recycling"
                               ScrollViewer.IsDeferredScrollingEnabled="True"
+                              PreviewMouseRightButtonDown="DosyaListesi_PreviewMouseRightButtonDown"
                               MouseDoubleClick="DosyaListesi_MouseDoubleClick"
                               KeyDown="DosyaListesi_KeyDown"
                               GridViewColumnHeader.Click="DosyaSutunBaslik_Click">
@@ -317,6 +318,7 @@
                 </TabItem.Header>
                 <DockPanel Margin="0,8,0,0">
                     <ListView x:Name="BelgeListesi" SelectionMode="Single"
+                              PreviewMouseRightButtonDown="BelgeListesi_PreviewMouseRightButtonDown"
                               MouseLeftButtonUp="BelgeListesi_MouseLeftButtonUp"
                               MouseDoubleClick="BelgeListesi_MouseDoubleClick"
                               KeyDown="BelgeListesi_KeyDown">

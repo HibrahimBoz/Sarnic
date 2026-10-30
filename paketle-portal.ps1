@@ -5,16 +5,18 @@ param(
     [string[]]$ArtCraft = @('wordcraft', 'gridcraft', 'deckcraft', 'pdfcraft', 'photocraft')
 )
 $ErrorActionPreference = 'Stop'
+$ProgressPreference = 'SilentlyContinue'
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 $proje = $PSScriptRoot
 $csproj = Join-Path $proje 'kaynak\portal\Portal.Uygulama\Portal.Uygulama.csproj'
 $cikis = Join-Path $proje 'dist\VeriDedektifi'
 if (Test-Path $cikis) { Remove-Item $cikis -Recurse -Force }
 
-Write-Host '[1/4] Yayın...'
+Write-Host '[1/5] Yayın...'
 dotnet publish $csproj -p:PublishProfile=Klasor
 if ($LASTEXITCODE -ne 0) { throw "dotnet publish hata kodu $LASTEXITCODE" }
 
-Write-Host '[2/4] libvlc doğrulama...'
+Write-Host '[2/5] libvlc doğrulama...'
 $vlc = Join-Path $cikis 'libvlc\win-x64'
 $dll = Join-Path $vlc 'libvlc.dll'
 $eklenti = @(Get-ChildItem (Join-Path $vlc 'plugins') -Recurse -Filter '*.dll' -ErrorAction SilentlyContinue).Count
@@ -71,7 +73,11 @@ foreach ($ad in $ArtCraft) {
                 $downloadUrl = $asset.browser_download_url
                 if ($asset.digest) {
                     $beklenenDigest = ($asset.digest -replace '^sha256:', '').Trim()
+                } else {
+                    Write-Warning "${adKucuk}: GitHub özeti (digest) yok, doğrulanmadı"
                 }
+            } else {
+                Write-Warning "${adKucuk}: '$assetAdi' varlığı (asset) bulunamadı"
             }
         }
     } catch {
@@ -79,7 +85,14 @@ foreach ($ad in $ArtCraft) {
     }
 
     if (-not $surum) {
-        $onbellekZip = Get-ChildItem -Path $artcraftIndirKlasoru -Filter "$adKucuk-*-windows-x64-portable.zip" -ErrorAction SilentlyContinue | Select-Object -Last 1
+        $onbellekZip = Get-ChildItem -Path $artcraftIndirKlasoru -Filter "$adKucuk-*-windows-x64-portable.zip" -ErrorAction SilentlyContinue |
+            Where-Object {
+                $raw = $_.Name -replace "^$adKucuk-","" -replace "-windows-x64-portable\.zip$",""
+                $v = $null
+                [version]::TryParse($raw, [ref]$v)
+            } |
+            Sort-Object { [version](($_.Name -replace "^$adKucuk-","" -replace "-windows-x64-portable\.zip$","")) } |
+            Select-Object -Last 1
         if ($onbellekZip -and $onbellekZip.Name -match "^$adKucuk-(.+)-windows-x64-portable\.zip$") {
             $surum = $Matches[1]
             $assetAdi = $onbellekZip.Name
@@ -88,6 +101,7 @@ foreach ($ad in $ArtCraft) {
 
     if ($assetAdi) {
         $hedefZip = Join-Path $artcraftIndirKlasoru $assetAdi
+        $hedefZipTmp = "$hedefZip.tmp"
 
         if (Test-Path $hedefZip) {
             if ($beklenenDigest) {
@@ -108,28 +122,32 @@ foreach ($ad in $ArtCraft) {
         if (-not $zipGecerli -and $downloadUrl) {
             try {
                 Write-Host "  -> ArtCraft $adKucuk indiriliyor: $downloadUrl"
-                Invoke-WebRequest -Uri $downloadUrl -OutFile $hedefZip -UseBasicParsing -TimeoutSec 60
+                Invoke-WebRequest -Uri $downloadUrl -OutFile $hedefZipTmp -UseBasicParsing -TimeoutSec 60
                 if ($beklenenDigest) {
-                    $inenHash = (Get-FileHash -Path $hedefZip -Algorithm SHA256).Hash
+                    $inenHash = (Get-FileHash -Path $hedefZipTmp -Algorithm SHA256).Hash
                     if (-not $inenHash.Equals($beklenenDigest, [System.StringComparison]::OrdinalIgnoreCase)) {
-                        Remove-Item -Path $hedefZip -Force -ErrorAction SilentlyContinue
+                        Remove-Item -Path $hedefZipTmp -Force -ErrorAction SilentlyContinue
                         Write-Warning "ArtCraft ($adKucuk) SHA256 uyuşmazlığı! Dosya silindi. Beklenen: $beklenenDigest, Alınan: $inenHash"
                     } else {
+                        Move-Item -Path $hedefZipTmp -Destination $hedefZip -Force
                         $zipGecerli = $true
                     }
                 } else {
+                    Move-Item -Path $hedefZipTmp -Destination $hedefZip -Force
                     $zipGecerli = $true
                 }
             } catch {
+                Remove-Item -Path $hedefZipTmp -Force -ErrorAction SilentlyContinue
                 Write-Warning "ArtCraft ($adKucuk) indirme hatası: $($_.Exception.Message)"
             }
         }
 
         if ($zipGecerli -and (Test-Path $hedefZip)) {
             $hedefKlasor = Join-Path $cikis "artcraft\$adKucuk"
-            if (-not (Test-Path $hedefKlasor)) {
-                New-Item -ItemType Directory -Path $hedefKlasor -Force | Out-Null
+            if (Test-Path $hedefKlasor) {
+                Remove-Item -Path $hedefKlasor -Recurse -Force
             }
+            New-Item -ItemType Directory -Path $hedefKlasor -Force | Out-Null
             try {
                 Expand-Archive -Path $hedefZip -DestinationPath $hedefKlasor -Force
                 $artcraftSurumListesi += "$adGoster $surum (Apache-2.0, github.com/storytold/$adKucuk)"

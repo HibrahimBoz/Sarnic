@@ -48,6 +48,7 @@ public partial class BelgePenceresi : Window
     private PdfDocument? _pdfBelgesi;
     private bool _goruntuDestekleniyor;
     private bool _tekGorselMi;
+    private bool _kapandi;
 
     private int _renderSurum = 0;
     private readonly SemaphoreSlim _renderKilidi = new(1, 1);
@@ -130,11 +131,9 @@ public partial class BelgePenceresi : Window
         await EslesenSayfalariBulAsync();
         await SayfaGosterAsync(_aktifSayfaNo);
 
-        _ = Task.Run(() =>
-        {
-            _ = _katalog.Uygulamalar;
-            Dispatcher.Invoke(DuzenleDugmesiniGuncelle);
-        });
+        await Task.Run(() => _ = _katalog.Uygulamalar);
+        if (_kapandi || !IsLoaded) return;
+        DuzenleDugmesiniGuncelle();
     }
 
     private async Task GoruntuSisteminiHazirlaAsync()
@@ -712,14 +711,53 @@ public partial class BelgePenceresi : Window
         if (_duzenleHedefi == null || _dosya == null) return;
 
         var (uygulama, yol, kopyaMi) = _duzenleHedefi.Value;
-        try
+        string hedefDosya = yol;
+
+        if (kopyaMi)
         {
-            string hedefDosya = yol;
-            if (kopyaMi)
+            // Düzenlenebilir kopya maddesi soru sormaz
+            try
             {
                 hedefDosya = ArtCraftKatalogu.DuzenlenebilirKopyaHazirla(yol, _dosya.Ad);
             }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, "Kopya hazırlanamadı:\n" + ex.Message, "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+        }
+        else
+        {
+            // ÖZGÜN arşiv dosyası: Soru penceresi
+            var sonuc = MessageBox.Show(
+                this,
+                "Arşivdeki özgün dosyayı açıyorsunuz. Kaydederseniz arşivdeki dosya değişir.\n\nEvet: kopyada düzenle (önerilen)\nHayır: özgün dosyayı düzenle\nİptal: vazgeç",
+                "Özgün dosya düzenlenecek",
+                MessageBoxButton.YesNoCancel,
+                MessageBoxImage.Question,
+                MessageBoxResult.Yes);
 
+            if (sonuc == MessageBoxResult.Cancel)
+            {
+                return;
+            }
+
+            if (sonuc == MessageBoxResult.Yes)
+            {
+                try
+                {
+                    hedefDosya = ArtCraftKatalogu.DuzenlenebilirKopyaHazirla(yol, _dosya.Ad);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(this, "Kopya hazırlanamadı:\n" + ex.Message, "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+            }
+        }
+
+        try
+        {
             Process.Start(ArtCraftKatalogu.AcmaBilgisi(uygulama, hedefDosya));
         }
         catch (Exception ex)
@@ -800,6 +838,7 @@ public partial class BelgePenceresi : Window
 
     private void Pencere_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
+        _kapandi = true;
         _zoomZamanlayici.Stop();
         _belgeAramaZamanlayici.Stop();
         _renderKilidi.Dispose();
