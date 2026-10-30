@@ -378,3 +378,27 @@ Mevcut tüm testler geçmeye devam eder.
 - ZIP/7z arşivlerinin içi (arşiv dosyasının adı dizinlenir).
 - Gerçek zamanlı dosya sistemi bildirimi (USN günlüğü); tarama aralıklıdır (`tarama_dk`).
 - Kullanıcı bazlı erişim denetimi: portal dizindeki her dosyayı gösterir. Dizinlenecek kökler buna göre seçilmelidir.
+
+## 9. Uygulamada eklenen kararlar ve ölçümler (2026-10-30)
+- **Sözlük düzeltmesi** yalnız işaret EKLEYEN değişime izin verir (`i→ı`, `s→ş`, `g→ğ`, `c→ç`, `o→ö`, `u→ü`, `I→İ`);
+  OCR işareti düşürür, nadiren ekler. Güven eşiği 0,99 (ölçüldü: hatalı satırların güveni 0,96–0,98 çıktı).
+  Büyük harfli sözcükteki küçük `i/ı` → `İ/I`. Yabancı işaretli harf (`ś í ű ů ő …`) taban harfe iner; `ș` → `ş`.
+- **Ünlü uyumu** (`ocr.unlu_uyumu`, varsayılan açık): sözlükte olmayan çekimli sözcükte en uzun sözlük kökünden sonraki
+  ekte `ı/i` ünlü uyumuyla belirlenir; ekte `ki`, `yor`, `ken` varsa uygulanmaz. Ölçüldü (tr_50k, 27.015 sözcük,
+  ı→i bozulması benzetildi): %79,9 düzeltir, doğru sözcüğün %3,6'sını bozar.
+- **Yön**: satır sınıflandırıcısı (cls) ters satırı da okuduğu için 0°/180° ayrımı cls kapalı güvenle yapılır
+  (ölçüldü: aksi halde 90°/270°/180° taramada satır sırası tersine dönüyordu). Her sayfada küçültülmüş görüntüde 2 ek okuma.
+- **Transkript dosyaları**: `*_islenmis` / `*_videoperisi` klasörünün doğrudan içindeki `.json .srt .vtt .txt` → `tur='diger'`
+  (içerikleri video aramasında var; belge olarak işlenince ham JSON sonuçlara karışıyordu — ölçüldü).
+- **Yazar ek dizini** `ix_dosya_yol_nocase` (yalnız yazar kullanır): büyük/küçük harfi değişen yolu tam tarama olmadan bulur.
+- Ölçümler (RTX 3070 dizüstü, CPU onnxruntime, uyarlamalı profil): 12 sayfalık bozuk tarama kıyası (150 dpi, bulanık,
+  1,5° eğik, JPEG 45) sözcük doğruluğu: sözlüksüz %88,3, sözlük %89,3, sözlük + ünlü uyumu %89,4; tek süreçte ~10 sn/sayfa.
+  Tek sayfalık taranmış yönerge: %69,0 → %96,6. Kıyas metnindeki ASCII kod adları (`islenmis`) Türkçeye çevrildiği için
+  hata sayılır; gerçek doğruluk bu sayıdan yüksektir (tahmin, ölçülmedi).
+
+## 10. Bilinen sınırlar (bağımsız incelemede bulundu, bu sürümde açık)
+- Yolda yalnız Türkçe harfin büyük/küçük harfi değişirse (`ö/Ö`) çift kayıt oluşabilir (NOCASE yalnız ASCII katlar).
+- Yeniden başlatmadan sonra değişmemiş veritabanı bir kez gereksiz yayınlanabilir (yayin.json özeti).
+- Eğiklik düzeltmesi 90°/270° yön bulunmadan önce de çalışır; dönük + eğik sayfada açı sapabilir.
+- Uzun metin sayfası dağıtımı sırasında geçen süre OCR işçisinin zaman aşımı süresinden düşer.
+- ODS'te 200'den az ardışık boş satır sonunda boş parça üretilebilir.
