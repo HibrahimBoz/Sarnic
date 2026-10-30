@@ -25,7 +25,8 @@ Write-Host "  libvlc.dll var, eklenti dll: $eklenti"
 
 # İlk açılışta tüm eklentileri taramaması için önbelleği yayının kendi LibVLC'siyle üret.
 $onbellekIslemi = Start-Process -FilePath (Join-Path $cikis 'Portal.Uygulama.exe') -ArgumentList '--vlc-onbellek' -WindowStyle Hidden -PassThru
-if (-not $onbellekIslemi.WaitForExit(60000)) {
+# Yeni yayımlanan 321 DLL ilk yüklemede taranır (ölçüldü: betik içinde 60 sn yetmedi, ikinci koşu 5 sn)
+if (-not $onbellekIslemi.WaitForExit(300000)) {
     $onbellekIslemi.Kill()
     throw 'LibVLC eklenti önbelleği üretimi zaman aşımına uğradı.'
 }
