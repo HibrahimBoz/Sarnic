@@ -55,6 +55,9 @@
                     <TextBlock Text="Transkript" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{DynamicResource MetinFircasi}"/>
                     <Button x:Name="DuzenleDugmesi" Content="Düzenle" DockPanel.Dock="Right"
                             Padding="8,3" Margin="8,0,0,0" Click="Duzenle_Click" HorizontalAlignment="Right"/>
+                    <Button x:Name="BelgelerDugmesi" Content="Belgeler (0)" DockPanel.Dock="Right"
+                            Padding="8,3" Margin="8,0,0,0" Click="BelgelerDugmesi_Click"
+                            Visibility="Collapsed" HorizontalAlignment="Right"/>
                     <CheckBox x:Name="OtoKaydirKutusu" Content="Otomatik kaydır" IsChecked="True"
                               DockPanel.Dock="Right" HorizontalAlignment="Right" VerticalAlignment="Center"
                               Foreground="{DynamicResource SolukMetinFircasi}"/>

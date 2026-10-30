@@ -43,3 +43,27 @@ sabit_tur = 3
 [genel]
 ara_dosya_sakla = false
 cpu_threads = 0
+
+[dizin]
+kokler = []                 # Boşsa --kok gerekli; birden fazla kök verilebilir.
+depo = ""                   # Boşsa ilk kökün altında _veridedektifi.
+haric = ["_veridedektifi", "_bulgu", "$RECYCLE.BIN", "System Volume Information", "_ara", ".git", "node_modules"]
+calisma_db = ""             # YEREL yazar VT; boşsa paket/is/dizin/dizin.db.
+yayin_dk = 30               # Değişiklik varsa en geç bu aralıkta yayın.
+tarama_dk = 15              # İzleme kipinde taramalar arası dakika.
+max_dosya_mb = 2048         # Daha büyük dosyaların yalnız adı dizinlenir.
+isci = 0                    # 0: çekirdek/2; 1: aynı süreçte OCR.
+sakla_yayin = 3             # Saklanacak anlık görüntü sayısı.
+
+[ocr]
+profil = "uyarlamali"       # hizli | uyarlamali | kalite
+dpi = 300                   # PDF OCR görüntüsünün çözünürlüğü.
+min_metin = 40              # Daha az gömülü karakter içeren sayfaya OCR.
+ikinci_esik = 0.80          # Düşük güvenli satırlarda ikinci görüş.
+cihaz = "auto"              # auto | cpu | cuda (ONNX CUDA sağlayıcısı gerekli).
+sayfa_zaman_asimi_sn = 180   # Takılan işçi sonlandırılır; tek işçide sınır yok.
+gomulu_gorsel = true        # DOCX/PPTX içinde en az 200x200 görsellere OCR.
+tesseract = true            # Paket içindeki araç varsa tur+eng ikinci görüş.
+sozluk = 'sozluk\tr_kelime.txt' # Yoksa yalnız terimler.txt kullanılır.
+unlu_uyumu = true           # Sözlükte olmayan çekimli sözcükte ekteki ı/i'yi ünlü uyumuyla düzelt
+                            # (ölçüldü: ı->i hatasının %79,9'unu düzeltir, doğru sözcüğün %3,6'sını bozar).

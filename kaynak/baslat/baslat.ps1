@@ -1,4 +1,4 @@
-﻿# Video Transkriptör başlatıcı menüsü (Windows 10/11, yerleşik PowerShell 5.1; kurulum gerektirmez).
+﻿# Veri Fırını başlatıcı menüsü (Windows 10/11, yerleşik PowerShell 5.1; kurulum gerektirmez).
 # Etkileşimli: BASLAT.bat çift tıklanır. Otomatik test: -Dosya <yol> [-Agir e|h] [-Goruntu e|h]
 param(
     [string]$Dosya = '',
@@ -15,7 +15,7 @@ $env:VIDEOHAT_PAUSE = '0'
 function Baslik {
     Clear-Host
     Write-Host '=============================================' -ForegroundColor Cyan
-    Write-Host '  Video Transkriptör  -  Türkçe transkript + ses/görüntü' -ForegroundColor Cyan
+    Write-Host '  Veri Fırını  -  video transkript, belge, OCR, dizin' -ForegroundColor Cyan
     Write-Host '=============================================' -ForegroundColor Cyan
     Write-Host ''
 }
@@ -66,6 +66,37 @@ function Klasor-Sec {
     if ($d.ShowDialog() -eq 'OK') { return @($d.SelectedPath) } else { return @() }
 }
 
+function Belge-Sec {
+    Add-Type -AssemblyName System.Windows.Forms
+    $d = New-Object System.Windows.Forms.OpenFileDialog
+    $d.Title = 'İşlenecek belge/görüntü dosyalarını seçin (birden fazla seçilebilir)'
+    $d.Filter = 'Belge/görüntü|*.pdf;*.docx;*.pptx;*.xlsx;*.odt;*.rtf;*.txt;*.html;*.eml;*.msg;*.doc;*.xls;*.ppt;*.png;*.jpg;*.jpeg;*.tif;*.tiff;*.bmp|Tüm dosyalar|*.*'
+    $d.Multiselect = $true
+    if ($d.ShowDialog() -eq 'OK') { return $d.FileNames } else { return @() }
+}
+
+function Dizin-Klasor-Sec {
+    Add-Type -AssemblyName System.Windows.Forms
+    $d = New-Object System.Windows.Forms.FolderBrowserDialog
+    $d.Description = 'Dizinlenecek kök klasörü seçin'
+    if ($d.ShowDialog() -eq 'OK') { return @($d.SelectedPath) } else { return @() }
+}
+
+function Calistir-Python([string[]]$PythonArgs) {
+    $pythonExe = Join-Path $kok 'python\python.exe'
+    if (-not (Test-Path $pythonExe)) { $pythonExe = 'python' }
+    $env:HF_HUB_OFFLINE = '1'
+    $env:TRANSFORMERS_OFFLINE = '1'
+    $env:HF_HUB_DISABLE_TELEMETRY = '1'
+    $env:PYTHONNOUSERSITE = '1'
+    $env:PYTHONUTF8 = '1'
+    $env:VIDEOHAT_KOK = $kok
+    $env:PATH = "$kok\ffmpeg\bin;$kok\cuda;$kok\python;$env:PATH"
+    # Çıktı ekrana gider; işlev yalnız çıkış kodunu döndürür
+    & $pythonExe @PythonArgs | Out-Host
+    return $LASTEXITCODE
+}
+
 function Isle([string[]]$girdiler, [bool]$agir, [bool]$goruntu) {
     if (-not $girdiler -or $girdiler.Count -eq 0) { Write-Host 'Seçim yapılmadı.' -ForegroundColor Yellow; return }
     $args2 = @($girdiler)
@@ -100,6 +131,8 @@ while ($true) {
     Write-Host '  5) Kendi kendine test (ilk çalıştırmada önerilir)'
     Write-Host '  6) Kullanım kılavuzunu aç'
     Write-Host '  7) Çok kameralı grup ders klasörü işle (senkron + ders.json)'
+    Write-Host '  8) Belge/görüntü seç ve işle (metin + aranabilir PDF)'
+    Write-Host '  9) Dizinlemeyi başlat (arama portalı için; pencere açık kalsın)'
     Write-Host '  0) Çıkış'
     Write-Host ''
     $s = Read-Host 'Seçiminiz'
@@ -138,6 +171,36 @@ while ($true) {
                 if ($kod -eq 0) { Write-Host 'BİTTİ. Çıktılar ders klasöründe (<ad>_islenmis\ders.json).' -ForegroundColor Green }
                 else { Write-Host "Hata oluştu (kod $kod). Ayrıntı: $kok\is\gunluk" -ForegroundColor Red }
                 if ($kod -eq 0 -and $klasor -and -not $Dosya) { Start-Process explorer.exe -ArgumentList ('"' + $klasor + '"') }
+            }
+            Read-Host 'Devam için Enter' | Out-Null
+        }
+        '8' {
+            $g = Belge-Sec
+            if ($g.Count) {
+                Write-Host ''
+                Write-Host 'Belgeler işleniyor... (pencereyi kapatmayın)' -ForegroundColor Green
+                $pyArgs = @('-m', 'videohat', 'belge') + $g
+                $kod = Calistir-Python $pyArgs
+                Write-Host ''
+                if ($kod -eq 0) { Write-Host 'BİTTİ. Çıktılar her belgenin yanındaki "<ad>_belge" klasöründe.' -ForegroundColor Green }
+                else { Write-Host "Hata oluştu (kod $kod). Ayrıntı: $kok\is\gunluk" -ForegroundColor Red }
+                $ilk = $g[0]
+                $klasor = if (Test-Path $ilk -PathType Container) { $ilk } else { Split-Path -Parent $ilk }
+                if ($kod -eq 0 -and $klasor -and -not $Dosya) { Start-Process explorer.exe -ArgumentList ('"' + $klasor + '"') }
+            }
+            Read-Host 'Devam için Enter' | Out-Null
+        }
+        '9' {
+            $k = Dizin-Klasor-Sec
+            if ($k.Count) {
+                $klasor = $k[0]
+                Write-Host ''
+                Write-Host "Dizinleme başlatılıyor: $klasor (Ctrl+C ile durur; pencere açık kalsın)..." -ForegroundColor Green
+                $pyArgs = @('-m', 'videohat', 'dizinle', '--kok', $klasor)
+                $kod = Calistir-Python $pyArgs
+                Write-Host ''
+                if ($kod -eq 0) { Write-Host 'BİTTİ. Dizinleme tamamlandı.' -ForegroundColor Green }
+                else { Write-Host "Hata oluştu (kod $kod). Ayrıntı: $kok\is\gunluk" -ForegroundColor Red }
             }
             Read-Host 'Devam için Enter' | Out-Null
         }

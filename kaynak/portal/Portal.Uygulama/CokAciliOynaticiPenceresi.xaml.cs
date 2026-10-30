@@ -56,6 +56,7 @@ public partial class CokAciliOynaticiPenceresi : Window
         ArgumentNullException.ThrowIfNull(ders);
         _aramaMotoru = aramaMotoru;
         InitializeComponent();
+        Title = !string.IsNullOrWhiteSpace(ders.Ad) ? $"Veri Dedektifi — Oynatıcı — {ders.Ad}" : "Veri Dedektifi — Oynatıcı";
         _libVlc = LibVlcAyarlari.Paylasilan;
         _saat = new CokAciliSaat(ders);
         _saat.Ara(baslangicSanalSn);

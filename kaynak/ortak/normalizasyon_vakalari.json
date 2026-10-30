@@ -1,0 +1,82 @@
+[
+ {
+  "girdi": "Işık ŞİMŞEK",
+  "beklenen": "isik simsek"
+ },
+ {
+  "girdi": "  Çığ’ın   düşüşü! ",
+  "beklenen": "cig in dususu"
+ },
+ {
+  "girdi": "PRF=1.2kHz",
+  "beklenen": "prf 1 2khz"
+ },
+ {
+  "girdi": "Ünlü Âşık Îmân Ûmumi",
+  "beklenen": "unlu asik iman umumi"
+ },
+ {
+  "girdi": "E-C-M (jammer)",
+  "beklenen": "e c m jammer"
+ },
+ {
+  "girdi": "Tab\tve\nsatır",
+  "beklenen": "tab ve satir"
+ },
+ {
+  "girdi": "ΑΒΓ",
+  "beklenen": "αβγ"
+ },
+ {
+  "girdi": "%50 #etiket @ad",
+  "beklenen": "50 etiket ad"
+ },
+ {
+  "girdi": "",
+  "beklenen": ""
+ },
+ {
+  "girdi": "   ",
+  "beklenen": ""
+ },
+ {
+  "girdi": "Ğ ğ Ö ö Ü ü",
+  "beklenen": "g g o o u u"
+ },
+ {
+  "girdi": "x²",
+  "beklenen": "x²"
+ },
+ {
+  "girdi": "İSTANBUL",
+  "beklenen": "istanbul"
+ },
+ {
+  "girdi": "naïve",
+  "beklenen": "naïve"
+ },
+ {
+  "girdi": "Rapor_2026-10_v3.PDF",
+  "beklenen": "rapor 2026 10 v3 pdf"
+ },
+ {
+  "girdi": "\\\\sunucu\\Dersler\\EH Eğitimi\\ders1.mp4",
+  "beklenen": "sunucu dersler eh egitimi ders1 mp4"
+ },
+ {
+  "girdi": "D:\\Arşiv\\Yönerge (son).docx",
+  "beklenen": "d arsiv yonerge son docx"
+ },
+ {
+  "girdi": "i̇stasyon",
+  "beklenen": "istasyon"
+ },
+ {
+  "girdi": "rapor 😀 son",
+  "beklenen": "rapor son"
+ },
+ {
+  "girdi": "káğıt",
+  "beklenen": "kagit"
+ }
+]

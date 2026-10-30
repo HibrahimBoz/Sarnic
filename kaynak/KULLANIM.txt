@@ -1,4 +1,4 @@
-Video Transkriptör — çevrimdışı Türkçe video transkript + ses/görüntü iyileştirme
+Veri Fırını — çevrimdışı video transkript, belge metni, OCR ve dizin
 ===========================================================================
 KURULUM YOK. Bu klasörü hedef makineye olduğu gibi kopyalayın (USB/robocopy). Python, ffmpeg,
 internet, yönetici yetkisi GEREKMEZ. Yol boşluk/Türkçe karakter içerebilir.
@@ -11,7 +11,7 @@ Tek paket her makinede çalışır: NVIDIA kart varsa (RTX 3060/3070...; sürüc
 2) TEK VİDEO / KLASÖR — calistir.bat dosyasının ÜSTÜNE video(lar)ı sürükleyin, ya da:
      calistir.bat "D:\dersler\ders1.mp4"
      calistir.bat "D:\dersler" --cikis "D:\cikti"
-   Çıktı (varsayılan: videonun yanında ders1_islenmis\; Portal eski _videoperisi klasörlerini de tarar):
+   Çıktı (varsayılan: videonun yanında ders1_islenmis\; Veri Dedektifi eski _videoperisi klasörlerini de tarar):
      ders1.srt / .vtt / .txt / .json   transkript (zaman damgalı)
      ders1_islenmis.mp4                TEK nihai video: ses temizlenmiş (-16 LUFS); --goruntu seçildiyse
                                        görüntü de iyileştirilmiş (aksi halde görüntü aynen kopyalanır);
@@ -41,8 +41,102 @@ Tek paket her makinede çalışır: NVIDIA kart varsa (RTX 3060/3070...; sürüc
      - Alt klasörler (cam1\, cam2\...) veya
      - Düz klasörde parçalı/sayılı veya tekil dosyalar (kamera1_01.mp4, kamera2_01.mp4, ders.mp4, ses.wav).
    Ses tabanlı senkron (GCC-PHAT) ile ofset/drift hesaplanır, referans kanalın transkripti tam bantta
-   çıkarılır ve portal ile uyumlu ders.json üretilir:
+   çıkarılır ve Veri Dedektifi ile uyumlu ders.json üretilir:
      <ders_adi>_islenmis\ders.json, .srt, .vtt, .txt, .json
+
+5) BELGE İŞLEME — belge.bat dosyasının üstüne sürükleyin ya da komut satırından çalıştırın:
+     belge.bat "D:\belgeler\rapor.pdf"
+     belge.bat "D:\belgeler" --profil uyarlamali
+   Çıktı belgenin yanındaki <ad>_belge\ klasörüne yazılır:
+     belge.json        sayfa dökümü ve üst veriler
+     metin.txt         sayfaları form feed (\f) ile ayrılmış düz metin
+     aranabilir.pdf    görünmez metin katmanlı PDF (yalnız PDF ve görüntülerde üretilir)
+
+   Desteklenen biçimler:
+     Biçim             Uzantılar
+     PDF               .pdf
+     Word              .docx, .docm
+     PowerPoint        .pptx, .pptm
+     Excel             .xlsx, .xlsm
+     OpenDocument      .odt, .ods, .odp
+     Zengin Metin      .rtf
+     Düz Metin         .txt, .csv, .tsv, .md, .log, .xml, .json, .ini, .cfg, .srt, .vtt
+     Web               .html, .htm
+     E-posta           .eml, .msg
+     Eski Office       .doc, .xls, .ppt
+     Görüntü           .png, .jpg, .jpeg, .tif, .tiff, .bmp, .gif, .webp
+
+   OCR profilleri (ayar.toml [ocr] profil):
+     hizli             det small + rec small; CPU üzerinde 0,67 sn/sayfa hızında çalışır (ölçüm yarım A4).
+     uyarlamali        varsayılan profil; düşük güvenli satırları rec medium ile yeniden tanır.
+     kalite            det medium + rec medium (6,85 sn/sayfa, yarım A4, CPU) ve Tesseract desteği.
+
+   Eski Office biçimleri (.doc, .xls, .ppt):
+     araclar\libreoffice\program\soffice.exe varsa dosyalar otomatik çevrilir.
+     LibreOffice yoksa durum desteklenmiyor olarak işaretlenir.
+
+6) DİZİNLEME (Veri Dedektifi için) — dizinle.bat çalıştırın:
+     dizinle.bat --kok "\\sunucu\Arsiv"
+   Kök klasörleri ayar.toml dosyasında [dizin] kokler alanına da yazabilirsiniz.
+   Çalışma kuralları:
+     1. Depo klasörü olarak <kok>\_veridedektifi kullanılır.
+     2. İlk çalıştırmada önce dosya adı kataloğu taranır ve hemen yayınlanır.
+     3. İçerik çıkarma ve OCR işlemi dosya boyutuna göre sırayla yürütülür.
+     4. İşlem kesilirse sistem kaldığı sayfadan sürdürülür.
+     5. Ağ kopması durumunda mevcut kayıtlar silinmez.
+     6. Değişiklikler ayar.toml içindeki yayin_dk aralığında yayınlanır.
+   Derse bağlı belge kuralları:
+     1. Belge *_islenmis klasörünün içindeyse derse bağlanır.
+     2. Belge <ad>_belgeler klasöründe bulunuyorsa ve yanında <ad>_islenmis varsa derse bağlanır.
+     3. Video dosyası <stem>.mp4 yanında <stem>_islenmis klasörü varsa derse bağlanır.
+
+7) ARAMA SÖZDİZİMİ (Veri Dedektifi) — arama kuralları:
+     Sözdizimi         Açıklama                                Örnek
+     terim             Sözcük veya alt dize arar               radar
+     "ifade"           Tam sözcük öbeği arar                   "darbe tekrarlama"
+     a|b               VEYA araması yapar                      radar|sonar
+     !a                Belirtilen terimi dışlar                radar !tehdit
+     *.pdf             Joker karakter ile uzantı arar          *.pdf
+     uz:pdf;docx       Uzantıya göre süzer                     uz:pdf;docx
+     tur:belge         Dosya türüne göre süzer                 tur:belge
+     boyut:>10mb       Dosya boyutuna göre süzer               boyut:>10mb
+     tarih:2026-10     Değişiklik tarihine göre süzer          tarih:2026-10
+     yol:EH            Tam dosya yolunda arar                  yol:EH
+     icerik:jammer     Belge içeriğinde arar                   icerik:jammer
+     ders:             Yalnız derse bağlı dosyaları arar       ders:
+     !ders:            Yalnız derse bağlı olmayanları arar     !ders:
+
+
+
+8) ESKİ BELGELER (2000 ve öncesi) — eski dosya biçimlerini dönüştürme ve işleme:
+   Sistem eski biçimleri modern biçimlere çevirir ve metin/OCR çıkarır.
+   Dönüştürülen modern kopya depoda <sha>\duzenlenebilir.<uzanti> olarak saklanır.
+   Veri Dedektifi bu kopyayı ArtCraft ile açma seçeneği olarak sunar.
+   Gerekli dönüştürücü araç bulunamazsa durum 'desteklenmiyor' olarak işaretlenir.
+
+   Grup             Uzantılar                                              Gereken Araç
+   Metin işlemci    .doc .dot .wpd .wps .wri .lwp .sam .sxw .stw .sdw     LibreOffice
+                    .mcw .602 .hwp .abw .zabw .cwk
+   Hesap tablosu    .xls .xlt .xlw .xlsb .wk1 .wk3 .wk4 .123 .wq1 .wb2    LibreOffice
+                    .sxc .stc .sdc .dbf .dif .slk
+   Sunum            .ppt .pps .pot .sxi .sti .sdd .key                     LibreOffice
+   Çizim/yayın      .vsd .vdx .pub .sxd .std .sda .cdr .wpg .cgm           LibreOffice
+   DjVu             .djvu .djv                                             DjVuLibre
+   Yardım           .chm                                                   7-Zip
+   PyMuPDF yerel    .xps .oxps .epub .mobi .fb2 .cbz .svg                  yok
+   Eski görüntü     .pcx .tga .dib .jpe .jfif .jp2 .j2k .jpx .psd          yok
+                    .pnm .pbm .pgm .ppm
+   Web arşivi       .mht .mhtml                                            yok
+   Eski düz metin   .txt .asc .nfo .lst .prn .dos                          yok
+
+9) BELGEYİ DÜZENLEME (Veri Dedektifi + ArtCraft) — STE-TR kuralları:
+   1. Arama sonuçlarında veya belge görünümünde dosyaya sağ tıklayın.
+   2. Menüden "Düzenle ▸ <Uygulama Adı>" (WordCraft, GridCraft vb.) seçeneğini tıklayın.
+   3. Eski belgeler için "Düzenlenebilir kopyayı aç (<Uygulama>)" komutunu seçin.
+   4. Düzenlenebilir kopya Belgeler\Veri Dedektifi ("%USERPROFILE%\Documents\Veri Dedektifi\") klasörüne kopyalanır.
+   5. Arşivdeki özgün dosyayı koruyun; özgün dosya asla değişmez.
+   6. ArtCraft uygulamalarını kurmayın; tüm uygulamalar pakette hazır gelir.
+   7. Sistemde birden çok sürüm varsa en güncel sürümü kullanın; sistem en yüksek sürümü kendisi seçer.
 
 
 

@@ -1,0 +1,27 @@
+<!-- Tasarım fikri: Lacivert zemin üzerinde dedektif şapkalı büyüteç, camgöbeği ışıltılı mercek ve video/belge aramasını simgeleyen beyaz oynat üçgeni. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="dedektifCam" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#00F0FF"/>
+      <stop offset="100%" stop-color="#0284C7"/>
+    </linearGradient>
+  </defs>
+  <!-- Arka plan: Lacivert yuvarlatılmış kare -->
+  <rect x="16" y="16" width="224" height="224" rx="48" fill="#0B1326"/>
+
+  <!-- Dedektif fötr şapkası: Taç ve camgöbeği şerit -->
+  <path d="M 80 82 L 88 48 Q 114 58 140 48 L 148 82 Z" fill="#0B1326" stroke="#FFFFFF" stroke-width="12" stroke-linejoin="round"/>
+  <path d="M 82 72 Q 114 77 146 72" stroke="#00F0FF" stroke-width="12" stroke-linecap="round"/>
+
+  <!-- Şapka siperliği -->
+  <path d="M 56 86 C 86 78 142 78 172 86" stroke="#FFFFFF" stroke-width="14" stroke-linecap="round"/>
+
+  <!-- Büyüteç merceği (camgöbeği arama gradyanı) -->
+  <circle cx="114" cy="138" r="44" fill="url(#dedektifCam)" stroke="#FFFFFF" stroke-width="12"/>
+
+  <!-- Video/belge arama oynat üçgeni -->
+  <polygon points="102,120 102,156 136,138" fill="#FFFFFF"/>
+
+  <!-- Büyüteç sapı -->
+  <line x1="145" y1="169" x2="190" y2="214" stroke="#FFFFFF" stroke-width="16" stroke-linecap="round"/>
+</svg>

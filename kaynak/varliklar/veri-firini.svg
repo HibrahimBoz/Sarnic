@@ -1,0 +1,24 @@
+<!-- Tasarım fikri: Koyu gri fırın gövdesi içinde alev gradyanlı pişirme haznesi, fırın ızgarasında pişen beyaz hatlı veri tabanı silindiri ve fırın kapağı tutacağı. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Arka plan: Koyu gri yuvarlatılmış kare -->
+  <rect x="16" y="16" width="224" height="224" rx="48" fill="#181A20"/>
+
+  <!-- Fırın üst kontrol paneli: Kadranlar ve kapak tutacağı -->
+  <circle cx="56" cy="50" r="10" fill="#EA580C"/>
+  <rect x="80" y="43" width="96" height="14" rx="7" fill="#FFFFFF"/>
+  <circle cx="200" cy="50" r="10" fill="#DC2626"/>
+
+  <!-- Fırın gözetleme camı ve akkor pişirme haznesi -->
+  <rect x="42" y="72" width="172" height="136" rx="24" fill="#E2461C"/>
+
+  <!-- Veri Tabanı Silindiri: Üst disk, gövde ve katman ayracı -->
+  <ellipse cx="128" cy="106" rx="42" ry="14" fill="#181A20" stroke="#FFFFFF" stroke-width="12"/>
+  <path d="M 86 106 V 140 C 86 148 105 154 128 154 C 151 154 170 148 170 140 V 106" fill="#181A20" stroke="#FFFFFF" stroke-width="12" stroke-linejoin="round"/>
+  <path d="M 86 123 C 86 131 105 137 128 137 C 151 137 170 131 170 123" fill="none" stroke="#FFFFFF" stroke-width="12"/>
+
+  <!-- Pişirme ızgarası -->
+  <line x1="58" y1="168" x2="198" y2="168" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round"/>
+
+  <!-- Alt rezistans / ısı dalgası -->
+  <path d="M 82 189 Q 105 177 128 189 Q 151 177 174 189" fill="none" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round"/>
+</svg>

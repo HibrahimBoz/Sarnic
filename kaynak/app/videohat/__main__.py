@@ -162,8 +162,74 @@ def _isle_grup(args) -> int:
     return 0
 
 
+def _belge(args) -> int:
+    from . import ayar as ayar_mod
+    from .belge import UZANTILAR
+    from .belge.hat import disa_yaz
+    from .belge.ocr import OcrHavuzu
+    ayar = ayar_mod.yukle(yollar.kok())
+    if args.profil:
+        ayar.ocr.profil = args.profil
+    log = logging.getLogger("videohat")
+    hatali = 0
+    tek = len(args.girdi) == 1 and Path(args.girdi[0]).is_file()
+    kullanilan = set()
+
+    def belgeler(p):
+        if not p.is_dir():
+            yield p
+            return
+        for kok, dizinler, dosyalar in os.walk(p):
+            dizinler[:] = [d for d in dizinler if not d.lower().endswith("_belge")
+                          and d.casefold() not in {h.casefold() for h in ayar.dizin.haric}]
+            for ad in sorted(dosyalar):
+                if Path(ad).suffix.lower() in UZANTILAR:
+                    yield Path(kok) / ad
+
+    with OcrHavuzu(ayar) as havuz:
+        for ham in args.girdi:
+            girdi = Path(ham)
+            for p in belgeler(girdi):
+                if tek and args.cikis:
+                    cikis = Path(args.cikis)
+                else:
+                    taban = Path(args.cikis) if args.cikis else p.parent
+                    if args.cikis and girdi.is_dir():
+                        taban /= p.relative_to(girdi).parent
+                    cikis = taban / f"{p.stem}_belge"
+                    if cikis in kullanilan:
+                        cikis = taban / f"{p.stem}_{p.suffix.lstrip('.')}_belge"
+                kullanilan.add(cikis)
+                try:
+                    kayit = disa_yaz(p, cikis, ayar, havuz)
+                    if not kayit.basarili:
+                        log.error("%s: %s", p, kayit.hata)
+                        hatali += 1
+                except OrtamHatasi:
+                    raise
+                except Exception as e:
+                    log.error("Belge işlenemedi: %s: %s", p, e)
+                    hatali += 1
+    return 1 if hatali else 0
+
+
+def _dizinle(args) -> int:
+    import sqlite3
+    from . import ayar as ayar_mod
+    from .dizin.dizinle import calistir
+    from .hatalar import IsHatasi
+    ayar = ayar_mod.yukle(yollar.kok())
+    if args.profil:
+        ayar.ocr.profil = args.profil
+    try:
+        return calistir(ayar, args.kok, args.depo, args.bir_kez, args.yalniz_ad, args.zorla_sil)
+    except (IsHatasi, OSError, sqlite3.Error) as e:
+        logging.getLogger("videohat").error("Dizinleme hatası: %s", e)
+        return 1
+
+
 def parser_olustur() -> argparse.ArgumentParser:
-    ap = argparse.ArgumentParser(prog="videohat")
+    ap = argparse.ArgumentParser(prog="videohat", description="Veri Fırını — video, belge ve dizin işleme")
     alt = ap.add_subparsers(dest="komut", required=True)
     i = alt.add_parser("isle", help="dosya veya klasör işle")
     i.add_argument("girdi", nargs="+")
@@ -182,6 +248,17 @@ def parser_olustur() -> argparse.ArgumentParser:
     ig.add_argument("--cihaz", choices=["cpu", "cuda"])
     alt.add_parser("izle", help="is\\gelen klasörünü izle")
     alt.add_parser("kontrol", help="kendi kendine test")
+    d = alt.add_parser("dizinle", help="dosya ve belge dizinini güncelle")
+    d.add_argument("--kok", action="append", help="taranacak kök; tekrarlanabilir")
+    d.add_argument("--depo", help="dizin deposu")
+    d.add_argument("--bir-kez", action="store_true")
+    d.add_argument("--yalniz-ad", action="store_true")
+    d.add_argument("--zorla-sil", action="store_true", help="yüzde 50 silme korumasını aş")
+    d.add_argument("--profil", choices=["hizli", "uyarlamali", "kalite"])
+    b = alt.add_parser("belge", help="belgeden metin ve aranabilir PDF üret")
+    b.add_argument("girdi", nargs="+")
+    b.add_argument("--cikis")
+    b.add_argument("--profil", choices=["hizli", "uyarlamali", "kalite"])
     return ap
 
 
@@ -198,6 +275,10 @@ def main(argv=None) -> int:
             return _isle(args)
         if args.komut == "isle-grup":
             return _isle_grup(args)
+        if args.komut == "belge":
+            return _belge(args)
+        if args.komut == "dizinle":
+            return _dizinle(args)
         if args.komut == "izle":
             from . import ayar as ayar_mod, izle
             return izle.dongu(ayar_mod.yukle(kok))
