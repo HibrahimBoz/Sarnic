@@ -49,7 +49,7 @@ kokler = []                 # taranacak kökler; boşsa komut satırındaki --ko
 depo = ""                   # dizin deposu; boşsa <ilk kök>\_bulgu
 haric = ["_bulgu", "$RECYCLE.BIN", "System Volume Information", "_ara", ".git", "node_modules"]
 calisma_db = ""             # yazarın yerel veritabanı; boşsa <paket kökü>\is\dizin\dizin.db
-yayin_dk = 10               # en geç bu kadar dakikada bir yayın
+yayin_dk = 30               # en geç bu kadar dakikada bir yayın (yalnız değişiklik varsa)
 tarama_dk = 15              # izleme kipinde iki tarama arası
 max_dosya_mb = 2048         # bundan büyük dosyanın içeriği işlenmez (adı yine dizinlenir)
 isci = 0                    # OCR süreç sayısı; 0 = max(1, çekirdek/2)
@@ -76,15 +76,28 @@ Geçersiz değer → `AyarHatasi` (mevcut desen: `__post_init__`).
 ```
 `dizin` boşsa `<kok>\_bulgu`. Portal yayın klasörünü `<dizin>\yayin` olarak okur.
 
-## 4. Normalizasyon (iki dilde aynı)
+## 4. Normalizasyon (iki dilde aynı) — iki ayrı işlev
 
-`TrNormalizasyon.Normalle` (C#, mevcut) referanstır. Python karşılığı `videohat/dizin/normal.py: normalle(s)`:
+**4.1 İçerik normalizasyonu** (`sayfa_fts`, video araması). `TrNormalizasyon.Normalle` (C#, mevcut) referanstır;
+iki küçük ek ile (C# tarafında da uygulanır): **birleştirici işaretler (kategori Mn) atılır** (boşluk da olmaz:
+`i̇` → `i`) ve **BMP dışı karakter** (C#'ta vekil çift, Python'da `ord > 0xFFFF`) → boşluk.
+Python karşılığı `videohat/dizin/normal.py: icerik_normalle(s)`:
 - `ı İ I i î Î → i`, `ş Ş → s`, `ğ Ğ → g`, `ü Ü û Û → u`, `ö Ö → o`, `ç Ç → c`, `â Â → a`;
 - `' ’ ‘ \` ´` → boşluk; A-Z → küçük harf;
 - Unicode kategorisi P* (noktalama), S* (simge), Z* ya da `\t\n\v\f\r\x85\xa0` (boşluk), Cc (denetim) → boşluk;
+- Mn → atılır; BMP dışı → boşluk;
 - diğer karakter → `c.lower()` (sonuç tek karakter değilse `c` kalır);
 - ardışık boşluk teke iner, baş ve son boşluk atılır.
-`normalizasyon_vakalari.json` her iki test takımında koşulur.
+Vakalar: `kaynak/ortak/normalizasyon_vakalari.json` (her iki test takımında koşulur).
+
+**4.2 Dosya adı normalizasyonu** (`dosya.norm_ad`, `dosya.norm_yol`). Noktalama, ayraç ve boşluk KORUNUR
+(`.pdf`, `v1.2`, `a_b`, `\` araması çalışsın). Python `dosya_normalle(s)`, C# `DosyaNormalizasyon.Normalle(s)`:
+Türkçe harf katlaması 4.1'deki gibi; A-Z ve diğer harfler küçük harfe; Mn atılır; başka hiçbir karakter
+değişmez, boşluk daraltılmaz. Vakalar: `kaynak/ortak/dosya_normalizasyon_vakalari.json`.
+
+**4.3 NFKC**: çıkarılan sayfa metni (`sayfa.metin`) saklanmadan ÖNCE Python'da `unicodedata.normalize("NFKC")`
+ile düzenlenir (PDF bağlaçları `ﬁ` → `fi`, ayrışık harfler birleşir). Böylece C# tarafında görünen metin ile
+normalize metin arasındaki eşleme (MetinEsleme) karakter karakter kurulabilir.
 
 ## 5. Bulgu İşleyici (Python) — yeni modüller
 
@@ -95,7 +108,9 @@ Paket: `kaynak/app/videohat/`. Yeni alt paketler `belge/` ve `dizin/`. Mevcut ko
 `pymupdf`, `rapidocr` (onnxruntime ile; onnxruntime zaten var), `opencv-python-headless`, `numpy`, `pillow`,
 `python-docx`, `python-pptx`, `openpyxl`, `olefile`. İsteğe bağlı: `extract-msg` (MSG e-posta). Eski ikili Office
 (`.doc .xls .ppt`) için `araclar\libreoffice\program\soffice.exe` varsa `--headless --convert-to` ile çevrilir;
-yoksa `durum='desteklenmiyor'`, `hata='Eski Office biçimi: LibreOffice bulunamadı'`.
+yoksa `durum='desteklenmiyor'`, `hata='Eski Office biçimi: LibreOffice bulunamadı'`. LibreOffice her çağrıda
+geçici profil alır (`-env:UserInstallation=file:///<ara>/lo_profil_<pid>`) ve 120 sn zaman aşımıyla koşar
+(aşımda süreç ağacı öldürülür, `durum='hata'`).
 
 **OCR modelleri çevrimdışı:** RapidOCR modelleri internetten indirmeye ÇALIŞMAMALI. Modeller
 `<paket kökü>\modeller-ocr\` altındadır ve motora açık yolla verilir (`Det.model_path`, `Rec.model_path`,
@@ -106,7 +121,9 @@ yoksa `durum='desteklenmiyor'`, `hata='Eski Office biçimi: LibreOffice bulunama
 ### 5.2 Veri modeli (`belge/model.py`)
 ```python
 @dataclass
-class OcrSatir: metin: str; guven: float; kutu: tuple[float, float, float, float]  # x0,y0,x1,y1 görüntü pikseli
+class OcrSatir: metin: str; guven: float; kutu: tuple[float, float, float, float]
+# kutu: x0,y0,x1,y1 — ÖZGÜN (ön işleme öncesi, işlenen sayfa görüntüsünün) pikselinde. Ön işlemedeki ölçek,
+# eğiklik döndürmesi (tuval genişleme ofseti dahil) ve yön dönüşü OcrMotoru.oku içinde geri çevrilir.
 @dataclass
 class Sayfa:
     no: int; etiket: str; kaynak: str            # 'metin' | 'ocr'
@@ -119,7 +136,8 @@ class BelgeSonucu:
 ```
 
 ### 5.3 Metin çıkarma (`belge/cikar.py`)
-`def cikar(yol: Path, ayar: Ayar, ocr: OcrMotoru | None, ara: Path) -> BelgeSonucu` — uzantıya göre dağıtır:
+`def cikar(yol: Path, ayar: Ayar, havuz: OcrHavuzu | None, ara: Path) -> BelgeSonucu` — uzantıya göre dağıtır
+(`havuz=None` → OCR gereken sayfa `metin=''` + uyarı). Her sayfa metnine 4.3 (NFKC) uygulanır:
 
 | Biçim | Sayfa birimi | Yöntem |
 |---|---|---|
@@ -154,26 +172,35 @@ Adımlar:
 3. **Algılama + tanıma** (RapidOCR, PP-OCRv6 çok dilli; Türkçe ı/ğ/ş destekli — ölçüldü):
    - `hizli`: det small + rec small.
    - `uyarlamali` (varsayılan): det small + rec small; sonra güveni `< ikinci_esik` satırlar rec **medium** ile
-     yeniden tanınır; det small mürekkepli sayfada az kutu bulursa (kutu alanı < sayfa mürekkep alanının %50'si)
-     det **medium** ile yeniden algılanır.
+     yeniden tanınır; det small mürekkepli sayfada az kutu bulursa (kutu alanı < sayfa *metin benzeri* mürekkep
+     alanının %50'si) det **medium** ile yeniden algılanır. Metin benzeri mürekkep: bağlı bileşen analizinde
+     yüksekliği 6–120 piksel ve en-boy oranı 0,1–15 olan bileşenler; büyük görsel, fotoğraf, tablo çizgisi ve
+     tarama kenarı bu hesaba girmez (resimli sayfa gereksiz yere yavaş modele düşmesin).
    - `kalite`: det medium + rec medium, düşük güvenli satırlar ayrıca Tesseract'a.
    Ölçüm (RTX 3070 dizüstü, CPU onnxruntime, yarım A4): small/small 0,67 sn/sayfa, medium/medium 6,85 sn/sayfa.
 4. **İkinci görüş**: Tesseract (`tur+eng`, `--psm 7`) varsa ve satır hâlâ `< ikinci_esik` ise satır kırpıntısı
    Tesseract'a verilir. Adaylar arasından **puan = güven + 0,15 × sözlükte bulunan sözcük oranı** en yüksek olan seçilir.
 5. **Sözlük düzeltmesi** (`sozluk.py`): sözlük = `ocr.sozluk` dosyası (`sözcük sıklık` satırları, yoksa boş) +
-   `terimler.txt` terimleri. Sözlükte olmayan ve harf içeren her sözcük için karışan harf çiftleri
-   (`i/ı`, `I/İ`, `s/ş`, `S/Ş`, `g/ğ`, `G/Ğ`, `c/ç`, `C/Ç`, `o/ö`, `O/Ö`, `u/ü`, `U/Ü`) üzerinden en çok 64 varyant
-   üretilir; sözlükte bulunan en sık varyant seçilir; büyük/küçük harf düzeni korunur. Sayı içeren sözcük, 2 harften
-   kısa sözcük ve tamamen büyük harfli kısaltma (ör. `PRF`) değişmez. Türkçe küçük harf: `I→ı`, `İ→i`.
-6. **Okuma sırası**: kutular satırlara (dikey örtüşme ≥ %50) toplanır; sütunlar, satır başlangıçlarının x
-   dağılımındaki geniş boşlukla (sayfa genişliğinin ≥ %5'i) ayrılır; sütun sütun, yukarıdan aşağı okunur.
-   Satırlar `\n`, büyük dikey boşluk (medyan satır yüksekliğinin 1,5 katı) boş satırla birleşir.
+   `terimler.txt` terimleri. Bellekte `icerik_normalle(sözcük küçük harf) → en sık yazım` indeksi kurulur (O(1)
+   bakış; varyant üretimi YOK). Düzeltme YALNIZ güveni `< 0,85` olan satırlarda ve yalnız sözlükte birebir
+   bulunmayan sözcükte uygulanır: sözcüğün normalize anahtarı indekste varsa ve aday ile OCR çıktısı yalnız
+   karışan harf çiftlerinde (`i/ı`, `I/İ`, `s/ş`, `g/ğ`, `c/ç`, `o/ö`, `u/ü`, büyük harfleri dahil) ayrışıyorsa aday
+   yazılır; büyük/küçük harf düzeni korunur. Sayı içeren sözcük, 2 harften kısa sözcük ve tamamen büyük harfli
+   kısaltma (ör. `PRF`) değişmez. Türkçe küçük harf: `I→ı`, `İ→i`.
+6. **Okuma sırası** (XY-cut): önce sütun blokları ayrılır — kutuların yatay izdüşümünde sayfa yüksekliğinin
+   ≥ %60'ı boyunca kesintisiz boş kalan ve genişliği ≥ sayfa genişliğinin %2'si olan dikey oluk sütun sınırıdır
+   (tam genişlik başlıklar oluğu kesiyorsa sayfa önce yatay boşluklarla şeritlere bölünür, her şeritte oluk aranır).
+   Sonra HER BLOK İÇİNDE kutular satırlara (dikey örtüşme ≥ %50) toplanır, satır içi soldan sağa. Bloklar soldan
+   sağa, şeritler yukarıdan aşağı okunur. Girinti ya da ortalanmış başlık sütun sayılmaz (oluk sayfa boyu
+   kesintisiz olmalı). Satırlar `\n`, büyük dikey boşluk (medyan satır yüksekliğinin 1,5 katı) boş satırla birleşir.
 7. Sayfa güveni = satır güvenlerinin karakter sayısıyla ağırlıklı ortalaması.
 
 ### 5.5 Aranabilir PDF (`belge/pdf_katman.py`)
 - PDF girdisi ve en az bir sayfası OCR'landıysa: özgün PDF kopyalanır, OCR'lı her sayfaya satır kutularına
-  görünmez metin (`render_mode=3`) eklenir. Kutular `Donusum` ile özgün piksele, sonra sayfa noktasına
-  (`72/dpi`, sayfa dönüşü `page.rotation` hesaba katılarak) çevrilir. Yazı boyutu kutu genişliğine sığdırılır.
+  görünmez metin (`render_mode=3`) eklenir. Kutular (zaten özgün piksel) önce `72/dpi` ile işlenmiş
+  görüntü noktasına, sonra `page.rotation != 0` ise `page.derotation_matrix` ile sayfanın döndürülmemiş
+  koordinatına çevrilir; metin `rotate=page.rotation` ile yazılır. Test: 90° döndürülmüş PDF sayfasında geri okunan
+  sözcüklerin kutusu OCR kutusuyla örtüşür. Yazı boyutu kutu genişliğine sığdırılır.
   Yazı tipi: `C:\Windows\Fonts\arial.ttf` (yoksa PyMuPDF yerleşik `helv`). Çıktı: `aranabilir.pdf`
   (`garbage=3, deflate=True`).
 - Görüntü girdisi: her görüntü/kare bir PDF sayfası olur (görüntü + görünmez metin).
@@ -184,11 +211,15 @@ Adımlar:
 `def isle_belge(yol: Path, depo: Path, ayar: Ayar, havuz: OcrHavuzu | None = None) -> BelgeKaydi`
 1. `sha = sha256(dosya)` (1 MB'lık parçalarla akış). `hedef = depo/belgeler/sha[:2]/sha/`.
 2. `hedef/belge.json` varsa ve `surum` uyuyorsa yeniden işlenmez (aynı içerik farklı yerde → tek işlem).
-3. Sayfa başına önbellek `hedef/_ara/sayfa_00001.json`: iş yarıda kalırsa biten sayfalar yeniden OCR'lanmaz.
-   İş bitince `_ara` silinir (`genel.ara_dosya_sakla` değilse).
-4. OCR gereken sayfalar `OcrHavuzu`'na (ProcessPoolExecutor, `dizin.isci` süreç) **sayfa numarası + dosya yolu**
-   olarak verilir; işçi PDF'yi kendisi açıp sayfayı işler (büyük görüntü süreçler arasında taşınmaz).
-   Sayfa zaman aşımı → o sayfa `metin=''`, `uyarilar`'a yazılır, iş sürer.
+3. Sayfa başına önbellek `hedef/_ara/sayfa_00001.json` = `Sayfa`'nın tamamı (`no, etiket, kaynak, metin, guven,
+   satirlar[{metin, guven, kutu}], gorsel_boyut, dpi`): iş yarıda kalırsa biten sayfalar yeniden OCR'lanmaz ve
+   aranabilir PDF önbellekten de eksiksiz kurulur. İş bitince `_ara` silinir (`genel.ara_dosya_sakla` değilse).
+4. `OcrHavuzu` (kendi süreç havuzu: `multiprocessing` ile `dizin.isci` işçi süreç + iş/sonuç kuyrukları;
+   `ProcessPoolExecutor` KULLANILMAZ çünkü takılan işçi öldürülemez). İş = **dosya yolu + sayfa numarası** (ya da
+   görüntü/geçici dosya yolu); işçi dosyayı kendisi açıp sayfayı işler (büyük görüntü süreçler arasında taşınmaz),
+   motoru süreç başına bir kez yükler. Sayfa `ocr.sayfa_zaman_asimi_sn`'yi aşarsa o işçi `terminate()` edilir,
+   yerine yenisi açılır; sayfa `metin=''` olur, `uyarilar`'a yazılır, iş sürer. `isci=1` iken havuzsuz (aynı
+   süreçte, zaman aşımı yok) çalışır — testler bunu kullanır; zaman aşımı testi sahte yavaş işçiyle 2 işçide yapılır.
 5. Çıktılar (UTF-8, BOM'suz, `ensure_ascii=False`), geçici adla yazılıp `os.replace` ile:
    - `belge.json`:
      ```json
@@ -212,15 +243,21 @@ Adımlar:
   Video dosyası `<stem>.mp4` için yanında `<stem>_islenmis` varsa `ders` o klasördür.
 - **Tarama** (`tarayici.py`): `os.scandir` ile özyinelemeli; `haric` adları (büyük/küçük harf duyarsız) atlanır;
   erişim hatası günlüğe yazılır, tarama sürer. Satır `(yol)` anahtarıyla eklenir/güncellenir; `(boyut, degisme)`
-  değişen belge `bekliyor`a döner ve sayfaları silinir; diskte artık olmayan satırlar silinir (sayfalarıyla).
-  1000 satırlık işlemlerle commit. Önce yalnız katalog taranır ve **hemen yayınlanır** (ad araması içerik
-  bitmeden çalışsın).
+  değişen belge `bekliyor`a döner ve sayfaları silinir. Diskte artık olmayan satırlar silinir (sayfalarıyla)
+  — **VERİ KAYBI KORUMASI**: `os.scandir`/`stat` hatası veren klasörün altındaki mevcut satırlar silme kümesinden
+  muaftır (ağ kopması kaydı silmesin); bir kök hiç açılamazsa o kökün satırlarına dokunulmaz ve o turda yayın
+  yapılmaz. Silinecek satır, kökteki satırların %50'sinden fazlaysa silme yapılmaz, günlüğe uyarı yazılır
+  (`--zorla-sil` ile aşılır). Silme, tarama tamamen bittikten sonra yapılır (görülen yollar geçici tabloda tutulur,
+  tüm ağaç belleğe alınmaz). 1000 satırlık işlemlerle commit. Önce yalnız katalog taranır ve **hemen yayınlanır**
+  (ad araması içerik bitmeden çalışsın).
 - **İçerik** (`dizinle.py`): `bekliyor` satırlar `boyut` küçükten büyüğe işlenir; `max_dosya_mb` üstü →
   `desteklenmiyor` ("Dosya çok büyük"). Her belge `isle_belge` → `sayfa` satırları (eskiler silinip) yazılır →
   `dosya.durum/sha/sayfa_sayisi/ocr_sayfa` güncellenir → commit. Hata → `durum='hata'`, `hata=<Türkçe kısa neden>`;
   sonraki taramada dosya değişmediyse yeniden denenmez.
-- **Yayın** (`yayin.py`): `VACUUM INTO '<depo>\yayin\dizin-YYYYmmdd-HHMMSS.db.tmp'` → `os.replace` ile `.db` →
-  `guncel.txt` (yalnız dosya adı, tek satır) geçici dosya + `os.replace` ile yazılır. `sakla_yayin`'dan eski
+- **Yayın** (`yayin.py`): `VACUUM INTO` YEREL geçici dosyaya (çalışma veritabanının yanında) → bütünlük denetimi
+  (`PRAGMA quick_check`) → ağdaki `<depo>\yayin\dizin-YYYYmmdd-HHMMSS-<6 hane sıra>.db.tmp`'ye sıralı dosya kopyası
+  (`shutil.copyfile`) → `os.replace` ile `.db` → `guncel.txt` (yalnız dosya adı, tek satır) geçici dosya +
+  `os.replace` ile yazılır. Son yayından beri veritabanında değişiklik yoksa yayın atlanır. `sakla_yayin`'dan eski
   anlık görüntüler silinmeye çalışılır (kilitliyse sessizce kalır). Yayın: tarama sonunda, her `yayin_dk`
   dakikada bir ve içerik bitince.
 - **Komutlar** (`__main__.py`):
@@ -236,10 +273,14 @@ Adımlar:
 ## 6. Bulgu Portalı (C#)
 
 ### 6.1 Çekirdek (`Portal.Cekirdek/Dizin/`, paket `Microsoft.Data.Sqlite` 9.0.4)
-- `DizinNormalizasyon`: `TrNormalizasyon.Normalle`'yi kullanır (yeni normalizasyon yazılmaz).
+- İçerik normalizasyonu `TrNormalizasyon.Normalle` (4.1'deki iki ek bu sınıfa eklenir: Mn atılır, vekil çift →
+  boşluk); dosya adı normalizasyonu yeni `DosyaNormalizasyon.Normalle` (4.2).
 - `DizinKaynagi`: `dizin` klasörünü alır; `yayin\guncel.txt`'yi okur; anlık görüntüyü
-  `%LOCALAPPDATA%\Bulgu\dizin\` altına kopyalar (zaten aynı ad ve boyutta varsa kopyalamaz), `Mode=ReadOnly` açar.
-  `Yenile()` guncel.txt değiştiyse yeni kopyayı arka planda hazırlar ve bağlantıyı değiştirir; eski kopyaları siler.
+  `%LOCALAPPDATA%\Bulgu\dizin\` altına önce `<ad>.tmp`'ye kopyalar, boyut doğrulanınca `File.Move` ile `<ad>`
+  yapar (aynı adlı tam kopya zaten varsa kopyalamaz). Bağlantı `Mode=ReadOnly;Pooling=False` ile **sorgu başına**
+  açılır (paylaşılan uzun ömürlü bağlantı yok; dosya kilidi kalmaz). `Yenile()` guncel.txt değiştiyse yeni
+  kopyayı arka planda hazırlar, sonra etkin dosya yolunu atomik değiştirir; çalışan sorgu eski dosyada biter;
+  eski kopyalar silinmeye çalışılır (kilitliyse sonraki `Yenile`'de).
   Durum: `Hazir | Yok | Hata` + Türkçe ileti ("Dizin bulunamadı. Bulgu İşleyici'de dizinle.bat'ı çalıştırın.").
   Şema sürümü `meta.surum != 1` → `Hata`.
 - `DosyaSorgusu.Ayristir(string)` — Everything benzeri sözdizimi (anahtar sözcükler Türkçe ve İngilizce):
@@ -254,16 +295,22 @@ Adımlar:
   - `ders:` → yalnız bir derse bağlı dosyalar; `!ders:` → bağsızlar.
   Bilinmeyen `x:` öneki düz terimdir. Ayrıştırıcı saf C#'tır, veritabanı gerektirmez.
 - `DosyaAramaMotoru.Ara(DosyaSorgusu, Siralama, int enFazla = 1000) -> IReadOnlyList<DosyaSonucu>`:
-  SQL'i parametreli kurar (dize birleştirme YOK). 3+ karakterli alt dize terimi → `dosya_fts MATCH` (trigram;
-  ifade `"..."` tırnaklı, içteki `"` ikilenir) + `norm_ad LIKE` doğrulaması; 1-2 karakter → yalnız `LIKE`
-  (`ESCAPE '\'`). Joker → `norm_ad GLOB` (joker dışı karakterler normalize edilir). Sıralama: `Ilgi` (tam ad
+  SQL'i parametreli kurar (dize birleştirme YOK). Terimler `DosyaNormalizasyon` ile normalize edilir; uzunluk
+  kontrolü normalize SONRASI yapılır. 3+ karakterli alt dize terimi → `dosya_fts MATCH` (trigram; ifade `"..."`
+  tırnaklı, içteki `"` ikilenir); 1-2 karakter → yalnız `norm_ad LIKE` (`ESCAPE '\'`). `yol:` terimi →
+  `norm_yol LIKE` (FTS yok). Joker → `norm_ad GLOB` (joker dışı karakterler normalize edilir; `*.pdf` yalnız
+  `.pdf` ile biten adları eşler). `icerik:` süzgeci `id IN (SELECT ...)` alt sorgusuyla (tekrarlı satır yok). Sıralama: `Ilgi` (tam ad
   eşleşmesi > ad başı > içerir, sonra ad), `Ad`, `Yol`, `Boyut`, `Tarih` (artan/azalan).
   `DosyaSonucu(long Id, string Yol, string Ad, string Klasor, string Uzanti, long Boyut, DateTime Degisme,
   string Tur, string Durum, int? SayfaSayisi, string? Ders)`.
 - `IcerikAramaMotoru.Ara(string sorgu, DosyaSorgusu? suzgec, int enFazla = 200) -> IReadOnlyList<IcerikSonucu>`:
-  sorgu `TrNormalizasyon.Kelimeler` ile sözcüklere bölünür; FTS5 ifadesi her sözcük için `"sozcuk"*` (VE);
-  sorguda 2+ sözcük varsa tam ifade (`"s1 s2"`) eşleşmesi önce gelir (mevcut motordaki 1. kademe gibi), sonra
-  `bm25`. Süzgeç (uz/tarih/yol/tur/ders) `dosya` tablosuna JOIN ile uygulanır. Belge başına en çok 5 sayfa.
+  sorgu `TrNormalizasyon.Kelimeler` ile sözcüklere bölünür; FTS5 ifadesi her sözcük için `"sozcuk"*` (VE;
+  `sayfa_fts`'in `prefix='2 3'` dizini önek aramasını hızlandırır). Sorguda 2+ sözcük varsa tam ifade
+  (`"s1 s2"`) eşleşmesi önce gelir (mevcut motordaki 1. kademe gibi), sonra `bm25`. `bm25(sayfa_fts)` YALNIZ en içteki
+  FTS sorgusunda sütun olarak seçilir (pencere işlevi içinde çağrılamaz); belge başına en çok 5 sayfa sınırı dış
+  sorguda `ROW_NUMBER() OVER (PARTITION BY dosya_id ORDER BY puan)` ile uygulanır, `LIMIT enFazla` en sonda.
+  Süzgeç (uz/tarih/yol/tur/ders) `dosya` tablosuna JOIN ile uygulanır. Görüntülenen metin `sayfa.metin`'dir
+  (normalize metin saklanmaz; içeriksiz FTS).
   `IcerikSonucu(long DosyaId, string Yol, string Ad, int SayfaNo, string Etiket, string Kaynak, double? Guven,
   string Alinti, (int Bas, int Uzunluk)[] Vurgular, double Puan, string? Ders)`.
   `Alinti`: özgün sayfa metninden ilk eşleşmenin çevresinde en çok 240 karakter (sözcük sınırında, başta/sonda
@@ -292,7 +339,8 @@ Adımlar:
   - Alt durum çubuğu: dizin durumu ("Dizin: 182.344 dosya, 412.003 sayfa — 30.10.2026 07:40").
 - **Belge görüntüleyici** (`BelgePenceresi`): üst çubuk (önceki/sonraki sayfa, sayfa no kutusu, yakınlaştırma,
   belge içi arama + sonraki/önceki eşleşme, `Aslını aç`, `Klasörünü aç`). Gövde iki bölme: solda sayfa görüntüsü
-  (PDF ya da görüntü belgelerinde; `aranabilir.pdf` varsa o, yoksa özgün; `Windows.Data.Pdf` ile arka planda,
+  (PDF ya da görüntü belgelerinde; `aranabilir.pdf` varsa o, yoksa özgün; dosya önce `%LOCALAPPDATA%\Bulgu\gorunum\`
+  altına kopyalanır — ağdaki dosya açık tutulup kilitlenmesin; `Windows.Data.Pdf` ile arka planda,
   sayfa başına önbellek), sağda sayfa metni (`sayfa.metin`, eşleşmeler vurgulu; OCR sayfasında güven rozeti).
   Görüntülenemeyen biçimlerde yalnız metin bölmesi tam genişlikte. 1000+ sayfada yalnız görünen sayfa işlenir.
 - **Oynatıcı**: derse bağlı belge varsa üst çubukta `Belgeler (n)` düğmesi → liste → görüntüleyici.

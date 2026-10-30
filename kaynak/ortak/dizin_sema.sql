@@ -25,30 +25,34 @@ CREATE TABLE IF NOT EXISTS dosya(
     sayfa_sayisi INTEGER,
     ocr_sayfa    INTEGER,
     ders         TEXT,                   -- bağlı ders klasörünün tam yolu (..._islenmis) ya da NULL
-    norm_ad      TEXT NOT NULL,          -- TrNormalizasyon(ad)
-    norm_yol     TEXT NOT NULL           -- TrNormalizasyon(yol)
+    norm_ad      TEXT NOT NULL,          -- dosya_normalle(ad): Türkçe harf katlama + küçük harf, noktalama KORUNUR
+    norm_yol     TEXT NOT NULL           -- dosya_normalle(yol)
 );
 CREATE INDEX IF NOT EXISTS ix_dosya_klasor ON dosya(klasor);
 CREATE INDEX IF NOT EXISTS ix_dosya_uzanti ON dosya(uzanti);
 CREATE INDEX IF NOT EXISTS ix_dosya_ders   ON dosya(ders);
 CREATE INDEX IF NOT EXISTS ix_dosya_durum  ON dosya(durum);
 CREATE INDEX IF NOT EXISTS ix_dosya_sha    ON dosya(sha);
+CREATE INDEX IF NOT EXISTS ix_dosya_tur    ON dosya(tur);
+CREATE INDEX IF NOT EXISTS ix_dosya_boyut  ON dosya(boyut);
+CREATE INDEX IF NOT EXISTS ix_dosya_degisme ON dosya(degisme);
+CREATE INDEX IF NOT EXISTS ix_dosya_norm_ad ON dosya(norm_ad);
 
--- Ad/yol alt dize araması (3+ karakter). 1-2 karakterli sorgu norm_ad LIKE ile çözülür.
+-- Ad alt dize araması (normalize sonrası 3+ karakter). 1-2 karakter ve yol: araması norm_ad/norm_yol LIKE ile.
 CREATE VIRTUAL TABLE IF NOT EXISTS dosya_fts USING fts5(
-    norm_ad, norm_yol,
+    norm_ad,
     content='dosya', content_rowid='id',
     tokenize='trigram'
 );
 CREATE TRIGGER IF NOT EXISTS dosya_ai AFTER INSERT ON dosya BEGIN
-    INSERT INTO dosya_fts(rowid, norm_ad, norm_yol) VALUES (new.id, new.norm_ad, new.norm_yol);
+    INSERT INTO dosya_fts(rowid, norm_ad) VALUES (new.id, new.norm_ad);
 END;
 CREATE TRIGGER IF NOT EXISTS dosya_ad AFTER DELETE ON dosya BEGIN
-    INSERT INTO dosya_fts(dosya_fts, rowid, norm_ad, norm_yol) VALUES ('delete', old.id, old.norm_ad, old.norm_yol);
+    INSERT INTO dosya_fts(dosya_fts, rowid, norm_ad) VALUES ('delete', old.id, old.norm_ad);
 END;
-CREATE TRIGGER IF NOT EXISTS dosya_au AFTER UPDATE OF norm_ad, norm_yol ON dosya BEGIN
-    INSERT INTO dosya_fts(dosya_fts, rowid, norm_ad, norm_yol) VALUES ('delete', old.id, old.norm_ad, old.norm_yol);
-    INSERT INTO dosya_fts(rowid, norm_ad, norm_yol) VALUES (new.id, new.norm_ad, new.norm_yol);
+CREATE TRIGGER IF NOT EXISTS dosya_au AFTER UPDATE OF norm_ad ON dosya BEGIN
+    INSERT INTO dosya_fts(dosya_fts, rowid, norm_ad) VALUES ('delete', old.id, old.norm_ad);
+    INSERT INTO dosya_fts(rowid, norm_ad) VALUES (new.id, new.norm_ad);
 END;
 
 -- Belge içeriği: sayfa (PDF sayfası, slayt, tablo parçası, bölüm) başına bir satır.
@@ -59,25 +63,20 @@ CREATE TABLE IF NOT EXISTS sayfa(
     etiket   TEXT NOT NULL,              -- 'Sayfa 3', 'Slayt 2', 'Tablo1 (satır 1-200)', 'Ek: a.pdf / Sayfa 1'
     kaynak   TEXT NOT NULL,              -- 'metin' | 'ocr'
     guven    REAL,                       -- OCR ortalama güveni 0..1; metinde NULL
-    metin    TEXT NOT NULL,              -- gösterilen özgün metin
-    norm     TEXT NOT NULL               -- TrNormalizasyon(metin)
+    metin    TEXT NOT NULL               -- gösterilen özgün metin (NFKC uygulanmış)
 );
 CREATE UNIQUE INDEX IF NOT EXISTS ix_sayfa_dosya_no ON sayfa(dosya_id, no);
 
+-- İçeriksiz FTS: normalize metin yalnız dizinde durur (sütun olarak saklanmaz, boyut yarıya iner).
+-- Yazar her sayfa için: INSERT INTO sayfa_fts(rowid, norm) VALUES (sayfa.id, icerik_normalle(metin)).
 CREATE VIRTUAL TABLE IF NOT EXISTS sayfa_fts USING fts5(
     norm,
-    content='sayfa', content_rowid='id',
-    tokenize='unicode61 remove_diacritics 0'
+    content='', contentless_delete=1,
+    tokenize='unicode61 remove_diacritics 0',
+    prefix='2 3'
 );
-CREATE TRIGGER IF NOT EXISTS sayfa_ai AFTER INSERT ON sayfa BEGIN
-    INSERT INTO sayfa_fts(rowid, norm) VALUES (new.id, new.norm);
-END;
 CREATE TRIGGER IF NOT EXISTS sayfa_ad AFTER DELETE ON sayfa BEGIN
-    INSERT INTO sayfa_fts(sayfa_fts, rowid, norm) VALUES ('delete', old.id, old.norm);
-END;
-CREATE TRIGGER IF NOT EXISTS sayfa_au AFTER UPDATE OF norm ON sayfa BEGIN
-    INSERT INTO sayfa_fts(sayfa_fts, rowid, norm) VALUES ('delete', old.id, old.norm);
-    INSERT INTO sayfa_fts(rowid, norm) VALUES (new.id, new.norm);
+    DELETE FROM sayfa_fts WHERE rowid = old.id;
 END;
 
 INSERT OR IGNORE INTO meta(anahtar, deger) VALUES ('surum', '1');
