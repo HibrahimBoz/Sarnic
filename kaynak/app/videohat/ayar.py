@@ -127,6 +127,7 @@ class OcrAyar:
     gomulu_gorsel: bool = True
     tesseract: bool = True
     sozluk: str = "sozluk\\tr_kelime.txt"
+    unlu_uyumu: bool = True
 
     def __post_init__(self):
         if self.profil not in ("hizli", "uyarlamali", "kalite"):

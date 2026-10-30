@@ -65,3 +65,5 @@ sayfa_zaman_asimi_sn = 180   # Takılan işçi sonlandırılır; tek işçide s�
 gomulu_gorsel = true        # DOCX/PPTX içinde en az 200x200 görsellere OCR.
 tesseract = true            # Paket içindeki araç varsa tur+eng ikinci görüş.
 sozluk = 'sozluk\tr_kelime.txt' # Yoksa yalnız terimler.txt kullanılır.
+unlu_uyumu = true           # Sözlükte olmayan çekimli sözcükte ekteki ı/i'yi ünlü uyumuyla düzelt
+                            # (ölçüldü: ı->i hatasının %79,9'unu düzeltir, doğru sözcüğün %3,6'sını bozar).

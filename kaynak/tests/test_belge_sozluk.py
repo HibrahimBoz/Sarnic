@@ -11,7 +11,18 @@ class SozlukTest(GeciciTest):
             s.ekle(kelime)
         self.assertEqual(s.duzelt("yapilmalidir", .8), "yapılmalıdır")
         self.assertEqual(s.duzelt("Yapilmalidir", .8), "Yapılmalıdır")
-        self.assertEqual(s.duzelt("yapilmalidir", .85), "yapilmalidir")
+        self.assertEqual(s.duzelt("yapilmalidir", .99), "yapilmalidir")
+        self.assertEqual(s.duzelt("yapilmalidir", .96), "yapılmalıdır")  # ölçüldü: hatalı satır güveni 0,96
+        self.assertEqual(s.duzelt("iletișim", .9), "iletişim")
+        u = Sozluk()
+        for kelime in ("komutan", "alın", "geliyor"):
+            u.ekle(kelime)
+        self.assertEqual(u.duzelt("Komutanlik alinmadan", .96), "Komutanlık alınmadan")  # kök + ünlü uyumu
+        self.assertEqual(u.duzelt("geliyorki", .96), "geliyorki")  # uyumsuz ek: dokunulmaz
+        k = Sozluk(unlu_uyumu=False)
+        k.ekle("komutan")
+        self.assertEqual(k.duzelt("Komutanlik", .96), "Komutanlik")
+        self.assertEqual(s.duzelt("GiZLiLiK ve ECM", .9), "GİZLİLİK ve ECM")
         self.assertEqual(s.duzelt("PRF s1 IŞIK X", .5), "PRF s1 IŞIK X")
         self.assertEqual(s.duzelt("Isik islem olcumu", .5), "Işık işlem ölçümü")
         self.assertEqual(s.duzelt("bilinmeyen guvenlik", .8), "bilinmeyen güvenlik")

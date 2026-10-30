@@ -32,7 +32,8 @@ class OcrMotoru:
         sozluk = Path(ayar.ocr.sozluk.replace("\\", "/"))
         if not sozluk.is_absolute():
             sozluk = ayar.kok / sozluk
-        self.sozluk = Sozluk(sozluk, ayar.kok / ayar.stt.terimler_dosyasi)
+        self.sozluk = Sozluk(sozluk, ayar.kok / ayar.stt.terimler_dosyasi,
+                             unlu_uyumu=getattr(ayar.ocr, "unlu_uyumu", True))
         self.tesseract = yollar.tesseract() if ayar.ocr.tesseract else None
 
     def _motor(self, det, rec):
