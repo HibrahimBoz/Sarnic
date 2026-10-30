@@ -7,13 +7,13 @@ using Portal.Cekirdek;
 namespace Portal.Uygulama;
 
 /// <summary>
-/// Video Portalı WPF uygulaması ana giriş sınıfı.
+/// Bulgu WPF uygulaması ana giriş sınıfı.
 /// </summary>
 public partial class App : Application
 {
     private static readonly string HataLogYolu = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "VideoPortali",
+        "Bulgu",
         "hata.log"
     );
 
@@ -163,7 +163,7 @@ public partial class App : Application
         {
             MessageBox.Show(
                 $"Bir hata oluştu:\n{ex.Message}\n\nDetaylar hata günlüğüne kaydedildi:\n{HataLogYolu}",
-                "Hata - Video Portalı",
+                "Hata - Bulgu",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error
             );

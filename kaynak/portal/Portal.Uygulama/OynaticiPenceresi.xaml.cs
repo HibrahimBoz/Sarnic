@@ -51,6 +51,7 @@ public partial class OynaticiPenceresi : Window
     public DersKaydi Kayit { get; }
     public double BaslangicSn { get; }
     public IOynatici Oynatici => _oynatici;
+    public Portal.Cekirdek.Dizin.DizinKaynagi? Dizin { get; init; }
 
     public OynaticiPenceresi()
         : this(new DersKaydi(string.Empty, string.Empty, string.Empty, null), 0, null)
@@ -73,7 +74,8 @@ public partial class OynaticiPenceresi : Window
 
         InitializeComponent();
 
-        Title = !string.IsNullOrWhiteSpace(Kayit.Ad) ? $"Oynatıcı - {Kayit.Ad}" : "Oynatıcı";
+        Title = !string.IsNullOrWhiteSpace(Kayit.Ad) ? $"Bulgu — Oynatıcı — {Kayit.Ad}" : "Bulgu — Oynatıcı";
+        Loaded += (_, _) => BelgeleriYukleAsync();
 
         _oynatici = new LibVlcOynatici();
         _oynatici.MediaPlayer.EncounteredError += OnMediaPlayerEncounteredError;
@@ -903,6 +905,63 @@ public partial class OynaticiPenceresi : Window
         {
             TranskriptDurumMetni.Text = "Arama indeksi yenilenemedi: " + ex.Message;
         }
+    }
+
+    private List<Portal.Cekirdek.Dizin.DosyaSonucu> _dersBelgeleri = [];
+
+    private async void BelgeleriYukleAsync()
+    {
+        if (Dizin == null || Dizin.Durum != Portal.Cekirdek.Dizin.DizinDurumu.Hazir || string.IsNullOrWhiteSpace(Kayit.KlasorYolu))
+        {
+            BelgelerDugmesi.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        try
+        {
+            var motor = new Portal.Cekirdek.Dizin.DosyaAramaMotoru(Dizin);
+            var belgeler = await Task.Run(() => motor.DersBelgeleri(Kayit.KlasorYolu));
+            _dersBelgeleri = belgeler.ToList();
+            if (_dersBelgeleri.Count > 0)
+            {
+                BelgelerDugmesi.Content = $"Belgeler ({_dersBelgeleri.Count})";
+                BelgelerDugmesi.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                BelgelerDugmesi.Visibility = Visibility.Collapsed;
+            }
+        }
+        catch
+        {
+            BelgelerDugmesi.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    private void BelgelerDugmesi_Click(object sender, RoutedEventArgs e)
+    {
+        if (_dersBelgeleri.Count == 0 || Dizin == null) return;
+
+        var menu = new ContextMenu();
+        foreach (var belge in _dersBelgeleri)
+        {
+            var item = new MenuItem { Header = belge.Ad, Tag = belge };
+            item.Click += (s, ev) =>
+            {
+                if (item.Tag is Portal.Cekirdek.Dizin.DosyaSonucu d && Dizin != null)
+                {
+                    var pencere = new BelgePenceresi(Dizin, d.Id, 1, null)
+                    {
+                        Owner = this
+                    };
+                    pencere.Show();
+                }
+            };
+            menu.Items.Add(item);
+        }
+        menu.PlacementTarget = BelgelerDugmesi;
+        menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+        menu.IsOpen = true;
     }
 }
 
