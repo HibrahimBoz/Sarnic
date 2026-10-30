@@ -1,4 +1,5 @@
 """Uzantıya göre metin çıkarma. OCR görüntüleri sayfa başına işlenir."""
+import contextlib
 import email
 from email import policy
 from html.parser import HTMLParser
@@ -316,7 +317,9 @@ def _ileti(yol, sonuc, ayar, havuz, ara, derinlik):
         except ImportError:
             sonuc.durum, sonuc.hata = "desteklenmiyor", "MSG: extract-msg bulunamadı"
             return
-        with extract_msg.openMsg(str(yol)) as ileti:
+        # Pakette yalnız ikili tekerlekli 0.30.x var (yenisi kaynak paket ister): openMsg yoksa Message kullanılır
+        acici = getattr(extract_msg, "openMsg", None) or extract_msg.Message
+        with contextlib.closing(acici(str(yol))) as ileti:
             metin = ileti.body
             if not metin and ileti.htmlBody:
                 metin = html_metin(ileti.htmlBody if isinstance(ileti.htmlBody, str) else metin_oku(ileti.htmlBody))

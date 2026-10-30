@@ -349,7 +349,12 @@ class CikarmaTest(GeciciTest):
             attachments = [SimpleNamespace(data=b"ek metni", longFilename="a.txt", shortFilename=None)]
             def __enter__(self): return self
             def __exit__(self, *args): pass
+            def close(self): pass
         with patch.dict(sys.modules, {"extract_msg": SimpleNamespace(openMsg=lambda _: Ileti())}):
             s = self.oku(yol)
         self.assertEqual(s.sayfalar[0].metin, "MSG gövde")
         self.assertIn("ek metni", s.sayfalar[1].metin)
+        # Paketteki eski 0.30.x API: openMsg yok, Message var
+        with patch.dict(sys.modules, {"extract_msg": SimpleNamespace(Message=lambda _: Ileti())}):
+            s = self.oku(yol)
+        self.assertEqual(s.sayfalar[0].metin, "MSG gövde")

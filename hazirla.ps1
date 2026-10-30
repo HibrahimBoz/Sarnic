@@ -194,17 +194,17 @@ try {
                 'av<17',
                 'nvidia-cublas-cu12',
                 'nvidia-cudnn-cu12==9.*',
-                'pymupdf==1.28.0',
+                'pymupdf==2.0',
                 'rapidocr==3.10.0',
                 'onnxruntime==1.31.1',
-                'opencv-python-headless',
-                'numpy',
-                'pillow',
+                'opencv-python-headless==5.0.0.93',
+                'numpy==2.5.4',
+                'pillow==13.0.0',
                 'python-docx==1.2.0',
                 'python-pptx==1.0.2',
                 'openpyxl==3.1.5',
-                'olefile',
-                'extract-msg'
+                'olefile==0.47',
+                'extract-msg==0.30.4'
             )
             Invoke-GelistiriciPython -PythonArgumanlari $gpuPipArgs
         } else {
@@ -230,17 +230,17 @@ try {
                 'faster-whisper==1.2.1',
                 'ctranslate2==4.8.2',
                 'av<17',
-                'pymupdf==1.28.0',
+                'pymupdf==2.0',
                 'rapidocr==3.10.0',
                 'onnxruntime==1.31.1',
-                'opencv-python-headless',
-                'numpy',
-                'pillow',
+                'opencv-python-headless==5.0.0.93',
+                'numpy==2.5.4',
+                'pillow==13.0.0',
                 'python-docx==1.2.0',
                 'python-pptx==1.0.2',
                 'openpyxl==3.1.5',
-                'olefile',
-                'extract-msg'
+                'olefile==0.47',
+                'extract-msg==0.30.4'
             )
             Invoke-GelistiriciPython -PythonArgumanlari $cpuPipArgs
         } else {
