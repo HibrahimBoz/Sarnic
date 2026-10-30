@@ -1,4 +1,4 @@
-namespace Portal.Testleri.Dizin;
+﻿namespace Portal.Testleri.Dizin;
 
 using Portal.Cekirdek;
 using Portal.Cekirdek.Dizin;
@@ -63,6 +63,7 @@ public class BirlesikAramaTestleri
     {
         using var testDizini = new TestDizini(guncelYaz: false);
         using var kaynak = testDizini.KaynakOlustur();
+        await kaynak.YenileAsync();
 
         var sahteVideo = new SahteVideoAramaMotoru();
         var arama = new BirlesikArama(sahteVideo, kaynak);
@@ -96,6 +97,7 @@ public class BirlesikAramaTestleri
         testDizini.SayfaEkle(dosyaId, 1, "Sayfa 1", "Bu araştırma içeriğinde önemli bulgular bulunmaktadır.");
 
         using var kaynak = testDizini.KaynakOlustur();
+        await kaynak.YenileAsync();
         var sahteVideo = new SahteVideoAramaMotoru();
         var arama = new BirlesikArama(sahteVideo, kaynak);
 
@@ -126,6 +128,7 @@ public class BirlesikAramaTestleri
         testDizini.SayfaEkle(dosyaId, 1, "Sayfa 1", "Rapor sayfa metni.");
 
         using var kaynak = testDizini.KaynakOlustur();
+        await kaynak.YenileAsync();
         var arama = new BirlesikArama(null, kaynak);
 
         var sonuc = await arama.AraAsync("rapor");
@@ -133,5 +136,48 @@ public class BirlesikAramaTestleri
         Assert.Empty(sonuc.Videolar);
         Assert.Single(sonuc.Dosyalar);
         Assert.Single(sonuc.Belgeler);
+    }
+
+    [Fact]
+    public async Task AraAsync_DosyaSiralamasiGecildiginde_DosyalariVerilenSiradaDondurur()
+    {
+        using var testDizini = new TestDizini(guncelYaz: true);
+        testDizini.DosyaEkle(@"C:\Belgeler\kucuk.pdf", "kucuk.pdf", boyut: 100);
+        testDizini.DosyaEkle(@"C:\Belgeler\buyuk.pdf", "buyuk.pdf", boyut: 9000);
+
+        using var kaynak = testDizini.KaynakOlustur();
+        await kaynak.YenileAsync();
+        var arama = new BirlesikArama(null, kaynak);
+
+        var sonuc = await arama.AraAsync("pdf", dosyaSiralama: new Siralama(SiralamaAlani.Boyut, Azalan: true));
+
+        Assert.Equal(2, sonuc.Dosyalar.Count);
+        Assert.Equal("buyuk.pdf", sonuc.Dosyalar[0].Ad);
+        Assert.Equal("kucuk.pdf", sonuc.Dosyalar[1].Ad);
+    }
+
+    [Fact]
+    public async Task AraAsync_DizinHataVerdiginde_VideoSonuclariKorunurVeDizinIletisiDolar()
+    {
+        using var testDizini = new TestDizini(guncelYaz: true);
+        testDizini.DosyaEkle(@"C:\Belgeler\belge.pdf", "belge.pdf");
+
+        using var kaynak = testDizini.KaynakOlustur();
+        await kaynak.YenileAsync();
+
+        // Veritabanı dosyasını bozarak arama sırasında SQLite istisnası tetikle
+        File.WriteAllText(kaynak.EtkinDosya!, "bozuk dosya icerigi");
+
+        var sahteVideo = new SahteVideoAramaMotoru();
+        var arama = new BirlesikArama(sahteVideo, kaynak);
+
+        var sonuc = await arama.AraAsync("deney");
+
+        // Dizin hatasına rağmen video sonuçları korunmalı
+        Assert.Single(sonuc.Videolar);
+        Assert.Empty(sonuc.Dosyalar);
+        Assert.Empty(sonuc.Belgeler);
+        Assert.NotNull(sonuc.DizinIletisi);
+        Assert.Contains("arama hatası", sonuc.DizinIletisi);
     }
 }

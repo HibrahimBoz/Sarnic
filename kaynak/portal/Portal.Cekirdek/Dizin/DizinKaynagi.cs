@@ -2,6 +2,8 @@ namespace Portal.Cekirdek.Dizin;
 
 using System.Globalization;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Data.Sqlite;
 
 public enum DizinDurumu { Yok, Hazir, Hata }
@@ -13,17 +15,20 @@ public sealed class DizinKaynagi : IDisposable
 {
     private static readonly CultureInfo TrCulture = new("tr-TR");
 
+    private readonly SemaphoreSlim _yenilemeKilidi = new(1, 1);
     private readonly object _kilit = new();
     private readonly bool _dosyadanAcildi;
     private readonly string? _yerelKlasor;
 
     private volatile string? _etkinDosya;
     private volatile DizinDurumu _durum = DizinDurumu.Yok;
-    private volatile string _ileti = string.Empty;
+    private volatile string _ileti = "Dizin yükleniyor";
+    private string? _sonBasariliIleti;
     private DateTime? _yayinZamani;
 
     /// <summary>
     /// Ağdaki veya yereldeki dizin klasörünü izleyen DizinKaynagi oluşturur.
+    /// Kurucuda eşzamanlı yenileme yapılmaz; durum Yok ve ileti 'Dizin yükleniyor' olarak başlar.
     /// </summary>
     public DizinKaynagi(string dizinKlasoru, string? yerelKlasor = null)
     {
@@ -33,8 +38,8 @@ public sealed class DizinKaynagi : IDisposable
             "Bulgu",
             "dizin");
         _dosyadanAcildi = false;
-
-        YenileAsync().GetAwaiter().GetResult();
+        _durum = DizinDurumu.Yok;
+        _ileti = "Dizin yükleniyor";
     }
 
     private DizinKaynagi(string dbYolu, bool dosyadan)
@@ -62,7 +67,8 @@ public sealed class DizinKaynagi : IDisposable
         _etkinDosya = tamYol;
         _yayinZamani = File.GetLastWriteTime(tamYol);
         _durum = DizinDurumu.Hazir;
-        _ileti = $"{semaSonuc.DosyaSayisi.ToString("N0", TrCulture)} dosya, {semaSonuc.SayfaSayisi.ToString("N0", TrCulture)} sayfa";
+        _sonBasariliIleti = $"{semaSonuc.DosyaSayisi.ToString("N0", TrCulture)} dosya, {semaSonuc.SayfaSayisi.ToString("N0", TrCulture)} sayfa";
+        _ileti = _sonBasariliIleti;
     }
 
     /// <summary>
@@ -94,14 +100,30 @@ public sealed class DizinKaynagi : IDisposable
 
     /// <summary>
     /// guncel.txt dosyasını denetler, yeni anlık görüntü varsa yerel klasöre kopyalar ve etkin yolu atomik günceller.
+    /// Gövde arka planda (Task.Run) ve SemaphoreSlim kilidi altında çalışır.
     /// </summary>
-    public Task<bool> YenileAsync(CancellationToken iptal = default)
+    public async Task<bool> YenileAsync(CancellationToken iptal = default)
     {
         if (_dosyadanAcildi)
         {
-            return Task.FromResult(false);
+            return false;
         }
 
+        iptal.ThrowIfCancellationRequested();
+
+        await _yenilemeKilidi.WaitAsync(iptal);
+        try
+        {
+            return await Task.Run(() => YenileGovdesi(iptal), iptal);
+        }
+        finally
+        {
+            _yenilemeKilidi.Release();
+        }
+    }
+
+    private bool YenileGovdesi(CancellationToken iptal)
+    {
         iptal.ThrowIfCancellationRequested();
 
         string? guncelTxt = BulGuncelTxt();
@@ -109,11 +131,21 @@ public sealed class DizinKaynagi : IDisposable
         {
             lock (_kilit)
             {
-                _durum = DizinDurumu.Yok;
-                _ileti = "Dizin bulunamadı. Bulgu İşleyici'de dizinle.bat'ı çalıştırın.";
+                if (_etkinDosya != null && File.Exists(_etkinDosya))
+                {
+                    _durum = DizinDurumu.Hazir;
+                    _ileti = _sonBasariliIleti != null
+                        ? $"{_sonBasariliIleti} (Uyarı: Dizin bulunamadı)"
+                        : "Dizin bulunamadı.";
+                }
+                else
+                {
+                    _durum = DizinDurumu.Yok;
+                    _ileti = "Dizin bulunamadı. Bulgu İşleyici'de dizinle.bat'ı çalıştırın.";
+                }
             }
 
-            return Task.FromResult(false);
+            return false;
         }
 
         string dbAdi;
@@ -125,25 +157,48 @@ public sealed class DizinKaynagi : IDisposable
         {
             lock (_kilit)
             {
-                _durum = DizinDurumu.Hata;
-                _ileti = $"guncel.txt okunamadı: {ex.Message}";
+                if (_etkinDosya != null && File.Exists(_etkinDosya))
+                {
+                    _durum = DizinDurumu.Hazir;
+                    _ileti = _sonBasariliIleti != null
+                        ? $"{_sonBasariliIleti} (Uyarı: guncel.txt okunamadı)"
+                        : $"guncel.txt okunamadı: {ex.Message}";
+                }
+                else
+                {
+                    _durum = DizinDurumu.Hata;
+                    _ileti = $"guncel.txt okunamadı: {ex.Message}";
+                }
             }
 
-            return Task.FromResult(false);
+            return false;
         }
 
         if (string.IsNullOrEmpty(dbAdi) ||
+            Path.GetFileName(dbAdi) != dbAdi ||
+            dbAdi.Contains(':') ||
             dbAdi.Contains('/') ||
             dbAdi.Contains('\\') ||
-            dbAdi.Contains(".."))
+            dbAdi.Contains("..") ||
+            !dbAdi.EndsWith(".db", StringComparison.OrdinalIgnoreCase))
         {
             lock (_kilit)
             {
-                _durum = DizinDurumu.Hata;
-                _ileti = "guncel.txt geçersiz dosya adı içeriyor.";
+                if (_etkinDosya != null && File.Exists(_etkinDosya))
+                {
+                    _durum = DizinDurumu.Hazir;
+                    _ileti = _sonBasariliIleti != null
+                        ? $"{_sonBasariliIleti} (Uyarı: guncel.txt geçersiz dosya adı içeriyor)"
+                        : "guncel.txt geçersiz dosya adı içeriyor.";
+                }
+                else
+                {
+                    _durum = DizinDurumu.Hata;
+                    _ileti = "guncel.txt geçersiz dosya adı içeriyor.";
+                }
             }
 
-            return Task.FromResult(false);
+            return false;
         }
 
         string yayinKlasoru = Path.GetDirectoryName(guncelTxt)!;
@@ -153,11 +208,21 @@ public sealed class DizinKaynagi : IDisposable
         {
             lock (_kilit)
             {
-                _durum = DizinDurumu.Hata;
-                _ileti = "Yayınlanan veritabanı dosyası bulunamadı.";
+                if (_etkinDosya != null && File.Exists(_etkinDosya))
+                {
+                    _durum = DizinDurumu.Hazir;
+                    _ileti = _sonBasariliIleti != null
+                        ? $"{_sonBasariliIleti} (Uyarı: Yayınlanan veritabanı bulunamadı)"
+                        : "Yayınlanan veritabanı dosyası bulunamadı.";
+                }
+                else
+                {
+                    _durum = DizinDurumu.Hata;
+                    _ileti = "Yayınlanan veritabanı dosyası bulunamadı.";
+                }
             }
 
-            return Task.FromResult(false);
+            return false;
         }
 
         Directory.CreateDirectory(_yerelKlasor!);
@@ -168,12 +233,31 @@ public sealed class DizinKaynagi : IDisposable
 
         if (_etkinDosya == hedefDb && ayniDosyaVar)
         {
-            return Task.FromResult(false);
+            if (_durum != DizinDurumu.Hazir)
+            {
+                var kurtarSema = SemayiDogrulaVeSay(hedefDb);
+                if (kurtarSema.Hata == null)
+                {
+                    lock (_kilit)
+                    {
+                        _durum = DizinDurumu.Hazir;
+                        _sonBasariliIleti = $"{kurtarSema.DosyaSayisi.ToString("N0", TrCulture)} dosya, {kurtarSema.SayfaSayisi.ToString("N0", TrCulture)} sayfa";
+                        _ileti = _sonBasariliIleti;
+                        _yayinZamani = File.GetLastWriteTime(hedefDb);
+                    }
+                }
+            }
+            else if (_sonBasariliIleti != null)
+            {
+                // Geçici hatadan sonra aynı anlık görüntü yeniden ulaşılabilir: eski uyarıyı temizle
+                _ileti = _sonBasariliIleti;
+            }
+            return false;
         }
 
         if (!ayniDosyaVar)
         {
-            string tmpYol = hedefDb + ".tmp";
+            string tmpYol = $"{hedefDb}.{Guid.NewGuid():N}.tmp";
             try
             {
                 File.Copy(kaynakDb, tmpYol, true);
@@ -182,24 +266,45 @@ public sealed class DizinKaynagi : IDisposable
                     try { File.Delete(tmpYol); } catch { }
                     lock (_kilit)
                     {
-                        _durum = DizinDurumu.Hata;
-                        _ileti = "Kopyalama boyutu uyuşmuyor.";
+                        if (_etkinDosya != null && File.Exists(_etkinDosya))
+                        {
+                            _durum = DizinDurumu.Hazir;
+                            _ileti = _sonBasariliIleti != null
+                                ? $"{_sonBasariliIleti} (Uyarı: Kopyalama boyutu uyuşmuyor)"
+                                : "Kopyalama boyutu uyuşmuyor.";
+                        }
+                        else
+                        {
+                            _durum = DizinDurumu.Hata;
+                            _ileti = "Kopyalama boyutu uyuşmuyor.";
+                        }
                     }
 
-                    return Task.FromResult(false);
+                    return false;
                 }
 
                 File.Move(tmpYol, hedefDb, true);
             }
             catch (Exception ex)
             {
+                try { if (File.Exists(tmpYol)) File.Delete(tmpYol); } catch { }
                 lock (_kilit)
                 {
-                    _durum = DizinDurumu.Hata;
-                    _ileti = $"Yerel kopya oluşturulamadı: {ex.Message}";
+                    if (_etkinDosya != null && File.Exists(_etkinDosya))
+                    {
+                        _durum = DizinDurumu.Hazir;
+                        _ileti = _sonBasariliIleti != null
+                            ? $"{_sonBasariliIleti} (Uyarı: Yerel kopya oluşturulamadı)"
+                            : $"Yerel kopya oluşturulamadı: {ex.Message}";
+                    }
+                    else
+                    {
+                        _durum = DizinDurumu.Hata;
+                        _ileti = $"Yerel kopya oluşturulamadı: {ex.Message}";
+                    }
                 }
 
-                return Task.FromResult(false);
+                return false;
             }
         }
 
@@ -212,7 +317,7 @@ public sealed class DizinKaynagi : IDisposable
                 _ileti = semaSonuc.Hata;
             }
 
-            return Task.FromResult(false);
+            return false;
         }
 
         lock (_kilit)
@@ -220,11 +325,12 @@ public sealed class DizinKaynagi : IDisposable
             _etkinDosya = hedefDb;
             _yayinZamani = File.GetLastWriteTime(hedefDb);
             _durum = DizinDurumu.Hazir;
-            _ileti = $"{semaSonuc.DosyaSayisi.ToString("N0", TrCulture)} dosya, {semaSonuc.SayfaSayisi.ToString("N0", TrCulture)} sayfa";
+            _sonBasariliIleti = $"{semaSonuc.DosyaSayisi.ToString("N0", TrCulture)} dosya, {semaSonuc.SayfaSayisi.ToString("N0", TrCulture)} sayfa";
+            _ileti = _sonBasariliIleti;
         }
 
         EskiYerelKopyalariTemizle(dbAdi);
-        return Task.FromResult(true);
+        return true;
     }
 
     /// <summary>
@@ -238,7 +344,13 @@ public sealed class DizinKaynagi : IDisposable
             throw new InvalidOperationException("Dizin hazır durumda değil.");
         }
 
-        var baglanti = new SqliteConnection($"Data Source={dosya};Mode=ReadOnly;Pooling=False");
+        var builder = new SqliteConnectionStringBuilder
+        {
+            DataSource = dosya,
+            Mode = SqliteOpenMode.ReadOnly,
+            Pooling = false
+        };
+        var baglanti = new SqliteConnection(builder.ConnectionString);
         baglanti.Open();
         return baglanti;
     }
@@ -268,7 +380,7 @@ public sealed class DizinKaynagi : IDisposable
 
     public void Dispose()
     {
-        // Havuzsuz bağlantı kullanıldığı için açık bağlantı tutulmaz
+        _yenilemeKilidi.Dispose();
     }
 
     private string? BulGuncelTxt()
@@ -297,7 +409,13 @@ public sealed class DizinKaynagi : IDisposable
     {
         try
         {
-            using var conn = new SqliteConnection($"Data Source={dbYolu};Mode=ReadOnly;Pooling=False");
+            var builder = new SqliteConnectionStringBuilder
+            {
+                DataSource = dbYolu,
+                Mode = SqliteOpenMode.ReadOnly,
+                Pooling = false
+            };
+            using var conn = new SqliteConnection(builder.ConnectionString);
             conn.Open();
 
             string? surum = null;
@@ -358,6 +476,8 @@ public sealed class DizinKaynagi : IDisposable
 
         try
         {
+            var birSaatOnce = DateTime.UtcNow.AddHours(-1);
+
             foreach (string dosya in Directory.GetFiles(_yerelKlasor, "*.db"))
             {
                 string ad = Path.GetFileName(dosya);
@@ -365,11 +485,14 @@ public sealed class DizinKaynagi : IDisposable
                 {
                     try
                     {
-                        File.Delete(dosya);
+                        if (File.GetLastWriteTimeUtc(dosya) < birSaatOnce)
+                        {
+                            File.Delete(dosya);
+                        }
                     }
                     catch
                     {
-                        // Kilitliyse hata yutulur
+                        // Kilitliyse veya erişim hatası varsa yutulur
                     }
                 }
             }
@@ -378,7 +501,10 @@ public sealed class DizinKaynagi : IDisposable
             {
                 try
                 {
-                    File.Delete(dosya);
+                    if (File.GetLastWriteTimeUtc(dosya) < birSaatOnce)
+                    {
+                        File.Delete(dosya);
+                    }
                 }
                 catch
                 {

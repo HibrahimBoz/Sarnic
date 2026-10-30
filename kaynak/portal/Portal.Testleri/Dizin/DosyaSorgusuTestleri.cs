@@ -272,4 +272,33 @@ public class DosyaSorgusuTestleri
         Assert.Equal("bilinmeyen:deger", sorgu.Kosullar[2][0].Metin);
         Assert.Equal(TerimAlani.Ad, sorgu.Kosullar[2][0].Alan);
     }
+
+    [Fact]
+    public void Ayristir_TarihTasmasi_IstisnaFirlatmazVeDuzTerimKalir()
+    {
+        // 9999 yılı ve 1900 öncesi dönemler sınır dışı olduğundan istisna fırlatmamalı
+        var sorgu9999 = DosyaSorgusu.Ayristir("tarih:9999");
+        Assert.Null(sorgu9999.Tarih);
+        Assert.Contains(sorgu9999.Kosullar, k => k.Any(t => t.Metin == "tarih:9999"));
+
+        var sorgu0001 = DosyaSorgusu.Ayristir("tarih:0001-01");
+        Assert.Null(sorgu0001.Tarih);
+        Assert.Contains(sorgu0001.Kosullar, k => k.Any(t => t.Metin == "tarih:0001-01"));
+
+        var sorguIslec9999 = DosyaSorgusu.Ayristir("tarih:>9999");
+        Assert.Null(sorguIslec9999.Tarih);
+    }
+
+    [Fact]
+    public void Ayristir_BoyutTasmasi_IstisnaFirlatmaz()
+    {
+        // Çok büyük boyut veya geçersiz bilimsel gösterim istisna fırlatmamalı
+        var sorguBuyuk = DosyaSorgusu.Ayristir("boyut:1e30");
+        Assert.NotNull(sorguBuyuk.Boyut);
+        Assert.Equal(long.MaxValue, sorguBuyuk.Boyut.EnAz);
+
+        var sorguUstSinir = DosyaSorgusu.Ayristir("boyut:>1000000000000000000gb");
+        Assert.NotNull(sorguUstSinir.Boyut);
+        Assert.Equal(long.MaxValue, sorguUstSinir.Boyut.EnAz);
+    }
 }

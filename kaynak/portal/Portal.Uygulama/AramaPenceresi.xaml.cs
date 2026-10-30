@@ -96,8 +96,12 @@ public partial class AramaPenceresi : Window
             {
                 try
                 {
-                    await _dizinKaynagi.YenileAsync();
+                    bool degisti = await _dizinKaynagi.YenileAsync();
                     DizinDurumunuGuncelle();
+                    if (degisti && !string.IsNullOrWhiteSpace(_sonAramaSorgusu))
+                    {
+                        await AramayiCalistirAsync();
+                    }
                 }
                 catch
                 {
@@ -115,6 +119,25 @@ public partial class AramaPenceresi : Window
             _dizinKaynagi?.Dispose();
             string dizinYolu = DizinAyari.Coz(_kokKlasor);
             _dizinKaynagi = new DizinKaynagi(dizinYolu);
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    bool degisti = await _dizinKaynagi.YenileAsync();
+                    Dispatcher.Invoke(() =>
+                    {
+                        DizinDurumunuGuncelle();
+                        if (degisti && !string.IsNullOrWhiteSpace(_sonAramaSorgusu))
+                        {
+                            _ = AramayiCalistirAsync();
+                        }
+                    });
+                }
+                catch
+                {
+                    // Yut
+                }
+            });
         }
         catch
         {
@@ -151,22 +174,6 @@ public partial class AramaPenceresi : Window
 
     private async void Pencere_Loaded(object sender, RoutedEventArgs e)
     {
-        if (_dizinKaynagi != null)
-        {
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    await _dizinKaynagi.YenileAsync();
-                    Dispatcher.Invoke(DizinDurumunuGuncelle);
-                }
-                catch
-                {
-                    // Yut
-                }
-            });
-        }
-
         await IndeksleAsync();
     }
 
@@ -339,21 +346,6 @@ public partial class AramaPenceresi : Window
         _aramaMotoru = new MetinAramaMotoru(new IndeksOnbellek(), new DuzeltmeDeposu(_kokKlasor));
 
         DizinKaynagiKur();
-        if (_dizinKaynagi != null)
-        {
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    await _dizinKaynagi.YenileAsync();
-                    Dispatcher.Invoke(DizinDurumunuGuncelle);
-                }
-                catch
-                {
-                    // Yut
-                }
-            });
-        }
 
         AramaKutusu.Text = string.Empty;
         _videolar.Clear();
@@ -402,6 +394,11 @@ public partial class AramaPenceresi : Window
             _tumuBelgeler.Clear();
             SekmeSayilariniGuncelle();
             SonucSayisiMetni.Text = "Arama Sonuçları";
+            if (_indekslemeCts == null)
+            {
+                IlerlemeCubugu.Visibility = Visibility.Collapsed;
+                IlerlemeCubugu.IsIndeterminate = false;
+            }
             return;
         }
 
@@ -415,7 +412,7 @@ public partial class AramaPenceresi : Window
         try
         {
             var birlesik = new BirlesikArama(_aramaMotoru, _dizinKaynagi);
-            var sonuclar = await birlesik.AraAsync(sorgu, turBasinaEnFazla: 1000, iptal: iptal);
+            var sonuclar = await birlesik.AraAsync(sorgu, turBasinaEnFazla: 1000, iptal: iptal, dosyaSiralama: _dosyaSiralama);
             iptal.ThrowIfCancellationRequested();
 
             _videolar.Clear();
@@ -461,10 +458,13 @@ public partial class AramaPenceresi : Window
         }
         finally
         {
-            if (ReferenceEquals(_aramaCts, cts))
+            if (ReferenceEquals(_aramaCts, cts) || _aramaCts == null)
             {
-                IlerlemeCubugu.Visibility = Visibility.Collapsed;
-                IlerlemeCubugu.IsIndeterminate = false;
+                if (_indekslemeCts == null)
+                {
+                    IlerlemeCubugu.Visibility = Visibility.Collapsed;
+                    IlerlemeCubugu.IsIndeterminate = false;
+                }
             }
         }
     }
@@ -554,28 +554,7 @@ public partial class AramaPenceresi : Window
         if (_dizinKaynagi == null || _dizinKaynagi.Durum != DizinDurumu.Hazir)
             return;
 
-        string sorguMetni = AramaKutusu.Text?.Trim() ?? string.Empty;
-        var sorgu = DosyaSorgusu.Ayristir(sorguMetni);
-
-        try
-        {
-            var motor = new DosyaAramaMotoru(_dizinKaynagi);
-            var liste = await Task.Run(() => motor.Ara(sorgu, _dosyaSiralama, 1000));
-            _dosyalar.Clear();
-            foreach (var d in liste)
-            {
-                _dosyalar.Add(new DosyaGorunumu(d));
-            }
-
-            _tumuDosyalar.Clear();
-            foreach (var d in _dosyalar.Take(10)) _tumuDosyalar.Add(d);
-
-            SekmeSayilariniGuncelle();
-        }
-        catch
-        {
-            // Sıralama hatasını yut
-        }
+        await AramayiCalistirAsync();
     }
 
     private void DosyaListesi_MouseDoubleClick(object sender, MouseButtonEventArgs e)
@@ -660,7 +639,9 @@ public partial class AramaPenceresi : Window
         {
             try
             {
-                var pencere = new BelgePenceresi(_dizinKaynagi, dg.Id, 1, _sonAramaSorgusu)
+                var ayrismis = DosyaSorgusu.Ayristir(_sonAramaSorgusu);
+                string belgeSorgusu = ayrismis.Icerik ?? ayrismis.DuzMetin;
+                var pencere = new BelgePenceresi(_dizinKaynagi, dg.Id, 1, belgeSorgusu)
                 {
                     Owner = this
                 };
@@ -727,7 +708,9 @@ public partial class AramaPenceresi : Window
 
         try
         {
-            var pencere = new BelgePenceresi(_dizinKaynagi, bg.DosyaId, bg.SayfaNo, _sonAramaSorgusu)
+            var ayrismis = DosyaSorgusu.Ayristir(_sonAramaSorgusu);
+            string belgeSorgusu = ayrismis.Icerik ?? ayrismis.DuzMetin;
+            var pencere = new BelgePenceresi(_dizinKaynagi, bg.DosyaId, bg.SayfaNo, belgeSorgusu)
             {
                 Owner = this
             };

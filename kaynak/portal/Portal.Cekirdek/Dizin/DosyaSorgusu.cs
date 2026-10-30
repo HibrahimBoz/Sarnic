@@ -357,68 +357,78 @@ public sealed class DosyaSorgusu
             return false;
         }
 
-        int ikiNokta = val.IndexOf("..", StringComparison.Ordinal);
-        if (ikiNokta > 0)
+        try
         {
-            string sol = val[..ikiNokta];
-            string sag = val[(ikiNokta + 2)..];
-            if (TryParseBytes(sol, out long b1) && TryParseBytes(sag, out long b2))
+            int ikiNokta = val.IndexOf("..", StringComparison.Ordinal);
+            if (ikiNokta > 0)
             {
-                aralik = new BoyutAraligi(b1, b2);
-                return true;
+                string sol = val[..ikiNokta];
+                string sag = val[(ikiNokta + 2)..];
+                if (TryParseBytes(sol, out long b1) && TryParseBytes(sag, out long b2))
+                {
+                    aralik = new BoyutAraligi(b1, b2);
+                    return true;
+                }
+
+                return false;
             }
 
-            return false;
-        }
-
-        if (val.StartsWith(">="))
-        {
-            if (TryParseBytes(val[2..], out long b))
+            if (val.StartsWith(">="))
             {
-                aralik = new BoyutAraligi(b, null);
-                return true;
+                if (TryParseBytes(val[2..], out long b))
+                {
+                    aralik = new BoyutAraligi(b, null);
+                    return true;
+                }
+
+                return false;
             }
 
-            return false;
-        }
-
-        if (val.StartsWith('>'))
-        {
-            if (TryParseBytes(val[1..], out long b))
+            if (val.StartsWith('>'))
             {
-                aralik = new BoyutAraligi(b + 1, null);
-                return true;
+                if (TryParseBytes(val[1..], out long b))
+                {
+                    long min = b >= long.MaxValue ? long.MaxValue : b + 1;
+                    aralik = new BoyutAraligi(min, null);
+                    return true;
+                }
+
+                return false;
             }
 
-            return false;
-        }
-
-        if (val.StartsWith("<="))
-        {
-            if (TryParseBytes(val[2..], out long b))
+            if (val.StartsWith("<="))
             {
-                aralik = new BoyutAraligi(null, b);
-                return true;
+                if (TryParseBytes(val[2..], out long b))
+                {
+                    aralik = new BoyutAraligi(null, b);
+                    return true;
+                }
+
+                return false;
             }
 
-            return false;
-        }
-
-        if (val.StartsWith('<'))
-        {
-            if (TryParseBytes(val[1..], out long b))
+            if (val.StartsWith('<'))
             {
-                aralik = new BoyutAraligi(null, b - 1);
-                return true;
+                if (TryParseBytes(val[1..], out long b))
+                {
+                    long max = b <= 0 ? 0 : b - 1;
+                    aralik = new BoyutAraligi(null, max);
+                    return true;
+                }
+
+                return false;
             }
 
-            return false;
+            if (TryParseBytes(val, out long tekBoyut))
+            {
+                aralik = new BoyutAraligi(tekBoyut, tekBoyut);
+                return true;
+            }
         }
-
-        if (TryParseBytes(val, out long tekBoyut))
+        catch
         {
-            aralik = new BoyutAraligi(tekBoyut, tekBoyut);
-            return true;
+            aralik = null;
+            return false;
         }
 
         return false;
@@ -458,10 +468,27 @@ public sealed class DosyaSorgusu
         }
 
         numStr = numStr.Trim().Replace(',', '.');
-        if (double.TryParse(numStr, NumberStyles.Float, CultureInfo.InvariantCulture, out double d) && d >= 0)
+        if (double.TryParse(numStr, NumberStyles.Float, CultureInfo.InvariantCulture, out double d) &&
+            !double.IsNaN(d) && !double.IsInfinity(d) && d >= 0)
         {
-            bytes = (long)Math.Round(d * carpan);
-            return true;
+            try
+            {
+                double total = d * carpan;
+                if (total >= (double)long.MaxValue)
+                {
+                    bytes = long.MaxValue;
+                }
+                else
+                {
+                    bytes = (long)Math.Round(total);
+                }
+                return true;
+            }
+            catch
+            {
+                bytes = long.MaxValue;
+                return true;
+            }
         }
 
         return false;
@@ -476,68 +503,76 @@ public sealed class DosyaSorgusu
             return false;
         }
 
-        int ikiNokta = val.IndexOf("..", StringComparison.Ordinal);
-        if (ikiNokta > 0)
+        try
         {
-            string sol = val[..ikiNokta];
-            string sag = val[(ikiNokta + 2)..];
-            if (TryParseDonem(sol, out var p1) && TryParseDonem(sag, out var p2))
+            int ikiNokta = val.IndexOf("..", StringComparison.Ordinal);
+            if (ikiNokta > 0)
             {
-                aralik = new TarihAraligi(p1.Bas, p2.Son);
-                return true;
+                string sol = val[..ikiNokta];
+                string sag = val[(ikiNokta + 2)..];
+                if (TryParseDonem(sol, out var p1) && TryParseDonem(sag, out var p2))
+                {
+                    aralik = new TarihAraligi(p1.Bas, p2.Son);
+                    return true;
+                }
+
+                return false;
             }
 
-            return false;
-        }
-
-        if (val.StartsWith(">="))
-        {
-            if (TryParseDonem(val[2..], out var p))
+            if (val.StartsWith(">="))
             {
-                aralik = new TarihAraligi(p.Bas, null);
-                return true;
+                if (TryParseDonem(val[2..], out var p))
+                {
+                    aralik = new TarihAraligi(p.Bas, null);
+                    return true;
+                }
+
+                return false;
             }
 
-            return false;
-        }
-
-        if (val.StartsWith('>'))
-        {
-            if (TryParseDonem(val[1..], out var p))
+            if (val.StartsWith('>'))
             {
-                aralik = new TarihAraligi(p.Son, null);
-                return true;
+                if (TryParseDonem(val[1..], out var p))
+                {
+                    aralik = new TarihAraligi(p.Son, null);
+                    return true;
+                }
+
+                return false;
             }
 
-            return false;
-        }
-
-        if (val.StartsWith("<="))
-        {
-            if (TryParseDonem(val[2..], out var p))
+            if (val.StartsWith("<="))
             {
-                aralik = new TarihAraligi(null, p.Son);
-                return true;
+                if (TryParseDonem(val[2..], out var p))
+                {
+                    aralik = new TarihAraligi(null, p.Son);
+                    return true;
+                }
+
+                return false;
             }
 
-            return false;
-        }
-
-        if (val.StartsWith('<'))
-        {
-            if (TryParseDonem(val[1..], out var p))
+            if (val.StartsWith('<'))
             {
-                aralik = new TarihAraligi(null, p.Bas);
-                return true;
+                if (TryParseDonem(val[1..], out var p))
+                {
+                    aralik = new TarihAraligi(null, p.Bas);
+                    return true;
+                }
+
+                return false;
             }
 
-            return false;
+            if (TryParseDonem(val, out var tekDonem))
+            {
+                aralik = new TarihAraligi(tekDonem.Bas, tekDonem.Son);
+                return true;
+            }
         }
-
-        if (TryParseDonem(val, out var tekDonem))
+        catch
         {
-            aralik = new TarihAraligi(tekDonem.Bas, tekDonem.Son);
-            return true;
+            aralik = null;
+            return false;
         }
 
         return false;
@@ -552,31 +587,41 @@ public sealed class DosyaSorgusu
             return false;
         }
 
-        // yyyy
-        if (str.Length == 4 && int.TryParse(str, out int yil) && yil >= 1900 && yil <= 9999)
+        try
         {
-            var bas = new DateTime(yil, 1, 1, 0, 0, 0, DateTimeKind.Local);
-            var son = bas.AddYears(1);
-            donem = (bas, son);
-            return true;
-        }
+            // yyyy: yalnız 1900..9998 yılları kabul edilir (9999 AddYears taşmasına karşı korunur)
+            if (str.Length == 4 && int.TryParse(str, out int yil) && yil >= 1900 && yil <= 9998)
+            {
+                var bas = new DateTime(yil, 1, 1, 0, 0, 0, DateTimeKind.Local);
+                var son = bas.AddYears(1);
+                donem = (bas, son);
+                return true;
+            }
 
-        // yyyy-MM
-        if (DateTime.TryParseExact(str, "yyyy-MM", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dtAy))
-        {
-            var bas = DateTime.SpecifyKind(dtAy, DateTimeKind.Local);
-            var son = bas.AddMonths(1);
-            donem = (bas, son);
-            return true;
-        }
+            // yyyy-MM
+            if (DateTime.TryParseExact(str, "yyyy-MM", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dtAy) &&
+                dtAy.Year >= 1900 && dtAy.Year <= 9998)
+            {
+                var bas = DateTime.SpecifyKind(dtAy, DateTimeKind.Local);
+                var son = bas.AddMonths(1);
+                donem = (bas, son);
+                return true;
+            }
 
-        // yyyy-MM-dd
-        if (DateTime.TryParseExact(str, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dtGun))
+            // yyyy-MM-dd
+            if (DateTime.TryParseExact(str, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dtGun) &&
+                dtGun.Year >= 1900 && dtGun.Year <= 9998)
+            {
+                var bas = DateTime.SpecifyKind(dtGun, DateTimeKind.Local);
+                var son = bas.AddDays(1);
+                donem = (bas, son);
+                return true;
+            }
+        }
+        catch
         {
-            var bas = DateTime.SpecifyKind(dtGun, DateTimeKind.Local);
-            var son = bas.AddDays(1);
-            donem = (bas, son);
-            return true;
+            donem = default;
+            return false;
         }
 
         return false;

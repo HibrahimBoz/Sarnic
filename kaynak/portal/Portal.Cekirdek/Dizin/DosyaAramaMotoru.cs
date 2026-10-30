@@ -60,7 +60,15 @@ public sealed class DosyaAramaMotoru
 
         using var reg = iptal.Register(() =>
         {
-            try { cmd.Cancel(); } catch { }
+            try
+            {
+                var handle = conn.Handle;
+                if (handle != null && !handle.IsInvalid && !handle.IsClosed)
+                {
+                    SQLitePCL.raw.sqlite3_interrupt(handle);
+                }
+            }
+            catch { }
         });
 
         iptal.ThrowIfCancellationRequested();
@@ -119,7 +127,7 @@ public sealed class DosyaAramaMotoru
         {
             if (sorgu.Tarih.Bas.HasValue)
             {
-                long basSec = new DateTimeOffset(sorgu.Tarih.Bas.Value).ToUnixTimeSeconds();
+                long basSec = SafeToUnixTimeSeconds(sorgu.Tarih.Bas.Value);
                 string p = $"@tBas{pIndex++}";
                 cmd.Parameters.AddWithValue(p, basSec);
                 whereListesi.Add($"degisme >= {p}");
@@ -127,7 +135,7 @@ public sealed class DosyaAramaMotoru
 
             if (sorgu.Tarih.Son.HasValue)
             {
-                long sonSec = new DateTimeOffset(sorgu.Tarih.Son.Value).ToUnixTimeSeconds();
+                long sonSec = SafeToUnixTimeSeconds(sorgu.Tarih.Son.Value);
                 string p = $"@tSon{pIndex++}";
                 cmd.Parameters.AddWithValue(p, sonSec);
                 whereListesi.Add($"degisme < {p}");
@@ -191,8 +199,8 @@ public sealed class DosyaAramaMotoru
                 }
                 else
                 {
-                    // TerimAlani.Ad
-                    if (terim.Metin.Length >= 3)
+                    // TerimAlani.Ad - 3+ karakter kod noktası (Unicode Rune) sayar
+                    if (terim.Metin.EnumerateRunes().Count() >= 3)
                     {
                         string ftsExpr = $"\"{terim.Metin.Replace("\"", "\"\"")}\"";
                         cmd.Parameters.AddWithValue(p, ftsExpr);
@@ -217,7 +225,7 @@ public sealed class DosyaAramaMotoru
             }
         }
 
-        // Siralama
+        // Siralama: Türkçe harfler için norm_ad / norm_yol ile sırala; Ilgi'de CASE ifadesi her zaman ASC
         siralama ??= new Siralama();
         string orderSql;
         if (siralama.Alan == SiralamaAlani.Ilgi)
@@ -231,29 +239,29 @@ public sealed class DosyaAramaMotoru
                 cmd.Parameters.AddWithValue(pBas, $"{EscapeLike(normTerim)}%");
 
                 string yon = siralama.Azalan ? "DESC" : "ASC";
-                orderSql = $"ORDER BY CASE WHEN norm_ad = {pTam} THEN 1 WHEN norm_ad LIKE {pBas} ESCAPE '\\' THEN 2 ELSE 3 END {yon}, ad {yon}";
+                orderSql = $"ORDER BY CASE WHEN norm_ad = {pTam} THEN 1 WHEN norm_ad LIKE {pBas} ESCAPE '\\' THEN 2 ELSE 3 END ASC, norm_ad {yon}, ad {yon}";
             }
             else
             {
-                orderSql = siralama.Azalan ? "ORDER BY ad DESC" : "ORDER BY ad ASC";
+                orderSql = siralama.Azalan ? "ORDER BY norm_ad DESC, ad DESC" : "ORDER BY norm_ad ASC, ad ASC";
             }
         }
         else if (siralama.Alan == SiralamaAlani.Ad)
         {
-            orderSql = siralama.Azalan ? "ORDER BY ad DESC" : "ORDER BY ad ASC";
+            orderSql = siralama.Azalan ? "ORDER BY norm_ad DESC, ad DESC" : "ORDER BY norm_ad ASC, ad ASC";
         }
         else if (siralama.Alan == SiralamaAlani.Yol)
         {
-            orderSql = siralama.Azalan ? "ORDER BY yol DESC" : "ORDER BY yol ASC";
+            orderSql = siralama.Azalan ? "ORDER BY norm_yol DESC, yol DESC" : "ORDER BY norm_yol ASC, yol ASC";
         }
         else if (siralama.Alan == SiralamaAlani.Boyut)
         {
-            orderSql = siralama.Azalan ? "ORDER BY boyut DESC" : "ORDER BY boyut ASC";
+            orderSql = siralama.Azalan ? "ORDER BY boyut DESC, norm_ad ASC" : "ORDER BY boyut ASC, norm_ad ASC";
         }
         else
         {
             // Tarih
-            orderSql = siralama.Azalan ? "ORDER BY degisme DESC" : "ORDER BY degisme ASC";
+            orderSql = siralama.Azalan ? "ORDER BY degisme DESC, norm_ad ASC" : "ORDER BY degisme ASC, norm_ad ASC";
         }
 
         string whereSql = whereListesi.Count > 0 ? $"WHERE {string.Join(" AND ", whereListesi)}" : string.Empty;
@@ -275,16 +283,16 @@ LIMIT @enFazla;";
                 sonuclar.Add(OkuyucudanDosyaSonucu(reader));
             }
         }
-        catch (SqliteException) when (iptal.IsCancellationRequested)
+        catch (SqliteException ex) when (ex.SqliteErrorCode == 9 || iptal.IsCancellationRequested)
         {
-            throw new OperationCanceledException(iptal);
+            throw new OperationCanceledException("Sorgu iptal edildi.", ex, iptal);
         }
 
         return sonuclar;
     }
 
     /// <summary>
-    /// Belirtilen ders klasörüne bağlı olan dosyaları Ad sırasıyla getirir.
+    /// Belirtilen ders klasörüne bağlı olan dosyaları Türkçe harf duyarsız ve Ad sırasıyla getirir.
     /// </summary>
     public IReadOnlyList<DosyaSonucu> DersBelgeleri(string dersKlasoru)
     {
@@ -298,18 +306,39 @@ LIMIT @enFazla;";
         cmd.CommandText = @"
 SELECT id, yol, ad, klasor, uzanti, boyut, degisme, tur, durum, sayfa_sayisi, ders, sha
 FROM dosya
-WHERE LOWER(ders) = LOWER(@ders)
-ORDER BY ad ASC;";
-        cmd.Parameters.AddWithValue("@ders", dersKlasoru);
+WHERE ders IS NOT NULL AND ders != ''
+ORDER BY norm_ad ASC, ad ASC;";
 
+        string normAranan = DosyaNormalizasyon.Normalle(dersKlasoru);
         var sonuclar = new List<DosyaSonucu>();
         using var reader = cmd.ExecuteReader();
         while (reader.Read())
         {
-            sonuclar.Add(OkuyucudanDosyaSonucu(reader));
+            string? dersDegeri = reader.IsDBNull(10) ? null : reader.GetString(10);
+            if (dersDegeri != null && DosyaNormalizasyon.Normalle(dersDegeri) == normAranan)
+            {
+                sonuclar.Add(OkuyucudanDosyaSonucu(reader));
+            }
         }
 
         return sonuclar;
+    }
+
+    internal static long SafeToUnixTimeSeconds(DateTime dt)
+    {
+        try
+        {
+            DateTimeOffset dto = dt.Kind == DateTimeKind.Unspecified
+                ? new DateTimeOffset(dt, DateTimeOffset.Now.Offset)
+                : new DateTimeOffset(dt);
+            return dto.ToUnixTimeSeconds();
+        }
+        catch
+        {
+            return dt.Ticks < DateTime.UnixEpoch.Ticks
+                ? -62135596800L
+                : 253402300799L;
+        }
     }
 
     private static string EscapeLike(string input)

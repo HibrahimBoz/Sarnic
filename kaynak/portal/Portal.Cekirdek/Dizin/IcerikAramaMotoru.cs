@@ -60,7 +60,15 @@ public sealed class IcerikAramaMotoru
 
         using var reg = iptal.Register(() =>
         {
-            try { cmd.Cancel(); } catch { }
+            try
+            {
+                var handle = conn.Handle;
+                if (handle != null && !handle.IsInvalid && !handle.IsClosed)
+                {
+                    SQLitePCL.raw.sqlite3_interrupt(handle);
+                }
+            }
+            catch { }
         });
 
         iptal.ThrowIfCancellationRequested();
@@ -131,7 +139,7 @@ public sealed class IcerikAramaMotoru
             {
                 if (suzgec.Tarih.Bas.HasValue)
                 {
-                    long basSec = new DateTimeOffset(suzgec.Tarih.Bas.Value).ToUnixTimeSeconds();
+                    long basSec = DosyaAramaMotoru.SafeToUnixTimeSeconds(suzgec.Tarih.Bas.Value);
                     string p = $"@tBas{pIndex++}";
                     cmd.Parameters.AddWithValue(p, basSec);
                     whereListesi.Add($"d.degisme >= {p}");
@@ -139,7 +147,7 @@ public sealed class IcerikAramaMotoru
 
                 if (suzgec.Tarih.Son.HasValue)
                 {
-                    long sonSec = new DateTimeOffset(suzgec.Tarih.Son.Value).ToUnixTimeSeconds();
+                    long sonSec = DosyaAramaMotoru.SafeToUnixTimeSeconds(suzgec.Tarih.Son.Value);
                     string p = $"@tSon{pIndex++}";
                     cmd.Parameters.AddWithValue(p, sonSec);
                     whereListesi.Add($"d.degisme < {p}");
@@ -156,9 +164,19 @@ public sealed class IcerikAramaMotoru
                 whereListesi.Add("(d.ders IS NULL OR d.ders = '')");
             }
 
-            // Yol terimleri (Ad terimleri YOK SAYILIR)
+            // Yol terimleri: VEYA grubunda Ad ve Yol karışıksa daraltma olmaması için grup atlanır
             foreach (var veyaGrubu in suzgec.Kosullar)
             {
+                if (veyaGrubu.Count == 0)
+                {
+                    continue;
+                }
+
+                if (veyaGrubu.Any(t => t.Alan != TerimAlani.Yol))
+                {
+                    continue;
+                }
+
                 var yolTerimleri = veyaGrubu.Where(t => t.Alan == TerimAlani.Yol).ToList();
                 if (yolTerimleri.Count == 0)
                 {
@@ -231,20 +249,13 @@ public sealed class IcerikAramaMotoru
             sbSql.AppendLine(")");
         }
 
+        // Metin sütununu CTE dışına alarak bellek ve sıralama yükünü optimize et
         sbSql.AppendLine(", sirali AS (");
         sbSql.AppendLine("    SELECT");
+        sbSql.AppendLine("        s.id AS sayfa_id,");
         sbSql.AppendLine("        s.dosya_id,");
-        sbSql.AppendLine("        d.yol,");
-        sbSql.AppendLine("        d.ad,");
-        sbSql.AppendLine("        s.no AS sayfa_no,");
-        sbSql.AppendLine("        s.etiket,");
-        sbSql.AppendLine("        s.kaynak,");
-        sbSql.AppendLine("        s.guven,");
-        sbSql.AppendLine("        s.metin,");
         sbSql.AppendLine("        p.puan,");
-        sbSql.AppendLine("        d.ders,");
-        sbSql.AppendLine("        d.sha,");
-        sbSql.AppendLine("        ROW_NUMBER() OVER (PARTITION BY s.dosya_id ORDER BY p.puan DESC) AS sira");
+        sbSql.AppendLine("        ROW_NUMBER() OVER (PARTITION BY s.dosya_id ORDER BY p.puan DESC, s.id ASC) AS sira");
         sbSql.AppendLine("    FROM puanli p");
         sbSql.AppendLine("    JOIN sayfa s ON p.sayfa_id = s.id");
         sbSql.AppendLine("    JOIN dosya d ON s.dosya_id = d.id");
@@ -253,12 +264,19 @@ public sealed class IcerikAramaMotoru
             sbSql.AppendLine($"    {whereSql}");
         }
 
+        sbSql.AppendLine("),");
+        sbSql.AppendLine("secilenler AS (");
+        sbSql.AppendLine("    SELECT sayfa_id, dosya_id, puan");
+        sbSql.AppendLine("    FROM sirali");
+        sbSql.AppendLine("    WHERE sira <= @belgeBasinaEnFazla");
+        sbSql.AppendLine("    ORDER BY puan DESC, sayfa_id ASC");
+        sbSql.AppendLine("    LIMIT @enFazla");
         sbSql.AppendLine(")");
-        sbSql.AppendLine("SELECT dosya_id, yol, ad, sayfa_no, etiket, kaynak, guven, metin, puan, ders, sha");
-        sbSql.AppendLine("FROM sirali");
-        sbSql.AppendLine("WHERE sira <= @belgeBasinaEnFazla");
-        sbSql.AppendLine("ORDER BY puan DESC");
-        sbSql.AppendLine("LIMIT @enFazla;");
+        sbSql.AppendLine("SELECT sec.dosya_id, d.yol, d.ad, s.no AS sayfa_no, s.etiket, s.kaynak, s.guven, s.metin, sec.puan, d.ders, d.sha");
+        sbSql.AppendLine("FROM secilenler sec");
+        sbSql.AppendLine("JOIN sayfa s ON sec.sayfa_id = s.id");
+        sbSql.AppendLine("JOIN dosya d ON sec.dosya_id = d.id");
+        sbSql.AppendLine("ORDER BY sec.puan DESC, sec.sayfa_id ASC;");
 
         cmd.CommandText = sbSql.ToString();
         cmd.Parameters.AddWithValue("@belgeBasinaEnFazla", belgeBasinaEnFazla);
@@ -301,9 +319,9 @@ public sealed class IcerikAramaMotoru
                     sha));
             }
         }
-        catch (SqliteException) when (iptal.IsCancellationRequested)
+        catch (SqliteException ex) when (ex.SqliteErrorCode == 9 || iptal.IsCancellationRequested)
         {
-            throw new OperationCanceledException(iptal);
+            throw new OperationCanceledException("Sorgu iptal edildi.", ex, iptal);
         }
 
         return sonuclar;

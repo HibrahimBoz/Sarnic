@@ -232,4 +232,65 @@ public class IcerikAramaMotoruTestleri
         string? aranabilirPdfYokken = BelgeYollari.AranabilirPdf(depo, "olmayan_sha");
         Assert.Null(aranabilirPdfYokken);
     }
+
+    [Fact]
+    public void Ara_SiraliCteOptimizasyonu_VeBeraberlikKirici_DogruCalisir()
+    {
+        using var testDizini = new TestDizini();
+        long dosyaId = testDizini.DosyaEkle(@"C:\Belgeler\kitap.pdf", "kitap.pdf");
+        // Aynı metne sahip 3 sayfa - puanları eşit olacak
+        testDizini.SayfaEkle(dosyaId, 1, "Sayfa 1", "Aynı içerik tekrarı burada yer alır");
+        testDizini.SayfaEkle(dosyaId, 2, "Sayfa 2", "Aynı içerik tekrarı burada yer alır");
+        testDizini.SayfaEkle(dosyaId, 3, "Sayfa 3", "Aynı içerik tekrarı burada yer alır");
+
+        using var kaynak = testDizini.DosyadanKaynakAc();
+        var motor = new IcerikAramaMotoru(kaynak);
+
+        var sonuclar = motor.Ara("tekrarı");
+
+        Assert.Equal(3, sonuclar.Count);
+        // Beraberlik kırıcı s.id ASC sayesinde sıra 1, 2, 3 olmalı
+        Assert.Equal(1, sonuclar[0].SayfaNo);
+        Assert.Equal(2, sonuclar[1].SayfaNo);
+        Assert.Equal(3, sonuclar[2].SayfaNo);
+        // Dış JOIN ile metin ve dosya bilgisi doğru gelmeli
+        Assert.Contains("tekrarı", sonuclar[0].Alinti);
+        Assert.Equal("kitap.pdf", sonuclar[0].Ad);
+    }
+
+    [Fact]
+    public void Ara_KarisikVeyaGrubu_TamamenAtlanir()
+    {
+        using var testDizini = new TestDizini();
+        // Dosya yolu gizli içermiyor ama ad rapor.pdf
+        long dosyaId = testDizini.DosyaEkle(@"C:\AcikKlasor\rapor.pdf", "rapor.pdf");
+        testDizini.SayfaEkle(dosyaId, 1, "Sayfa 1", "Rapor araştırma özeti burada.");
+
+        using var kaynak = testDizini.DosyadanKaynakAc();
+        var motor = new IcerikAramaMotoru(kaynak);
+
+        // VEYA grubunda Ad ve Yol karışık: "ad:rapor|yol:gizli"
+        // Karışık grup tamamen atlanmalı (daraltma yapılmamalı)
+        var suzgec = DosyaSorgusu.Ayristir("ad:rapor|yol:gizli");
+        var sonuclar = motor.Ara("özeti", suzgec: suzgec);
+
+        Assert.Single(sonuclar);
+        Assert.Equal(dosyaId, sonuclar[0].DosyaId);
+    }
+
+    [Fact]
+    public void Ara_IptalEdildiginde_OperationCanceledExceptionFirlatir()
+    {
+        using var testDizini = new TestDizini();
+        long dosyaId = testDizini.DosyaEkle(@"C:\Belgeler\belge.pdf", "belge.pdf");
+        testDizini.SayfaEkle(dosyaId, 1, "Sayfa 1", "İptal testi içeriği");
+
+        using var kaynak = testDizini.DosyadanKaynakAc();
+        var motor = new IcerikAramaMotoru(kaynak);
+
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        Assert.ThrowsAny<OperationCanceledException>(() => motor.Ara("içeriği", iptal: cts.Token));
+    }
 }

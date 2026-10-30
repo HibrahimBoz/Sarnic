@@ -1,5 +1,6 @@
 namespace Portal.Cekirdek.Dizin;
 
+using System.Collections.Concurrent;
 using Portal.Cekirdek;
 
 /// <summary>
@@ -27,21 +28,38 @@ public sealed class BirlesikArama
 
     /// <summary>
     /// Sorguyu ayrıştırıp üç arama türünü paralel olarak koşturur.
+    /// Tek bir arama motorunun hata fırlatması diğer sonuçların kaybolmasına yol açmaz.
     /// </summary>
-    public async Task<BirlesikSonuclar> AraAsync(string sorgu, int turBasinaEnFazla = 50, CancellationToken iptal = default)
+    public async Task<BirlesikSonuclar> AraAsync(
+        string sorgu,
+        int turBasinaEnFazla = 50,
+        CancellationToken iptal = default,
+        Siralama? dosyaSiralama = null)
     {
         iptal.ThrowIfCancellationRequested();
 
         var dosyaSorgusu = DosyaSorgusu.Ayristir(sorgu);
         bool dizinHazir = _dizin != null && _dizin.Durum == DizinDurumu.Hazir;
         string? dizinIletisi = dizinHazir ? null : _dizin?.Ileti;
+        var hatalar = new ConcurrentBag<string>();
 
         var videoTask = Task.Run<IReadOnlyList<AramaSonucu>>(() =>
         {
             iptal.ThrowIfCancellationRequested();
-            if (_video != null && !string.IsNullOrWhiteSpace(dosyaSorgusu.DuzMetin))
+            try
             {
-                return _video.Ara(dosyaSorgusu.DuzMetin, turBasinaEnFazla);
+                if (_video != null && !string.IsNullOrWhiteSpace(dosyaSorgusu.DuzMetin))
+                {
+                    return _video.Ara(dosyaSorgusu.DuzMetin, turBasinaEnFazla);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch
+            {
+                // Video arama hatası sessizce yutulur
             }
 
             return Array.Empty<AramaSonucu>();
@@ -50,17 +68,28 @@ public sealed class BirlesikArama
         var belgeTask = Task.Run<IReadOnlyList<IcerikSonucu>>(() =>
         {
             iptal.ThrowIfCancellationRequested();
-            if (dizinHazir)
+            try
             {
-                string aranan = dosyaSorgusu.Icerik ?? dosyaSorgusu.DuzMetin;
-                if (!string.IsNullOrWhiteSpace(aranan))
+                if (dizinHazir)
                 {
-                    return new IcerikAramaMotoru(_dizin!).Ara(
-                        aranan,
-                        dosyaSorgusu,
-                        turBasinaEnFazla,
-                        iptal: iptal);
+                    string aranan = dosyaSorgusu.Icerik ?? dosyaSorgusu.DuzMetin;
+                    if (!string.IsNullOrWhiteSpace(aranan))
+                    {
+                        return new IcerikAramaMotoru(_dizin!).Ara(
+                            aranan,
+                            dosyaSorgusu,
+                            turBasinaEnFazla,
+                            iptal: iptal);
+                    }
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                hatalar.Add($"Belge arama hatası: {ex.Message}");
             }
 
             return Array.Empty<IcerikSonucu>();
@@ -69,19 +98,35 @@ public sealed class BirlesikArama
         var dosyaTask = Task.Run<IReadOnlyList<DosyaSonucu>>(() =>
         {
             iptal.ThrowIfCancellationRequested();
-            if (dizinHazir)
+            try
             {
-                return new DosyaAramaMotoru(_dizin!).Ara(
-                    dosyaSorgusu,
-                    null,
-                    turBasinaEnFazla,
-                    iptal: iptal);
+                if (dizinHazir)
+                {
+                    return new DosyaAramaMotoru(_dizin!).Ara(
+                        dosyaSorgusu,
+                        dosyaSiralama,
+                        turBasinaEnFazla,
+                        iptal: iptal);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                hatalar.Add($"Dosya arama hatası: {ex.Message}");
             }
 
             return Array.Empty<DosyaSonucu>();
         }, iptal);
 
         await Task.WhenAll(videoTask, belgeTask, dosyaTask);
+
+        if (hatalar.Count > 0 && string.IsNullOrEmpty(dizinIletisi))
+        {
+            dizinIletisi = string.Join("; ", hatalar);
+        }
 
         return new BirlesikSonuclar(
             await videoTask,

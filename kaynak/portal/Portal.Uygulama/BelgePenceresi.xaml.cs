@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -13,6 +14,7 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using Windows.Data.Pdf;
 using Windows.Storage;
 using Windows.Storage.Streams;
@@ -36,15 +38,21 @@ public partial class BelgePenceresi : Window
     private readonly long _dosyaId;
     private readonly SayfaDeposu _sayfaDeposu;
     private readonly DosyaSonucu? _dosya;
-    private readonly IReadOnlyList<SayfaKaydi> _tumSayfalar;
+    private IReadOnlyList<SayfaKaydi> _tumSayfalar = [];
     private readonly List<int> _eslesenSayfalar = [];
-    private readonly int _toplamSayfa;
+    private readonly Dictionary<int, string> _normMetinOnbellek = [];
+    private int _toplamSayfa;
 
     private int _aktifSayfaNo;
     private int _zoomYuzde = 100;
     private PdfDocument? _pdfBelgesi;
     private bool _goruntuDestekleniyor;
     private bool _tekGorselMi;
+
+    private int _renderSurum = 0;
+    private readonly SemaphoreSlim _renderKilidi = new(1, 1);
+    private readonly DispatcherTimer _zoomZamanlayici;
+    private readonly DispatcherTimer _belgeAramaZamanlayici;
 
     private readonly Dictionary<(int Sayfa, int Zoom), BitmapSource> _lruOnbellek = [];
     private readonly LinkedList<(int Sayfa, int Zoom)> _lruSira = [];
@@ -61,12 +69,32 @@ public partial class BelgePenceresi : Window
         string baslikAd = _dosya?.Ad ?? dosyaId.ToString();
         Title = $"Bulgu — Belge — {baslikAd}";
 
-        _tumSayfalar = _sayfaDeposu.Getir(dosyaId);
-        _toplamSayfa = _tumSayfalar.Count > 0 ? _tumSayfalar.Count : Math.Max(1, _dosya?.SayfaSayisi ?? 1);
+        _toplamSayfa = Math.Max(1, _dosya?.SayfaSayisi ?? 1);
         _aktifSayfaNo = Math.Clamp(sayfaNo, 1, Math.Max(1, _toplamSayfa));
 
         SayfaNoKutusu.Text = _aktifSayfaNo.ToString();
         ToplamSayfaMetni.Text = $"/ {_toplamSayfa}";
+
+        _zoomZamanlayici = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(200)
+        };
+        _zoomZamanlayici.Tick += async (_, _) =>
+        {
+            _zoomZamanlayici.Stop();
+            await SayfaGoruntusunuGosterAsync(_aktifSayfaNo);
+        };
+
+        _belgeAramaZamanlayici = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(250)
+        };
+        _belgeAramaZamanlayici.Tick += async (_, _) =>
+        {
+            _belgeAramaZamanlayici.Stop();
+            await EslesenSayfalariBulAsync();
+            MetniGoster(_aktifSayfaNo);
+        };
 
         if (!string.IsNullOrWhiteSpace(sorgu))
         {
@@ -76,8 +104,27 @@ public partial class BelgePenceresi : Window
 
     private async void Pencere_Loaded(object sender, RoutedEventArgs e)
     {
+        _tumSayfalar = await Task.Run(() => _sayfaDeposu.Getir(_dosyaId));
+        int maxNo = _tumSayfalar.Count > 0 ? _tumSayfalar.Max(s => s.No) : 0;
+        _toplamSayfa = Math.Max(_tumSayfalar.Count, Math.Max(maxNo, _dosya?.SayfaSayisi ?? 1));
+        _aktifSayfaNo = Math.Clamp(_aktifSayfaNo, 1, Math.Max(1, _toplamSayfa));
+
+        SayfaNoKutusu.Text = _aktifSayfaNo.ToString();
+        ToplamSayfaMetni.Text = $"/ {_toplamSayfa}";
+
+        await Task.Run(() =>
+        {
+            foreach (var s in _tumSayfalar)
+            {
+                if (!string.IsNullOrEmpty(s.Metin))
+                {
+                    _normMetinOnbellek[s.No] = TrNormalizasyon.Normalle(s.Metin);
+                }
+            }
+        });
+
         await GoruntuSisteminiHazirlaAsync();
-        EslesenSayfalariBul();
+        await EslesenSayfalariBulAsync();
         await SayfaGosterAsync(_aktifSayfaNo);
     }
 
@@ -112,7 +159,7 @@ public partial class BelgePenceresi : Window
         {
             try
             {
-                string yerelYol = await Task.Run(() => KopyaHazirla(pdfYolu, _dosyaId));
+                string yerelYol = await Task.Run(() => KopyaHazirla(pdfYolu, _dosyaId, _dosya?.Sha));
                 var storageFile = await StorageFile.GetFileFromPathAsync(yerelYol);
                 _pdfBelgesi = await PdfDocument.LoadFromFileAsync(storageFile);
                 _goruntuDestekleniyor = true;
@@ -136,7 +183,7 @@ public partial class BelgePenceresi : Window
         }
     }
 
-    private static string KopyaHazirla(string kaynakYol, long dosyaId)
+    private static string KopyaHazirla(string kaynakYol, long dosyaId, string? sha)
     {
         string yerelKlasor = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -144,7 +191,10 @@ public partial class BelgePenceresi : Window
             "gorunum");
         Directory.CreateDirectory(yerelKlasor);
 
-        string dosyaAdi = $"{dosyaId}_{Path.GetFileName(kaynakYol)}";
+        string anahtar = !string.IsNullOrWhiteSpace(sha)
+            ? sha
+            : $"{dosyaId}_{Math.Abs(kaynakYol.GetHashCode()):X8}";
+        string dosyaAdi = $"{anahtar}_{Path.GetFileName(kaynakYol)}";
         string hedefYol = Path.Combine(yerelKlasor, dosyaAdi);
 
         var srcFi = new FileInfo(kaynakYol);
@@ -163,6 +213,26 @@ public partial class BelgePenceresi : Window
             File.Copy(kaynakYol, hedefYol, true);
             File.SetLastWriteTimeUtc(hedefYol, srcFi.LastWriteTimeUtc);
         }
+
+        // 7 günden eski görüntü önbellek kopyalarını temizle
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                var sinir = DateTime.UtcNow.AddDays(-7);
+                if (Directory.Exists(yerelKlasor))
+                {
+                    foreach (var f in Directory.GetFiles(yerelKlasor))
+                    {
+                        if (File.GetLastWriteTimeUtc(f) < sinir)
+                        {
+                            try { File.Delete(f); } catch { }
+                        }
+                    }
+                }
+            }
+            catch { }
+        });
 
         return hedefYol;
     }
@@ -195,84 +265,107 @@ public partial class BelgePenceresi : Window
     {
         if (!_goruntuDestekleniyor) return;
 
-        SolHataKutusu.Visibility = Visibility.Collapsed;
-        SayfaGoruntusu.Visibility = Visibility.Visible;
+        int buSurum = Interlocked.Increment(ref _renderSurum);
+        await _renderKilidi.WaitAsync();
 
-        if (_tekGorselMi && _dosya != null)
+        try
         {
-            try
-            {
-                var bmp = new BitmapImage();
-                bmp.BeginInit();
-                bmp.CacheOption = BitmapCacheOption.OnLoad;
-                bmp.UriSource = new Uri(_dosya.Yol);
-                bmp.EndInit();
-                bmp.Freeze();
-                SayfaGoruntusu.Source = bmp;
-                double oran = _zoomYuzde / 100.0;
-                SayfaGoruntusu.LayoutTransform = new ScaleTransform(oran, oran);
-            }
-            catch (Exception ex)
-            {
-                SolHataMetni.Text = "Görüntü dosyası yüklenemedi:\n" + ex.Message;
-                SolHataKutusu.Visibility = Visibility.Visible;
-                SayfaGoruntusu.Visibility = Visibility.Collapsed;
-            }
-            return;
-        }
+            if (buSurum != _renderSurum) return;
 
-        if (_pdfBelgesi != null)
-        {
-            if (sayfaNo < 1 || sayfaNo > (int)_pdfBelgesi.PageCount)
-            {
-                SayfaGoruntusu.Source = null;
-                return;
-            }
+            SolHataKutusu.Visibility = Visibility.Collapsed;
+            SayfaGoruntusu.Visibility = Visibility.Visible;
 
-            var onbellekli = OnbellektenAl(sayfaNo, _zoomYuzde);
-            if (onbellekli != null)
+            if (_tekGorselMi && _dosya != null)
             {
-                SayfaGoruntusu.LayoutTransform = Transform.Identity;
-                SayfaGoruntusu.Source = onbellekli;
-                return;
-            }
-
-            try
-            {
-                using var page = _pdfBelgesi.GetPage((uint)(sayfaNo - 1));
-                double zoom = _zoomYuzde / 100.0;
-                uint destWidth = (uint)Math.Max(50, Math.Round(page.Size.Width * zoom));
-                var renderOptions = new PdfPageRenderOptions
+                try
                 {
-                    DestinationWidth = destWidth
-                };
+                    var bmp = new BitmapImage();
+                    bmp.BeginInit();
+                    bmp.CacheOption = BitmapCacheOption.OnLoad;
+                    bmp.UriSource = new Uri(_dosya.Yol);
+                    bmp.EndInit();
+                    bmp.Freeze();
 
-                using var memStream = new InMemoryRandomAccessStream();
-                await page.RenderToStreamAsync(memStream, renderOptions);
-                memStream.Seek(0);
+                    if (buSurum != _renderSurum) return;
 
-                using var netStream = memStream.AsStreamForRead();
-                var ms = new MemoryStream();
-                await netStream.CopyToAsync(ms);
-                ms.Position = 0;
-
-                var bmp = new BitmapImage();
-                bmp.BeginInit();
-                bmp.CacheOption = BitmapCacheOption.OnLoad;
-                bmp.StreamSource = ms;
-                bmp.EndInit();
-                bmp.Freeze();
-
-                OnbellegeEkle(sayfaNo, _zoomYuzde, bmp);
-                SayfaGoruntusu.LayoutTransform = Transform.Identity;
-                SayfaGoruntusu.Source = bmp;
+                    SayfaGoruntusu.Source = bmp;
+                    double oran = _zoomYuzde / 100.0;
+                    SayfaGoruntusu.LayoutTransform = new ScaleTransform(oran, oran);
+                }
+                catch (Exception ex)
+                {
+                    if (buSurum != _renderSurum) return;
+                    SolHataMetni.Text = "Görüntü dosyası yüklenemedi:\n" + ex.Message;
+                    SolHataKutusu.Visibility = Visibility.Visible;
+                    SayfaGoruntusu.Visibility = Visibility.Collapsed;
+                }
+                return;
             }
-            catch (Exception ex)
+
+            if (_pdfBelgesi != null)
             {
-                SolHataMetni.Text = "Sayfa görüntüsü işlenemedi:\n" + ex.Message;
-                SolHataKutusu.Visibility = Visibility.Visible;
-                SayfaGoruntusu.Visibility = Visibility.Collapsed;
+                if (sayfaNo < 1 || sayfaNo > (int)_pdfBelgesi.PageCount)
+                {
+                    if (buSurum == _renderSurum)
+                    {
+                        SayfaGoruntusu.Source = null;
+                    }
+                    return;
+                }
+
+                var onbellekli = OnbellektenAl(sayfaNo, _zoomYuzde);
+                if (onbellekli != null)
+                {
+                    if (buSurum != _renderSurum) return;
+                    SayfaGoruntusu.LayoutTransform = Transform.Identity;
+                    SayfaGoruntusu.Source = onbellekli;
+                    return;
+                }
+
+                try
+                {
+                    using var page = _pdfBelgesi.GetPage((uint)(sayfaNo - 1));
+                    double zoom = _zoomYuzde / 100.0;
+                    uint destWidth = (uint)Math.Max(50, Math.Round(page.Size.Width * zoom));
+                    var renderOptions = new PdfPageRenderOptions
+                    {
+                        DestinationWidth = destWidth
+                    };
+
+                    using var memStream = new InMemoryRandomAccessStream();
+                    await page.RenderToStreamAsync(memStream, renderOptions);
+                    memStream.Seek(0);
+
+                    using var netStream = memStream.AsStreamForRead();
+                    var ms = new MemoryStream();
+                    await netStream.CopyToAsync(ms);
+                    ms.Position = 0;
+
+                    var bmp = new BitmapImage();
+                    bmp.BeginInit();
+                    bmp.CacheOption = BitmapCacheOption.OnLoad;
+                    bmp.StreamSource = ms;
+                    bmp.EndInit();
+                    bmp.Freeze();
+
+                    OnbellegeEkle(sayfaNo, _zoomYuzde, bmp);
+
+                    if (buSurum != _renderSurum) return;
+                    SayfaGoruntusu.LayoutTransform = Transform.Identity;
+                    SayfaGoruntusu.Source = bmp;
+                }
+                catch (Exception ex)
+                {
+                    if (buSurum != _renderSurum) return;
+                    SolHataMetni.Text = "Sayfa görüntüsü işlenemedi:\n" + ex.Message;
+                    SolHataKutusu.Visibility = Visibility.Visible;
+                    SayfaGoruntusu.Visibility = Visibility.Collapsed;
+                }
             }
+        }
+        finally
+        {
+            _renderKilidi.Release();
         }
     }
 
@@ -398,11 +491,11 @@ public partial class BelgePenceresi : Window
 
     private void BelgeAramaKutusu_TextChanged(object sender, TextChangedEventArgs e)
     {
-        EslesenSayfalariBul();
-        MetniGoster(_aktifSayfaNo);
+        _belgeAramaZamanlayici.Stop();
+        _belgeAramaZamanlayici.Start();
     }
 
-    private void EslesenSayfalariBul()
+    private async Task EslesenSayfalariBulAsync()
     {
         _eslesenSayfalar.Clear();
         string aranan = BelgeAramaKutusu.Text?.Trim() ?? string.Empty;
@@ -419,15 +512,39 @@ public partial class BelgePenceresi : Window
             return;
         }
 
-        foreach (var sayfa in _tumSayfalar)
+        var sayfalar = _tumSayfalar;
+        var eslesenler = await Task.Run(() =>
         {
-            var vurgular = MetinEsleme.Vurgula(sayfa.Metin, kelimeler);
-            if (vurgular.Length > 0)
+            var sonuc = new List<int>();
+            foreach (var sayfa in sayfalar)
             {
-                _eslesenSayfalar.Add(sayfa.No);
-            }
-        }
+                string norm = _normMetinOnbellek.TryGetValue(sayfa.No, out var cachedNorm)
+                    ? cachedNorm
+                    : TrNormalizasyon.Normalle(sayfa.Metin);
 
+                bool onEslesme = false;
+                foreach (var k in kelimeler)
+                {
+                    if (norm.Contains(k, StringComparison.Ordinal))
+                    {
+                        onEslesme = true;
+                        break;
+                    }
+                }
+
+                if (onEslesme)
+                {
+                    var vurgular = MetinEsleme.Vurgula(sayfa.Metin, kelimeler);
+                    if (vurgular.Length > 0)
+                    {
+                        sonuc.Add(sayfa.No);
+                    }
+                }
+            }
+            return sonuc;
+        });
+
+        _eslesenSayfalar.AddRange(eslesenler);
         EslesmeDurumunuGuncelle();
     }
 
@@ -509,7 +626,7 @@ public partial class BelgePenceresi : Window
         }
     }
 
-    private async void YakinlastirmaKaydiraci_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    private void YakinlastirmaKaydiraci_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         if (!IsLoaded) return;
 
@@ -519,7 +636,8 @@ public partial class BelgePenceresi : Window
             YakinlastirmaMetni.Text = $"%{_zoomYuzde}";
         }
 
-        await SayfaGoruntusunuGosterAsync(_aktifSayfaNo);
+        _zoomZamanlayici.Stop();
+        _zoomZamanlayici.Start();
     }
 
     private void BelgeAramaKutusu_KeyDown(object sender, KeyEventArgs e)
@@ -613,6 +731,9 @@ public partial class BelgePenceresi : Window
 
     private void Pencere_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
+        _zoomZamanlayici.Stop();
+        _belgeAramaZamanlayici.Stop();
+        _renderKilidi.Dispose();
         _pdfBelgesi = null;
         _lruOnbellek.Clear();
         _lruSira.Clear();
