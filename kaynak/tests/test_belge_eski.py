@@ -254,7 +254,7 @@ class EskiBicimTest(GeciciTest):
                 self.assertEqual(komut[1:], [yol, "-e", "n"])
                 return b"2\n"
             if ad == "djvutxt":
-                return b"Metin katmani" if "--page=1" in komut else b" \n\f"
+                return b"Metin katmani\f"
             self.assertEqual(komut[1:4], ["-format=tiff", "-page=2", yol])
             Image.new("RGB", (100, 50), "white").save(komut[-1])
             return b""
@@ -276,7 +276,7 @@ class EskiBicimTest(GeciciTest):
         self.assertIn("DjVuLibre", sonuc.hata)
         self.assertIn("djvutxt", sonuc.hata)
         with patch("videohat.yollar.djvulibre", side_effect=lambda ad: None if ad == "ddjvu" else Path(ad)), \
-                patch("videohat.belge.cikar.calistir", side_effect=[b"1", b""]):
+                patch("videohat.belge.cikar.calistir", side_effect=[b"", b"1"]):  # djvutxt boş, djvused 1 sayfa
             sonuc = self.oku(self.kok / "bos.djvu")
         self.assertEqual(sonuc.durum, "desteklenmiyor")
         self.assertIn("ddjvu", sonuc.hata)
@@ -304,8 +304,12 @@ class EskiBicimTest(GeciciTest):
         self.assertIn("7-Zip", sonuc.hata)
 
         def ac(komut, sn, ad):
-            self.assertEqual((komut[1], komut[3], komut[4], sn, ad), ("x", "-y", yol, 120, "7-Zip"))
-            ara = Path(komut[2][2:])
+            self.assertEqual(komut[1], "x")
+            self.assertEqual(komut[-1], yol)
+            self.assertEqual((sn, ad), (120, "7-Zip"))
+            self.assertTrue(all(arg in komut for arg in ("-y", "-snl-", "-snh-", "-p", "--")))
+            tmp_arg = next(arg for arg in komut if str(arg).startswith("-o"))
+            ara = Path(str(tmp_arg)[2:])
             (ara / "b.html").write_text("<p>İkinci</p>", encoding="utf-8")
             (ara / "a.HTM").write_text("<p>Birinci</p><script>gizli</script>", encoding="utf-8")
             (ara / "resim.png").write_bytes(b"gorsel")
@@ -373,6 +377,104 @@ class EskiBicimTest(GeciciTest):
                 patch("videohat.dizin.dizinle._dongu", return_value=0) as dongu:
             self.assertEqual(dizinle(self.ayar, kokler=[self.kok], bir_kez=True), 0)
         self.assertEqual(dongu.call_args.args[2], self.kok / "_veridedektifi")
+
+    def test_cp1254_noktalama_sapka_cp857_cakismasi(self):
+        metin1 = '“Radar kâr raporu: maliyet 150 € » onaylandı”'
+        self.assertEqual(metin_oku(metin1.encode("cp1254")), metin1)
+        metin2 = '“Tüm hakları saklıdır” kâr marjı: 50 € » net'
+        self.assertEqual(metin_oku(metin2.encode("cp1254")), metin2)
+
+    def test_chm_symlink_ve_zip_slip_engeli(self):
+        yol = self.kok / "zararli.chm"
+        ara = self.kok / "chm_ara"
+        ara.mkdir()
+        sonuc = BelgeSonucu("chm")
+        dis_dosya = self.kok / "disari_gizli.html"
+        dis_dosya.write_text("<p>Gizli Veri</p>", encoding="utf-8")
+
+        def sahte_ac(komut, sn, ad):
+            self.assertIn("-snl-", komut)
+            self.assertIn("-snh-", komut)
+            self.assertIn("-p", komut)
+            self.assertIn("--", komut)
+            tmp_arg = next(arg for arg in komut if str(arg).startswith("-o"))
+            tmp_dizin = Path(str(tmp_arg)[2:])
+            (tmp_dizin / "guvenli.html").write_text("<p>Güvenli İçerik</p>", encoding="utf-8")
+            (tmp_dizin / "zararli_link.html").write_text("<p>Symlink İçerik</p>", encoding="utf-8")
+            (tmp_dizin / "slip.html").write_text("<p>Zipslip İçerik</p>", encoding="utf-8")
+
+        gercek_is_symlink = Path.is_symlink
+        gercek_resolve = Path.resolve
+
+        def sahte_is_symlink(p):
+            if "link" in p.name:
+                return True
+            return gercek_is_symlink(p)
+
+        def sahte_resolve(p, *args, **kwargs):
+            if "slip" in p.name:
+                return dis_dosya.resolve()
+            return gercek_resolve(p, *args, **kwargs)
+
+        with patch("videohat.yollar.yedizip", return_value=Path("7z.exe")), \
+                patch("videohat.belge.cikar.calistir", side_effect=sahte_ac), \
+                patch.object(Path, "is_symlink", autospec=True, side_effect=sahte_is_symlink), \
+                patch.object(Path, "resolve", autospec=True, side_effect=sahte_resolve):
+            _chm(yol, self.ayar, None, ara, sonuc)
+
+        self.assertEqual(len(sonuc.sayfalar), 1)
+        self.assertEqual(sonuc.sayfalar[0].metin, "Güvenli İçerik")
+        metinler = [s.metin for s in sonuc.sayfalar]
+        self.assertNotIn("Symlink İçerik", metinler)
+        self.assertNotIn("Zipslip İçerik", metinler)
+        self.assertNotIn("Gizli Veri", metinler)
+
+    def test_libreoffice_basarisiz_artcraft_yedegine_gecis(self):
+        yol = self.kok / "eski.doc"
+        yol.write_bytes(b"doc")
+        lo_exe = Path("soffice.exe")
+        cli_exe = self.kok / "wordcraft-cli.exe"
+
+        cagrilanlar = []
+        def sahte_calistir(komut, sn, ad):
+            cagrilanlar.append(ad)
+            if ad == "LibreOffice":
+                raise IsHatasi("LibreOffice çöktü")
+            elif ad == "wordcraft-cli":
+                modern_yaz(komut[3])
+                return b""
+
+        with patch("videohat.yollar.libreoffice", return_value=lo_exe), \
+                patch("videohat.yollar.artcraft_cli", return_value=cli_exe), \
+                patch("videohat.belge.ofis.calistir", side_effect=sahte_calistir):
+            sonuc = self.oku(yol)
+
+        self.assertEqual(sonuc.durum, "tamam")
+        self.assertIn("LibreOffice", cagrilanlar)
+        self.assertIn("wordcraft-cli", cagrilanlar)
+        self.assertIn(METIN, sonuc.sayfalar[0].metin)
+
+    def test_artcraft_cli_coklu_surum_en_yuksek(self):
+        paket = self.kok / "paket"
+        lap = self.kok / "localapp"
+        v12 = paket / "artcraft" / "wordcraft" / "1.2.0" / "wordcraft-cli.exe"
+        v110 = paket / "artcraft" / "wordcraft" / "1.10.0" / "wordcraft-cli.exe"
+        v20 = paket / "artcraft" / "wordcraft" / "v2.0.0" / "wordcraft-cli.exe"
+        lap_exe = lap / "Programs" / "WordCraft" / "wordcraft-cli.exe"
+
+        for p in (v12, v110, v20, lap_exe):
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.touch()
+
+        with patch("videohat.yollar.kok", return_value=paket), \
+                patch.dict(os.environ, {"LOCALAPPDATA": str(lap), "ProgramFiles": str(self.kok / "pf")}):
+            self.assertEqual(yollar.artcraft_cli("wordcraft"), v20)
+            v20.unlink()
+            self.assertEqual(yollar.artcraft_cli("wordcraft"), v110)
+            v110.unlink()
+            self.assertEqual(yollar.artcraft_cli("wordcraft"), v12)
+            v12.unlink()
+            self.assertEqual(yollar.artcraft_cli("wordcraft"), lap_exe)
 
 
 class GercekEskiAracTest(GeciciTest):

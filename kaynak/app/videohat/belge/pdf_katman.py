@@ -57,7 +57,7 @@ def olustur(yol: Path, sayfalar, hedef: Path, dpi: int):
                     _metin_ekle(belge[s.no - 1], s, dpi, font, font_ad, font_yol)
         else:
             for s in sayfalar:
-                with kare_oku(yol, s.no) as kare:
+                with kare_oku(yol, s.no, dpi=dpi) as kare:
                     sayfa = belge.new_page(width=kare.width * 72 / dpi, height=kare.height * 72 / dpi)
                     with io.BytesIO() as buf:
                         kare.save(buf, format="PNG")

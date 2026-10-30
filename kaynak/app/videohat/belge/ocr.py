@@ -218,7 +218,7 @@ def _is_oku(motor, is_, ayar):
             del pix
     else:
         from .gorsel import kare_oku
-        with kare_oku(is_.yol, no) as im:
+        with kare_oku(is_.yol, no, dpi=ayar.ocr.dpi) as im:
             gorsel = np.asarray(im)[:, :, ::-1].copy()
     satirlar, guven = motor.oku(gorsel)
     metin = getattr(satirlar, "metin", "") or birlestir(satirlar)

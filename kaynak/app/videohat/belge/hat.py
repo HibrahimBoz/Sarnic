@@ -64,6 +64,8 @@ def isle_belge(yol: Path, depo: Path, ayar, havuz: OcrHavuzu | None = None) -> B
             os.replace(gecici, hedef / duzenlenebilir)
         pdf_kaynak = sonuc.duzenlenebilir or yol
         sonuc.aranabilir_pdf = olustur(pdf_kaynak, sonuc.sayfalar, hedef / "aranabilir.pdf", ayar.ocr.dpi)
+        if duzenlenebilir == "duzenlenebilir.pdf" and sonuc.aranabilir_pdf:
+            shutil.copyfile(hedef / "aranabilir.pdf", hedef / duzenlenebilir)
         metin_gecici = hedef / "metin.txt.tmp"
         with metin_gecici.open("w", encoding="utf-8", newline="\n") as f:
             for i, s in enumerate(sonuc.sayfalar):
@@ -100,6 +102,9 @@ def disa_yaz(yol, cikis, ayar, havuz=None):
     try:
         kayit = isle_belge(yol, depo, ayar, havuz)
         kopya = kayit.veri.get("duzenlenebilir")
+        for eski in cikis.glob("duzenlenebilir.*"):
+            if not kopya or eski.name != kopya:
+                eski.unlink(missing_ok=True)
         for ad in ("metin.txt", "aranabilir.pdf") + ((kopya,) if kopya else ()) + ("belge.json",):
             kaynak = kayit.hedef / ad
             if kaynak.is_file():

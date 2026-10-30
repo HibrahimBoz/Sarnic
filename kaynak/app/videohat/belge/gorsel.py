@@ -13,7 +13,7 @@ def sayfa_sayisi(yol):
             return len(belge)
 
 
-def kare_oku(yol, no=1):
+def kare_oku(yol, no=1, dpi=None):
     from PIL import Image, ImageOps
     try:
         with Image.open(yol) as im:
@@ -22,5 +22,8 @@ def kare_oku(yol, no=1):
     except (OSError, ValueError):
         import pymupdf
         with pymupdf.open(yol) as belge:
-            pix = belge[no - 1].get_pixmap(colorspace=pymupdf.csRGB, alpha=False)
+            kw = {"colorspace": pymupdf.csRGB, "alpha": False}
+            if dpi:
+                kw["dpi"] = dpi
+            pix = belge[no - 1].get_pixmap(**kw)
             return Image.frombytes("RGB", (pix.width, pix.height), pix.samples)

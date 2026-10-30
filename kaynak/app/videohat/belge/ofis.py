@@ -233,21 +233,39 @@ def eski_arac_eksik(uzanti):
 def eski_cevir(yol, ara):
     yol, ara = Path(yol), Path(ara)
     uzanti = ESKI_OFIS_HEDEFLERI[yol.suffix.lower()]
-    exe = yollar.libreoffice()
+    lo_adaylar = yollar.libreoffice_adaylari()
     yedek = ARTCRAFT_YEDEKLERI.get(yol.suffix.lower())
-    cli = yollar.artcraft_cli(yedek) if exe is None and yedek else None
-    if exe is None and cli is None:
+    cli = yollar.artcraft_cli(yedek) if yedek else None
+
+    adaylar = [("lo", exe) for exe in lo_adaylar]
+    if cli is not None:
+        adaylar.append(("artcraft", cli))
+
+    if not adaylar:
         return None
+
     ara.mkdir(parents=True, exist_ok=True)
     sonuc = ara / (yol.stem + "." + uzanti)
-    sonuc.unlink(missing_ok=True)  # Yarım kalmış dönüşümün çıktısı başarı sayılmasın.
-    if exe is not None:
-        # SHA deposunun derin yolunda LibreOffice profil dosyaları Windows sınırını aşabilir.
-        with tempfile.TemporaryDirectory(prefix=f"lo_profil_{os.getpid()}_") as tmp:
-            calistir([exe, f"-env:UserInstallation={Path(tmp).resolve().as_uri()}", "--headless", "--norestore",
-                      "--convert-to", uzanti, "--outdir", ara, yol], 120, "LibreOffice")
-    else:
-        calistir([cli, "convert", yol, sonuc], 120, f"{yedek}-cli")
-    if not sonuc.is_file():
-        raise IsHatasi(f"{'LibreOffice' if exe is not None else yedek + '-cli'} çıktı oluşturmadı")
-    return sonuc
+
+    hatalar = []  # denenen her aracın nedeni kullanıcıya birlikte gösterilir
+    for tur, arac in adaylar:
+        sonuc.unlink(missing_ok=True)  # Yarım kalmış dönüşümün çıktısı başarı sayılmasın.
+        arac_ad = "LibreOffice" if tur == "lo" else f"{yedek}-cli"
+        try:
+            if tur == "lo":
+                with tempfile.TemporaryDirectory(prefix=f"lo_profil_{os.getpid()}_") as tmp:
+                    calistir([arac, f"-env:UserInstallation={Path(tmp).resolve().as_uri()}",
+                              "--headless", "--norestore", "--nolockcheck", "--nodefault",
+                              "--nofirststartwizard", "--convert-to", uzanti, "--outdir", ara, yol],
+                             120, "LibreOffice")
+            else:
+                calistir([arac, "convert", yol, sonuc], 120, f"{yedek}-cli")
+            if sonuc.is_file():
+                return sonuc
+            hatalar.append(f"{arac_ad} çıktı oluşturmadı")
+        except IsHatasi as e:
+            hatalar.append(str(e))
+        except Exception as e:
+            hatalar.append(f"{arac_ad} başarısız: {e}")
+
+    raise IsHatasi("; ".join(hatalar) if hatalar else f"Eski {uzanti} dönüştürülemedi")

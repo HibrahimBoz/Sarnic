@@ -4,6 +4,7 @@ from email import policy
 from html.parser import HTMLParser
 import io
 from pathlib import Path
+import re
 import tempfile
 import xml.etree.ElementTree as ET
 import zlib
@@ -66,9 +67,16 @@ def metin_oku(ham):
         metin = ham.decode(kodlama, errors="replace")
         turkce = sum(c in "çğıöşüÇĞİÖŞÜ" for c in metin)
         harf_orani = sum(c.isalpha() for c in metin) / max(1, len(metin))
-        kutu = sum("\u2500" <= c <= "\u257f" for c in metin) if kodlama == "cp857" else 0
+        kutu = 0
+        ceza = 0
+        if kodlama == "cp857":
+            kutu_bloklari = re.findall(r"[\u2500-\u257f]+", metin)
+            kutu = sum(len(b) for b in kutu_bloklari if len(b) >= 3)
+            cp1254_artik = sum(c in "÷²³\xad■º¦▄ôûùòàèæÆ½" for c in metin)
+            yalniz_kutu = sum(len(b) for b in kutu_bloklari if len(b) < 3)
+            ceza = 3 * cp1254_artik + 2 * yalniz_kutu
         bozuk = sum(c == "\ufffd" or "\x80" <= c <= "\x9f" for c in metin)
-        adaylar.append((turkce + harf_orani + 2 * kutu - 3 * bozuk, metin))
+        adaylar.append((turkce + harf_orani + 2 * kutu - 3 * bozuk - ceza, metin))
     return max(adaylar, key=lambda a: a[0])[1]
 
 
@@ -93,9 +101,12 @@ def _ocr_isleri(sonuc, isler, havuz, ara, ayar):
         for is_ in isler:
             s = Sayfa(is_.no, is_.etiket or f"Sayfa {is_.no}", "ocr", "", 0)
             _sakla(sonuc, s, ara, ayar, [f"Sayfa {is_.no}: OCR havuzu yok"])
+            if is_.yol.endswith(".tiff"):
+                Path(is_.yol).unlink(missing_ok=True)
     else:
         for s, u in havuz.haritala(isler):
             _sakla(sonuc, s, ara, ayar, u)
+            (ara / f"djvu_{s.no:05d}.tiff").unlink(missing_ok=True)
     sonuc.sayfalar.sort(key=lambda s: s.no)
 
 
@@ -127,14 +138,30 @@ def _pdf(yol, ayar, havuz, ara, sonuc):
 
 def _djvu(yol, ayar, havuz, ara, sonuc):
     araclar = {ad: yollar.djvulibre(ad) for ad in ("djvused", "djvutxt", "ddjvu")}
-    eksik = [ad for ad in ("djvused", "djvutxt") if araclar[ad] is None]
-    if eksik:
+    if araclar["djvutxt"] is None:
         sonuc.durum = "desteklenmiyor"
-        sonuc.hata = f"DjVu: DjVuLibre ({', '.join(eksik)}) bulunamadı"
+        sonuc.hata = "DjVu: DjVuLibre (djvutxt) bulunamadı"
         return
-    sayi = int(calistir([araclar["djvused"], yol, "-e", "n"], 120, "djvused").strip())
-    if sayi < 1:
-        raise IsHatasi("DjVu sayfa sayısı geçersiz")
+
+    ham = calistir([araclar["djvutxt"], yol], 120, "djvutxt")
+    metin = ham.decode("utf-8", errors="replace")
+    sayfa_metinleri = [p.strip() for p in metin.split("\f")]
+    if sayfa_metinleri and not sayfa_metinleri[-1]:
+        sayfa_metinleri.pop()
+
+    sayi = None
+    if araclar["djvused"] is not None:
+        try:
+            sayi = int(calistir([araclar["djvused"], yol, "-e", "n"], 120, "djvused").strip())
+        except Exception:
+            sayi = None
+    if not sayi or sayi < 1:
+        sayi = max(1, len(sayfa_metinleri))
+
+    while len(sayfa_metinleri) < sayi:
+        sayfa_metinleri.append("")
+    if len(sayfa_metinleri) > sayi:
+        sayfa_metinleri = sayfa_metinleri[:sayi]
 
     def isler():
         for no in range(1, sayi + 1):
@@ -142,11 +169,11 @@ def _djvu(yol, ayar, havuz, ara, sonuc):
                 havuz.ilerleme()
             if _onbellekten(sonuc, ara, no, ayar):
                 continue
-            ham = calistir([araclar["djvutxt"], f"--page={no}", yol], 120, "djvutxt")
-            metin = ham.decode("utf-8", errors="replace").strip()
-            if metin:
-                _sakla(sonuc, Sayfa(no, f"Sayfa {no}", "metin", metin), ara, ayar)
+            sayfa_metni = sayfa_metinleri[no - 1]
+            if sayfa_metni:
+                _sakla(sonuc, Sayfa(no, f"Sayfa {no}", "metin", sayfa_metni), ara, ayar)
             elif araclar["ddjvu"] is None:
+                sonuc.sayfalar.clear()
                 sonuc.durum = "desteklenmiyor"
                 sonuc.hata = "DjVu OCR: DjVuLibre (ddjvu) bulunamadı"
                 return
@@ -155,22 +182,31 @@ def _djvu(yol, ayar, havuz, ara, sonuc):
                 calistir([araclar["ddjvu"], "-format=tiff", f"-page={no}", yol, tiff], 120, "ddjvu")
                 yield OcrIsi(str(tiff), no, girdi_no=1)
 
-    _ocr_isleri(sonuc, isler(), havuz, ara, ayar)
+    try:
+        _ocr_isleri(sonuc, isler(), havuz, ara, ayar)
+    finally:
+        for tiff in ara.glob("djvu_*.tiff"):
+            tiff.unlink(missing_ok=True)
 
 
 def _web_arsivi(yol):
     with yol.open("rb") as f:
         ileti = email.message_from_binary_file(f, policy=policy.default)
     for tur in ("text/html", "text/plain"):
-        parca = next((p for p in ileti.walk() if p.get_content_type() == tur), None)
-        if parca is not None:
-            ham = parca.get_payload(decode=True) or b""
-            kodlama = parca.get_content_charset()
-            try:
-                metin = ham.decode(kodlama) if kodlama else metin_oku(ham)
-            except (LookupError, UnicodeDecodeError):
-                metin = metin_oku(ham)
-            return html_metin(metin) if tur == "text/html" else metin
+        parcalar = [p for p in ileti.walk() if p.get_content_type() == tur]
+        if parcalar:
+            metinler = []
+            for parca in parcalar:
+                ham = parca.get_payload(decode=True) or b""
+                kodlama = parca.get_content_charset()
+                try:
+                    metin = ham.decode(kodlama) if kodlama else metin_oku(ham)
+                except (LookupError, UnicodeDecodeError):
+                    metin = metin_oku(ham)
+                parca_metni = html_metin(metin) if tur == "text/html" else metin
+                if parca_metni.strip():
+                    metinler.append(parca_metni.strip())
+            return "\n\n".join(metinler)
     return ""
 
 
@@ -180,9 +216,17 @@ def _chm(yol, ayar, havuz, ara, sonuc):
         sonuc.durum, sonuc.hata = "desteklenmiyor", "CHM: 7-Zip bulunamadı"
         return
     with tempfile.TemporaryDirectory(prefix="chm_", dir=ara) as tmp:
-        calistir([exe, "x", f"-o{tmp}", "-y", yol], 120, "7-Zip")
-        dosyalar = sorted((p for p in Path(tmp).rglob("*") if p.is_file() and p.suffix.lower() in (".htm", ".html")),
-                          key=lambda p: p.relative_to(tmp).as_posix().casefold())
+        calistir([exe, "x", f"-o{tmp}", "-y", "-snl-", "-snh-", "-p", "--", yol], 120, "7-Zip")
+        tmp_res = Path(tmp).resolve()
+        dosyalar = []
+        for p in Path(tmp).rglob("*"):
+            if not p.is_symlink() and p.is_file() and p.suffix.lower() in (".htm", ".html"):
+                try:
+                    if p.resolve().is_relative_to(tmp_res):
+                        dosyalar.append(p)
+                except (ValueError, RuntimeError):
+                    pass
+        dosyalar.sort(key=lambda p: p.relative_to(tmp).as_posix().casefold())
         _ofis(((f"Bölüm {no}", html_metin(metin_oku(p.read_bytes())), [])
                for no, p in enumerate(dosyalar, 1)), sonuc, ayar, havuz, ara)
 
@@ -307,7 +351,12 @@ def _cikar(yol, ayar, havuz, ara, derinlik):
               xlsx_parcalari if uz in (".xlsx", ".xlsm") else odf_parcalari)
         _ofis(fn(yol), sonuc, ayar, havuz, ara)
     elif uz in ESKI_OFIS_HEDEFLERI:
-        yeni = eski_cevir(yol, ara / "ofis")
+        hedef_uz = ESKI_OFIS_HEDEFLERI[uz]
+        ofis_cikti = ara / "ofis" / (yol.stem + "." + hedef_uz)
+        if ofis_cikti.is_file():
+            yeni = ofis_cikti
+        else:
+            yeni = eski_cevir(yol, ara / "ofis")
         if yeni is None:
             sonuc.durum = "desteklenmiyor"
             sonuc.hata = eski_arac_eksik(uz)
