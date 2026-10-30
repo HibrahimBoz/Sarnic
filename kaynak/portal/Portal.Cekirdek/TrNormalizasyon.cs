@@ -1,5 +1,6 @@
 namespace Portal.Cekirdek;
 
+using System.Globalization;
 using System.Text;
 
 /// <summary>
@@ -23,6 +24,11 @@ public static class TrNormalizasyon
 
         foreach (char ch in metin)
         {
+            if (char.GetUnicodeCategory(ch) == UnicodeCategory.NonSpacingMark)
+            {
+                continue;
+            }
+
             char donusen = Donustur(ch);
             if (donusen == ' ')
             {
@@ -102,6 +108,11 @@ public static class TrNormalizasyon
             case '´':
                 return ' ';
             default:
+                if (char.IsSurrogate(c))
+                {
+                    return ' ';
+                }
+
                 if (c >= 'A' && c <= 'Z')
                 {
                     return (char)(c + 32);
