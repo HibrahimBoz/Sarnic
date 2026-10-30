@@ -7,8 +7,8 @@ from ..terimler import kucuk
 
 _SOZCUK = re.compile(r"[^\W_]+", re.UNICODE)
 _KALIN, _INCE = set("aıou"), set("eiöü")
-_YABANCI_HARF = str.maketrans("șȘśŚşźżŹŻćĆáàäÁÀÄéèëÉÈËíìïÍÌÏóòÓÒőŐúùÚÙűŰýÝňŇřŘ",
-                              "şŞşŞşzzZZçÇaaaAAAeeeEEEiiiİİİooOOöÖuuUUüÜyYnNrR")
+_YABANCI_HARF = str.maketrans("șȘśŚźżŹŻćĆáàäÁÀÄéèëÉÈËíìïÍÌÏóòÓÒőŐúùÚÙűŰýÝňŇřŘ",
+                              "şŞsSzzZZcCaaaAAAeeeEEEiiiİİİooOOoOuuUUuUyYnNrR")
 # Ünlü uyumuna uymayan ekler: bunlarla biten sözcüğe uyum kuralı uygulanmaz.
 _UYUMSUZ_EKLER = ("yor", "yordu", "yorlar", "ken", "ki", "leyin", "gil")
 # OCR Türkçe işareti düşürür, nadiren yanlış ekler: yalnız işaret EKLEYEN değişime izin verilir (ı->i yasak).
@@ -87,6 +87,9 @@ class Sozluk:
             unluler = [c for c in kok if c in _KALIN or c in _INCE]
             if not unluler:
                 return None
+            ek = anahtar[n:]
+            if any(u in ek for u in ("ki", "yor", "ken")):  # uyumsuz ek ortada da olabilir: masadakiler
+                return None
             onceki, sonuc = unluler[-1], list(kok)
             for c in kelime[n:]:
                 if c in "iı":
@@ -116,6 +119,8 @@ class Sozluk:
                 return ham
             if ham.isupper():
                 aday = self.indeks.get(icerik_normalle(kelime))
+                if not aday and self.unlu_uyumu:
+                    aday = self._uyumla(kelime)
                 if aday and len(aday) == len(kelime) and _izinli(aday, ham):
                     return _buyuk(aday)
                 return ham

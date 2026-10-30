@@ -83,6 +83,7 @@ def disa_yaz(yol, cikis, ayar, havuz=None):
     cikis = Path(cikis)
     cikis.mkdir(parents=True, exist_ok=True)
     depo = cikis / "_ara" / "depo"
+    bitti = False
     try:
         kayit = isle_belge(yol, depo, ayar, havuz)
         for ad in ("metin.txt", "aranabilir.pdf", "belge.json"):
@@ -94,7 +95,9 @@ def disa_yaz(yol, cikis, ayar, havuz=None):
             elif ad == "aranabilir.pdf":
                 (cikis / ad).unlink(missing_ok=True)
         kayit.hedef = cikis
+        bitti = True
         return kayit
     finally:
-        if not ayar.genel.ara_dosya_sakla:
+        # Yarıda kesilirse (Ctrl+C) sayfa önbelleği kalır: sonraki çağrı kaldığı sayfadan sürer
+        if bitti and not ayar.genel.ara_dosya_sakla:
             shutil.rmtree(cikis / "_ara", ignore_errors=True)

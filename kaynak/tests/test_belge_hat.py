@@ -24,7 +24,7 @@ class HatTest(GeciciTest):
         self.assertFalse((hedef / "belge.json").exists())
         for no in (1, 2):
             veri = json.loads((hedef / "_ara" / f"sayfa_{no:05d}.json").read_text(encoding="utf-8"))
-            self.assertEqual(set(veri) - {"uyarilar"}, {"no", "etiket", "kaynak", "metin", "guven", "satirlar", "gorsel_boyut", "dpi"})
+            self.assertEqual(set(veri) - {"uyarilar"}, {"no", "etiket", "kaynak", "metin", "guven", "satirlar", "gorsel_boyut", "yon", "dpi"})
         havuz = SahteHavuz()
         kayit = isle_belge(yol, depo, self.ayar, havuz)
         self.assertEqual(havuz.isler, [3])

@@ -24,6 +24,7 @@ class Sayfa:
     guven: float | None = None
     satirlar: list[OcrSatir] = field(default_factory=list)
     gorsel_boyut: tuple[int, int] | None = None
+    yon: int = 0  # OCR'da bulunan sayfa yönü; önbellekten devamda aranabilir PDF için gerekli
 
 
 @dataclass

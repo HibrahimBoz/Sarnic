@@ -14,12 +14,15 @@ class SozlukTest(GeciciTest):
         self.assertEqual(s.duzelt("yapilmalidir", .99), "yapilmalidir")
         self.assertEqual(s.duzelt("yapilmalidir", .96), "yapılmalıdır")  # ölçüldü: hatalı satır güveni 0,96
         self.assertEqual(s.duzelt("iletișim", .9), "iletişim")
-        self.assertEqual(s.duzelt("KLAŚÖR üzerínde sözcűk", .9), "KLAŞÖR üzerinde sözcük")  # ölçüldü: yabancı işaretli harf
+        self.assertEqual(s.duzelt("KLAŚÖR üzerínde", .9), "KLASÖR üzerinde")  # yabancı işaret taban harfe iner  # ölçüldü: yabancı işaretli harf
         u = Sozluk()
         for kelime in ("komutan", "alın", "geliyor"):
             u.ekle(kelime)
         self.assertEqual(u.duzelt("Komutanlik alinmadan", .96), "Komutanlık alınmadan")  # kök + ünlü uyumu
         self.assertEqual(u.duzelt("geliyorki", .96), "geliyorki")  # uyumsuz ek: dokunulmaz
+        u.ekle("masa")
+        self.assertEqual(u.duzelt("masadakiler", .96), "masadakiler")  # ortadaki -ki- de uyumu durdurur
+        self.assertEqual(u.duzelt("KOMUTANLiK", .96), "KOMUTANLIK")  # büyük harfte de kök + ünlü uyumu
         k = Sozluk(unlu_uyumu=False)
         k.ekle("komutan")
         self.assertEqual(k.duzelt("Komutanlik", .96), "Komutanlik")
@@ -65,6 +68,25 @@ class SozlukTest(GeciciTest):
         sonuc = sirala(list(reversed(kutular)), (1000, 300))
         beklenen = [f"sol{i}" for i in range(5)] + [f"sağ{i}" for i in range(5)] + ["ALTBİLGİ"]
         self.assertEqual([s.metin for s in sonuc], beklenen)
+
+    def test_sutunda_paragraf_boslugu_zikzak_yapmaz(self):
+        # Argon 2. tur: sağ sütunda paragraf boşluğu olan bantta yalnız sol kutu var
+        kutular = []
+        for i in range(5):
+            kutular.append(OcrSatir(f"sol{i}", .9, (20, 50 + i * 40, 450, 80 + i * 40)))
+            if i != 2:
+                kutular.append(OcrSatir(f"sağ{i}", .9, (550, 50 + i * 40, 980, 80 + i * 40)))
+        sonuc = [s.metin for s in sirala(list(reversed(kutular)), (1000, 300))]
+        self.assertEqual(sonuc, [f"sol{i}" for i in range(5)] + ["sağ0", "sağ1", "sağ3", "sağ4"])
+        # Oluğu kesen ara başlık: üst iki sütun, başlık, alt iki sütun sırası
+        ara = [OcrSatir("ARA BAŞLIK", 1, (20, 250, 980, 270))]
+        for i in range(2):
+            ara += [OcrSatir(f"üs{i}", .9, (20, 50 + i * 40, 450, 80 + i * 40)),
+                    OcrSatir(f"üğ{i}", .9, (550, 50 + i * 40, 980, 80 + i * 40)),
+                    OcrSatir(f"as{i}", .9, (20, 300 + i * 40, 450, 330 + i * 40)),
+                    OcrSatir(f"ağ{i}", .9, (550, 300 + i * 40, 980, 330 + i * 40))]
+        self.assertEqual([s.metin for s in sirala(ara[::-1], (1000, 400))],
+                         ["üs0", "üs1", "üğ0", "üğ1", "ARA BAŞLIK", "as0", "as1", "ağ0", "ağ1"])
 
     def test_ayni_satir_hafif_ortusen_kutular_boslukla_birlesir(self):
         # 3. bulgu: aynı satırda kutusu hafif örtüşen (b[0] < a[2]) sözcükler \n yerine boşlukla birleşir

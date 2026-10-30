@@ -16,7 +16,10 @@ log = logging.getLogger("videohat")
 
 def icerikleri_isle(db, depo, ayar, havuz, yayinci=None):
     hatali, son_yayin = 0, time.monotonic()
-    koruma_var = db.execute("SELECT 1 FROM sqlite_temp_master WHERE name=?", ("korunan",)).fetchone()
+    try:  # tablo var ama boşsa her sorguya pahalı NOT EXISTS eklenmesin
+        koruma_var = db.execute("SELECT 1 FROM korunan LIMIT 1").fetchone()
+    except sqlite3.OperationalError:
+        koruma_var = None
     koruma = (" AND NOT EXISTS (SELECT 1 FROM korunan k WHERE kanon(dosya.yol)=k.yol "
               "OR kanon(dosya.yol) LIKE k.desen ESCAPE '!')") if koruma_var else ""
 

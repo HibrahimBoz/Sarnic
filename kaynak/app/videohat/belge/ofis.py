@@ -163,6 +163,7 @@ def _od_metin(e):
     parcalar = [e.text or ""]
     for alt in e:
         if alt.tag in (f"{{{_NS['text']}}}p", f"{{{_NS['text']}}}h"):
+            parcalar.append(alt.tail or "")  # iç paragraf dış döngüde okunur; ardından gelen metin kaybolmasın
             continue
         if alt.tag == f"{{{_NS['text']}}}s":
             parcalar.append(" " * int(alt.get(f"{{{_NS['text']}}}c", "1")))

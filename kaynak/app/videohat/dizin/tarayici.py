@@ -93,9 +93,12 @@ def tara(db, kokler, haric=(), zorla_sil=False, haric_yollar=()):
         ders = ders_bul(yol)
         eski = db.execute("SELECT id,yol,boyut,degisme,tur,ders FROM dosya WHERE yol=?", (s,)).fetchone()
         if eski is None:
-            eski = db.execute("SELECT id,yol,boyut,degisme,tur,ders FROM dosya WHERE kanon(yol)=?", (kanon_s,)).fetchone()
+            # İndeksli arama (her yeni dosyada tam tablo taraması olmasın; Argon 2. tur)
+            eski = db.execute("SELECT id,yol,boyut,degisme,tur,ders FROM dosya WHERE yol=? COLLATE NOCASE",
+                              (s,)).fetchone()
             if eski is not None and eski["yol"] != s:
-                db.execute("UPDATE dosya SET yol=?, norm_yol=? WHERE id=?", (s, dosya_normalle(s), eski["id"]))
+                db.execute("UPDATE dosya SET yol=?, ad=?, klasor=?, norm_ad=?, norm_yol=? WHERE id=?",
+                           (s, yol.name, str(yol.parent), dosya_normalle(yol.name), dosya_normalle(s), eski["id"]))
         durum = "bekliyor" if tur in ("belge", "goruntu") else "yok"
         if eski is None:
             db.execute("""INSERT INTO dosya(yol,ad,klasor,uzanti,boyut,degisme,tur,durum,ders,norm_ad,norm_yol)
@@ -164,6 +167,8 @@ def tara(db, kokler, haric=(), zorla_sil=False, haric_yollar=()):
             continue
         gez(kok, girdiler)
         acilan_kokler.append(kok)
+        # Kök klasörün kendi satırı (üst klasör daha önce tarandıysa) silinmesin
+        db.execute("INSERT OR IGNORE INTO gorulen(yol) VALUES (?)", (_kanon(kok),))
     # Bütün kökler bittikten sonra sil; görülen yolların tamamı diskte kalır.
     for kok in acilan_kokler:
         k_kok = _kanon(kok)

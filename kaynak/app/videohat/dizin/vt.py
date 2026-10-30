@@ -55,6 +55,8 @@ def ac(yol) -> sqlite3.Connection:
         db.executescript(yollar.ortak("dizin_sema.sql").read_text(encoding="utf-8"))
         if db.execute("SELECT deger FROM meta WHERE anahtar=?", ("surum",)).fetchone()[0] != "1":
             raise OrtamHatasi("Desteklenmeyen dizin şema sürümü")
+        # Yazar ek dizini: büyük/küçük harfi değişmiş yolu tam tablo taraması olmadan bulur (okurlar kullanmaz)
+        db.execute("CREATE INDEX IF NOT EXISTS ix_dosya_yol_nocase ON dosya(yol COLLATE NOCASE)")
     except BaseException:
         db.close()
         raise

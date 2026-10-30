@@ -53,15 +53,15 @@ def _bantlar(kutular):
     return bantlar
 
 
-def _ic_bosluk_var(bant, genislik):
-    """Bant içinde yatay boşluk (sütun aralığı adayı) var mı."""
+def _ic_bosluk(bant, genislik):
+    """Bant içindeki ilk yatay boşluk (sütun aralığı adayı) (sol_son, sag_bas); yoksa None."""
     araliklar = sorted((s.kutu[0], s.kutu[2]) for s in bant)
     sag = araliklar[0][1]
     for bas, son in araliklar[1:]:
         if bas - sag >= genislik * .02:
-            return True
+            return sag, bas
         sag = max(sag, son)
-    return False
+    return None
 
 
 def _bloklar(kutular, genislik):
@@ -91,13 +91,20 @@ def _bloklar(kutular, genislik):
     bol = _oluk_ayir(kutular, genislik)
     if bol:
         return _bloklar(bol[0], genislik) + _bloklar(bol[1], genislik)
+    # grup: [oluk (sol_son, sag_bas) ya da None, kutular]. Oluğu kesmeyen tek sütunluk bant (bir sütunda
+    # paragraf boşluğu) sütun grubunda kalır; oluğu kesen bant (ara başlık) ayrı blok olur.
     gruplar = []
     for bant in _bantlar(kutular):
-        bosluklu = _ic_bosluk_var(bant, genislik)
-        if bosluklu and gruplar and gruplar[-1][0]:
-            gruplar[-1][1].extend(bant)
-        else:
-            gruplar.append((bosluklu, list(bant)))
+        oluk = _ic_bosluk(bant, genislik)
+        son_oluk = gruplar[-1][0] if gruplar else None
+        if son_oluk and (oluk or all(k.kutu[2] <= son_oluk[1] or k.kutu[0] >= son_oluk[0] for k in
+                                     (s for s in bant))):
+            if all(k.kutu[2] <= son_oluk[1] or k.kutu[0] >= son_oluk[0] for k in bant):
+                gruplar[-1][1].extend(bant)
+                if oluk:  # ortak oluk: iki bandın kesişimi
+                    gruplar[-1][0] = (max(son_oluk[0], oluk[0]), min(son_oluk[1], oluk[1]))
+                continue
+        gruplar.append([oluk, list(bant)])
     if len(gruplar) <= 1:
         return [kutular]
     return [blok for _, grup in gruplar for blok in _bloklar(grup, genislik)]
