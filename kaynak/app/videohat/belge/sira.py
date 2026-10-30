@@ -91,19 +91,25 @@ def _bloklar(kutular, genislik):
     bol = _oluk_ayir(kutular, genislik)
     if bol:
         return _bloklar(bol[0], genislik) + _bloklar(bol[1], genislik)
-    # grup: [oluk (sol_son, sag_bas) ya da None, kutular]. Oluğu kesmeyen tek sütunluk bant (bir sütunda
-    # paragraf boşluğu) sütun grubunda kalır; oluğu kesen bant (ara başlık) ayrı blok olur.
+    # grup: [oluk (sol_son, sag_bas) ya da None, kutular]. Oluğu kesmeyen bant (bir sütunda paragraf boşluğu,
+    # sütunun tek başına başlayan ilk satırı) sütun grubunda kalır; oluğu boydan kesen bant (ara başlık) ayrı blok.
+    def uyar(bant, oluk):
+        return all(not (k.kutu[0] < oluk[0] and k.kutu[2] > oluk[1]) for k in bant)
+
     gruplar = []
     for bant in _bantlar(kutular):
         oluk = _ic_bosluk(bant, genislik)
-        son_oluk = gruplar[-1][0] if gruplar else None
-        if son_oluk and (oluk or all(k.kutu[2] <= son_oluk[1] or k.kutu[0] >= son_oluk[0] for k in
-                                     (s for s in bant))):
-            if all(k.kutu[2] <= son_oluk[1] or k.kutu[0] >= son_oluk[0] for k in bant):
+        if gruplar and gruplar[-1][0] and uyar(bant, gruplar[-1][0]):
+            ortak = gruplar[-1][0]
+            if oluk:
+                ortak = (max(ortak[0], oluk[0]), min(ortak[1], oluk[1]))
+            if ortak[0] < ortak[1]:  # kesişim boş değilse aynı sütun düzeni sürer
+                gruplar[-1][0] = ortak
                 gruplar[-1][1].extend(bant)
-                if oluk:  # ortak oluk: iki bandın kesişimi
-                    gruplar[-1][0] = (max(son_oluk[0], oluk[0]), min(son_oluk[1], oluk[1]))
                 continue
+        if oluk and gruplar and gruplar[-1][0] is None and uyar(gruplar[-1][1], oluk):
+            gruplar[-1] = [oluk, gruplar[-1][1] + list(bant)]  # önceki tek sütunluk bant bu düzenin başı
+            continue
         gruplar.append([oluk, list(bant)])
     if len(gruplar) <= 1:
         return [kutular]

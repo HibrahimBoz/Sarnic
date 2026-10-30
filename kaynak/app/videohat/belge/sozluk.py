@@ -7,8 +7,8 @@ from ..terimler import kucuk
 
 _SOZCUK = re.compile(r"[^\W_]+", re.UNICODE)
 _KALIN, _INCE = set("aıou"), set("eiöü")
-_YABANCI_HARF = str.maketrans("șȘśŚźżŹŻćĆáàäÁÀÄéèëÉÈËíìïÍÌÏóòÓÒőŐúùÚÙűŰýÝňŇřŘ",
-                              "şŞsSzzZZcCaaaAAAeeeEEEiiiİİİooOOoOuuUUuUyYnNrR")
+_YABANCI_HARF = str.maketrans("șȘśŚźżŹŻćĆáàäÁÀÄéèëÉÈËíìïÍÌÏóòÓÒőŐúùÚÙűŰůŮýÝňŇřŘ",
+                              "şŞsSzzZZcCaaaAAAeeeEEEiiiİİİooOOoOuuUUuUuUyYnNrR")
 # Ünlü uyumuna uymayan ekler: bunlarla biten sözcüğe uyum kuralı uygulanmaz.
 _UYUMSUZ_EKLER = ("yor", "yordu", "yorlar", "ken", "ki", "leyin", "gil")
 # OCR Türkçe işareti düşürür, nadiren yanlış ekler: yalnız işaret EKLEYEN değişime izin verilir (ı->i yasak).

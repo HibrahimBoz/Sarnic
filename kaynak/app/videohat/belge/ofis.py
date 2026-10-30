@@ -188,7 +188,9 @@ def odf_parcalari(yol):
             for r in tablo.findall(".//table:table-row", _NS):
                 hucreler = []
                 for c in r:
-                    metin = "\n".join(_od_metin(p) for p in c.findall("text:p", _NS))
+                    # Hücre içi liste/not paragrafları ve başlıklar da (iç içe text:p/text:h)
+                    metin = "\n".join(_od_metin(p) for p in c.iter()
+                                      if p.tag in (f"{{{_NS['text']}}}p", f"{{{_NS['text']}}}h"))
                     hucreler.extend([metin] * int(c.get(f"{{{_NS['table']}}}number-columns-repeated", "1")))
                 metin = "\t".join(hucreler).rstrip("\t")
                 tekrar = int(r.get(f"{{{_NS['table']}}}number-rows-repeated", "1"))
@@ -209,7 +211,8 @@ def odf_parcalari(yol):
                 yield f"{ad} (satır {bas}-{max(bas, no)})", "\n".join(satirlar), []
     elif yol.suffix.lower() == ".odp":
         for i, s in enumerate(kok.findall(".//draw:page", _NS), 1):
-            yield f"Slayt {i}", "\n".join(_od_metin(p) for p in s.findall(".//text:p", _NS)), []
+            yield f"Slayt {i}", "\n".join(_od_metin(p) for p in s.iter()
+                                         if p.tag in (f"{{{_NS['text']}}}p", f"{{{_NS['text']}}}h")), []
     else:
         paragraflar = (_od_metin(e) for e in kok.iter()
                       if e.tag in (f"{{{_NS['text']}}}p", f"{{{_NS['text']}}}h"))

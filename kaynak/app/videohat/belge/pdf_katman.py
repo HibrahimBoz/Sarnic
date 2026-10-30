@@ -13,11 +13,11 @@ def _metin_ekle(sayfa, kayit, dpi, font, font_ad, font_yol):
         except Exception:
             pass
     yon = getattr(kayit, "yon", 0)
-    rot = (sayfa.rotation + yon) % 360
+    # yon_cevir saat yönünün tersine döndürür: metin katmanı ters açıyla yazılır (ölçüldü, 90°/270° tarama)
+    rot = (sayfa.rotation - yon) % 360
     for s in kayit.satirlar:
         if not s.metin.strip():
             continue
-        r = sayfa.rect.get_rect() if False else None
         import pymupdf
         r = pymupdf.Rect(*(v * 72 / dpi for v in s.kutu))
         if sayfa.rotation:

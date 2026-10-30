@@ -99,7 +99,7 @@ class OcrTest(GeciciTest):
         with patch.object(motor, "_oku", return_value=[satir]) as oku, \
                 patch.object(motor, "_tesseract", return_value=("ölçüm", .9)) as tess:
             s, _ = motor.oku(np.full((100, 200), 255, np.uint8))
-        oku.assert_called_with(unittest.mock.ANY, "medium", "medium")
+        oku.assert_any_call(unittest.mock.ANY, "medium", "medium")
         tess.assert_called_once()
         self.assertEqual(s[0].metin, "ölçüm")
 
@@ -220,6 +220,29 @@ class GercekOcrTest(GeciciTest):
         from videohat.ayar import Ayar, OcrAyar, DizinAyar
         cls.motor = OcrMotoru(Ayar(yollar.kok(), ocr=OcrAyar(profil="hizli", cihaz="cpu", tesseract=False),
                                   dizin=DizinAyar(isci=1)))
+
+    def test_yan_ve_bas_asagi_tarama_satir_sirasi_ve_pdf_yonu(self):
+        # Ölçülen kusur: cls ters satırı düzeltip okuduğu için yön 180° şaşıyor, satır sırası tersine dönüyordu
+        import cv2
+        from videohat.belge.hat import isle_belge
+        d = pymupdf.open(); p = d.new_page(); p.insert_font(fontname="F0", fontfile=str(FONT))
+        p.insert_textbox(pymupdf.Rect(60, 60, 540, 400), "Radar frekansı ölçümü yapılır.\nSistem güvenlik kontrolü tamam."
+                         "\nVeri kaydı alındı.", fontsize=16, fontname="F0")
+        pix = p.get_pixmap(dpi=200, colorspace=pymupdf.csGRAY)
+        g = np.frombuffer(pix.samples, np.uint8).reshape(pix.h, pix.w)
+        beklenen_yon = {"sola": (0, -1), "saga": (0, 1), "ters": (-1, 0)}
+        for ad, kod in (("sola", cv2.ROTATE_90_COUNTERCLOCKWISE), ("saga", cv2.ROTATE_90_CLOCKWISE),
+                        ("ters", cv2.ROTATE_180)):
+            with self.subTest(ad=ad):
+                yol = self.kok / f"{ad}.png"
+                cv2.imwrite(str(yol), cv2.rotate(g, kod))
+                kayit = isle_belge(yol, self.kok / "depo", self.motor.ayar, None)
+                metin = kayit.veri["sayfalar"][0]["metin"]
+                self.assertLess(metin.index("Radar"), metin.index("Veri"))
+                with pymupdf.open(kayit.hedef / "aranabilir.pdf") as pd:
+                    yonler = {tuple(round(x) for x in l["dir"]) for b in pd[0].get_text("dict")["blocks"]
+                              for l in b.get("lines", [])}
+                self.assertEqual(yonler, {beklenen_yon[ad]})
 
     def test_turkce_2_derece_90_derece_ve_aranabilir_pdf(self):
         from PIL import Image

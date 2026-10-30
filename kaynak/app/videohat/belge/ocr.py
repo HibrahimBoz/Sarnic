@@ -98,8 +98,8 @@ class OcrMotoru:
                 motor.text_cls = diger.text_cls
         return motor
 
-    def _oku(self, gorsel, det, rec):
-        sonuc = self._motor(det, rec)(gorsel, use_det=True, use_rec=True, use_cls=True)
+    def _oku(self, gorsel, det, rec, cls=True):
+        sonuc = self._motor(det, rec)(gorsel, use_det=True, use_rec=True, use_cls=cls)
         if sonuc.boxes is None or not sonuc.txts:
             return []
         return [OcrSatir(t, float(g), (float(b[:, 0].min()), float(b[:, 1].min()),
@@ -131,9 +131,10 @@ class OcrMotoru:
         satirlar = self._oku(gri, det, rec)
         dikey_sayisi = sum(1 for s in satirlar if (s.kutu[3] - s.kutu[1]) > 1.2 * (s.kutu[2] - s.kutu[0]))
         dikey_mi = bool(satirlar) and (dikey_sayisi > len(satirlar) * 0.5)
+        oran = min(1.0, 1000 / max(gri.shape))
+        kucuk = cv2.resize(gri, None, fx=oran, fy=oran, interpolation=cv2.INTER_AREA)
+        en_yon = 0
         if ortalama(satirlar) < .5 or dikey_mi:
-            oran = min(1.0, 1000 / max(gri.shape))
-            kucuk = cv2.resize(gri, None, fx=oran, fy=oran, interpolation=cv2.INTER_AREA)
             def _yon_puani(kutular):
                 if not kutular:
                     return 0.0
@@ -146,16 +147,22 @@ class OcrMotoru:
                 puan = _yon_puani(self._oku(deneme, det, rec))
                 if puan > en_puan:
                     en_yon, en_puan = yon, puan
-            if en_yon:
-                gri, matris = yon_cevir(gri, en_yon)
-                donusum.yon = en_yon
-                donusum.ekle(matris)
-                aci2 = egiklik(gri)
-                if abs(aci2) >= 0.3:
-                    gri, mat = dondur(gri, aci2)
-                    donusum.aci += aci2
-                    donusum.ekle(mat)
-                satirlar = self._oku(gri, det, rec)
+        # Satır yönü sınıflandırıcısı (cls) ters satırı da düzeltip okur: yön ile 180° karşıtı (baş aşağı tarama
+        # dahil) ayırt edilemez, satır sırası tersine döner (ölçüldü). Karar cls kapalı güvenle verilir.
+        karsit = (en_yon + 180) % 360
+        if satirlar and (ortalama(self._oku(yon_cevir(kucuk, karsit)[0], det, rec, cls=False))
+                         > ortalama(self._oku(yon_cevir(kucuk, en_yon)[0], det, rec, cls=False))):
+            en_yon = karsit
+        if en_yon:
+            gri, matris = yon_cevir(gri, en_yon)
+            donusum.yon = en_yon
+            donusum.ekle(matris)
+            aci2 = egiklik(gri)
+            if abs(aci2) >= 0.3:
+                gri, mat = dondur(gri, aci2)
+                donusum.aci += aci2
+                donusum.ekle(mat)
+            satirlar = self._oku(gri, det, rec)
         if profil == "uyarlamali":
             kutu_alani = sum((s.kutu[2] - s.kutu[0]) * (s.kutu[3] - s.kutu[1]) for s in satirlar)
             if kutu_alani < .5 * metin_murekkebi(gri):

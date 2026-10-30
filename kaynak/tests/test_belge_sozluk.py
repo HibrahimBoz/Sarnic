@@ -88,6 +88,17 @@ class SozlukTest(GeciciTest):
         self.assertEqual([s.metin for s in sirala(ara[::-1], (1000, 400))],
                          ["üs0", "üs1", "üğ0", "üğ1", "ARA BAŞLIK", "as0", "as1", "ağ0", "ağ1"])
 
+    def test_sag_sutun_tek_basina_baslar_ve_cift_bosluklu_satir(self):
+        # Argon 3. tur: ilk bantta yalnız sağ sütun kutusu; sol sütunda iç boşluklu (sekmeli) satır
+        k = [OcrSatir("sağ0", .9, (550, 10, 980, 40))]
+        for i in range(4):
+            k.append(OcrSatir(f"sol{i}", .9, (20, 50 + i * 40, 450, 80 + i * 40)))
+            k.append(OcrSatir(f"sağ{i + 1}", .9, (550, 50 + i * 40, 980, 80 + i * 40)))
+        k.append(OcrSatir("sol4a", .9, (20, 210, 200, 240)))
+        k.append(OcrSatir("sol4b", .9, (260, 210, 450, 240)))
+        sonuc = [s.metin for s in sirala(list(reversed(k)), (1000, 300))]
+        self.assertEqual(sonuc, ["sol0", "sol1", "sol2", "sol3", "sol4a", "sol4b", "sağ0", "sağ1", "sağ2", "sağ3", "sağ4"])
+
     def test_ayni_satir_hafif_ortusen_kutular_boslukla_birlesir(self):
         # 3. bulgu: aynı satırda kutusu hafif örtüşen (b[0] < a[2]) sözcükler \n yerine boşlukla birleşir
         s1 = OcrSatir("radar", .9, (10, 20, 60, 40))
