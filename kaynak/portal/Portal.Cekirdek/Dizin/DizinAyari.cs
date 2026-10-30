@@ -5,17 +5,33 @@ using System.Text.Json;
 using Portal.Cekirdek;
 
 /// <summary>
-/// Bulgu dizin klasör yolunu ayar.json veya varsayılan kurallara göre çözen sınıf.
+/// Veri Dedektifi dizin klasör yolunu ayar.json veya varsayılan kurallara göre çözen sınıf.
 /// </summary>
 public static class DizinAyari
 {
     /// <summary>
     /// Kök klasör ve isteğe bağlı paket ayar yolu kullanarak etkin dizin klasör yolunu belirler.
-    /// paket ayar.json'da "dizin" alanı doluysa o döner, aksi halde Path.Combine(kok, "_bulgu") döner.
+    /// paket ayar.json'da "dizin" alanı doluysa o döner, aksi halde Path.Combine(kok, "_veridedektifi") döner.
+    /// "_veridedektifi" yoksa ve "_bulgu" varsa eski kurulum klasörü kullanılır.
     /// </summary>
     public static string Coz(string kok, string? paketAyarYolu = null)
     {
-        string varsayilan = Path.Combine(kok ?? string.Empty, "_bulgu");
+        string kokDizin = kok ?? string.Empty;
+        string yeniVarsayilan = Path.Combine(kokDizin, "_veridedektifi");
+        string eskiVarsayilan = Path.Combine(kokDizin, "_bulgu");
+
+        bool yeniVar = false;
+        bool eskiVar = false;
+        try
+        {
+            yeniVar = Directory.Exists(yeniVarsayilan);
+            eskiVar = Directory.Exists(eskiVarsayilan);
+        }
+        catch
+        {
+        }
+
+        string varsayilan = !yeniVar && eskiVar ? eskiVarsayilan : yeniVarsayilan;
         string ayarYolu = string.IsNullOrWhiteSpace(paketAyarYolu)
             ? KokYapilandirma.VarsayilanPaketAyarYolu
             : paketAyarYolu;

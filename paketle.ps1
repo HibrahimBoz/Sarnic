@@ -1,4 +1,4 @@
-# Aktarım paketi: dist\Bulgu-Paketi (VideoPerisi + Kdenlive + BASLAT.bat) ve 7z arşivi üretir.
+# Aktarım paketi: dist\VeriFirini-Paketi (VideoPerisi + Kdenlive + BASLAT.bat) ve 7z arşivi üretir.
 # Önce hazirla.ps1 çalışmış, _indir\kdenlive-*_standalone.exe indirilmiş olmalı.
 param(
     [string]$SevenZip = 'C:\Program Files\7-Zip\7z.exe',
@@ -10,7 +10,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $proje = $PSScriptRoot
 $gpu = Join-Path $proje 'dist\VideoHat-GPU'
-$cikis = Join-Path $proje 'dist\Bulgu-Paketi'
+$cikis = Join-Path $proje 'dist\VeriFirini-Paketi'
 $kdExe = Get-ChildItem (Join-Path $proje '_indir') -Filter 'kdenlive-*_standalone.exe' | Sort-Object Name | Select-Object -Last 1
 if (-not (Test-Path $gpu)) { throw "GPU paketi yok: $gpu (önce hazirla.ps1)" }
 if (-not $kdExe) { throw "Kdenlive standalone .exe _indir\ içinde yok." }
@@ -39,8 +39,38 @@ $pk = Get-ChildItem $sp -Directory -Filter '*.dist-info' | ForEach-Object {
     "{0}=={1}" -f $ad, $sr
 } | Sort-Object
 $mod = foreach ($a in 'large-v3', 'medium', 'turbo') { "{0,-9}: {1}" -f $a, (Get-Content (Join-Path $vh "modeller\$a\commit_sha.txt") -Raw).Trim() }
+$artcraftKlasor = Join-Path $vh 'artcraft'
+$artcraftListesi = @()
+if (Test-Path $artcraftKlasor) {
+    $artcraftGosterim = @{
+        'wordcraft'  = 'WordCraft'
+        'gridcraft'  = 'GridCraft'
+        'deckcraft'  = 'DeckCraft'
+        'pdfcraft'   = 'PdfCraft'
+        'photocraft' = 'PhotoCraft'
+        'figcraft'   = 'FigCraft'
+        'cadcraft'   = 'CADCraft'
+    }
+    Get-ChildItem $artcraftKlasor -Directory | ForEach-Object {
+        $acAd = $_.Name.ToLower()
+        $acGoster = if ($artcraftGosterim.ContainsKey($acAd)) { $artcraftGosterim[$acAd] } else { $_.Name }
+        $acExe = Get-ChildItem $_.FullName -Recurse -Filter "*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+        $surum = ""
+        if ($acExe) {
+            try { $surum = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($acExe.FullName).ProductVersion } catch {}
+        }
+        if (-not $surum) {
+            $zip = Get-ChildItem (Join-Path $proje '_indir\artcraft') -Filter "$acAd-*-windows-x64-portable.zip" -ErrorAction SilentlyContinue | Select-Object -Last 1
+            if ($zip -and $zip.Name -match "^$acAd-(.+)-windows-x64-portable\.zip$") {
+                $surum = $Matches[1]
+            }
+        }
+        if (-not $surum) { $surum = "1.0.0" }
+        $artcraftListesi += "$acGoster $surum (Apache-2.0, github.com/storytold/$acAd)"
+    }
+}
 $sv = @"
-Bulgu paketi - bilesen listesi ($(Get-Date -Format 'yyyy-MM-dd'))
+Veri Firini paketi - bilesen listesi ($(Get-Date -Format 'yyyy-MM-dd'))
 Bu dosya paket olusturulurken gercek dosyalardan uretilmistir.
 
 YAZILIM KAYNAKLARI (tumu resmi yayinci kanallarindan indirilmistir)
@@ -53,6 +83,7 @@ Whisper CT2 modelleri     : huggingface.co - Systran/faster-whisper-large-v3, Sy
 OCR modelleri             : PP-OCRv6 (Apache-2.0, PaddleOCR/RapidOCR)
 Sozluk                    : FrequencyWords tr_50k (CC BY-SA 4.0, hermitdave)
 PyMuPDF                   : PyMuPDF (AGPL-3.0)
+$($artcraftListesi -join "`r`n")
 
 MODEL COMMIT SHA
 $($mod -join "`r`n")
@@ -74,8 +105,8 @@ $boyut = (Get-ChildItem $cikis -Recurse -File | Measure-Object Length -Sum).Sum 
 }
 if ($SadeceKlasor) { Write-Host "Klasör hazır: $cikis"; return }
 Write-Host '[4/5] 7z sıkıştırılıyor (birkaç dakika-yarım saat)...'
-$arsiv = Join-Path $proje 'dist\Bulgu-Paketi.7z'
-Get-ChildItem (Join-Path $proje 'dist') -Filter 'Bulgu-Paketi.7z*' | Remove-Item -Force
+$arsiv = Join-Path $proje 'dist\VeriFirini-Paketi.7z'
+Get-ChildItem (Join-Path $proje 'dist') -Filter 'VeriFirini-Paketi.7z*' | Remove-Item -Force
 $a = @('a', '-t7z', "-mx=$Sikistirma", '-mmt=on', '-bso0', '-bsp0', $arsiv, $cikis)
 if ($ParcaBoyutu) { $a += "-v$ParcaBoyutu" }
 & $SevenZip @a
@@ -86,6 +117,6 @@ $ilk = if ($ParcaBoyutu) { "$arsiv.001" } else { $arsiv }
 & $SevenZip t $ilk -bso0 -bsp0
 if ($LASTEXITCODE -ne 0) { throw '7z test başarısız' }
 $h = (Get-FileHash $ilk -Algorithm SHA256).Hash
-Get-ChildItem (Join-Path $proje 'dist') -Filter 'Bulgu-Paketi.7z*' | ForEach-Object { '{0}  {1:N2} GB' -f $_.Name, ($_.Length / 1GB) }
+Get-ChildItem (Join-Path $proje 'dist') -Filter 'VeriFirini-Paketi.7z*' | ForEach-Object { '{0}  {1:N2} GB' -f $_.Name, ($_.Length / 1GB) }
 "SHA256 ($(Split-Path $ilk -Leaf)): $h"
-Set-Content (Join-Path $proje 'dist\Bulgu-Paketi.sha256.txt') "$h  $(Split-Path $ilk -Leaf)" -Encoding ASCII
+Set-Content (Join-Path $proje 'dist\VeriFirini-Paketi.sha256.txt') "$h  $(Split-Path $ilk -Leaf)" -Encoding ASCII

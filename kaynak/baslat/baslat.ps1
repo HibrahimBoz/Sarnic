@@ -1,4 +1,4 @@
-﻿# Bulgu İşleyici başlatıcı menüsü (Windows 10/11, yerleşik PowerShell 5.1; kurulum gerektirmez).
+﻿# Veri Fırını başlatıcı menüsü (Windows 10/11, yerleşik PowerShell 5.1; kurulum gerektirmez).
 # Etkileşimli: BASLAT.bat çift tıklanır. Otomatik test: -Dosya <yol> [-Agir e|h] [-Goruntu e|h]
 param(
     [string]$Dosya = '',
@@ -15,7 +15,7 @@ $env:VIDEOHAT_PAUSE = '0'
 function Baslik {
     Clear-Host
     Write-Host '=============================================' -ForegroundColor Cyan
-    Write-Host '  Bulgu İşleyici  -  video transkript, belge, OCR, dizin' -ForegroundColor Cyan
+    Write-Host '  Veri Fırını  -  video transkript, belge, OCR, dizin' -ForegroundColor Cyan
     Write-Host '=============================================' -ForegroundColor Cyan
     Write-Host ''
 }

@@ -56,8 +56,10 @@ public partial class BelgePenceresi : Window
 
     private readonly Dictionary<(int Sayfa, int Zoom), BitmapSource> _lruOnbellek = [];
     private readonly LinkedList<(int Sayfa, int Zoom)> _lruSira = [];
+    private readonly ArtCraftKatalogu _katalog;
+    private (ArtCraftUygulamasi Uygulama, string Yol, bool KopyaMi)? _duzenleHedefi;
 
-    public BelgePenceresi(DizinKaynagi kaynak, long dosyaId, int sayfaNo, string? sorgu)
+    public BelgePenceresi(DizinKaynagi kaynak, long dosyaId, int sayfaNo, string? sorgu, ArtCraftKatalogu? katalog = null)
     {
         InitializeComponent();
 
@@ -65,9 +67,10 @@ public partial class BelgePenceresi : Window
         _dosyaId = dosyaId;
         _sayfaDeposu = new SayfaDeposu(_kaynak);
         _dosya = _sayfaDeposu.Dosya(dosyaId);
+        _katalog = katalog ?? new ArtCraftKatalogu();
 
         string baslikAd = _dosya?.Ad ?? dosyaId.ToString();
-        Title = $"Bulgu — Belge — {baslikAd}";
+        Title = $"Veri Dedektifi — Belge — {baslikAd}";
 
         _toplamSayfa = Math.Max(1, _dosya?.SayfaSayisi ?? 1);
         _aktifSayfaNo = Math.Clamp(sayfaNo, 1, Math.Max(1, _toplamSayfa));
@@ -126,6 +129,12 @@ public partial class BelgePenceresi : Window
         await GoruntuSisteminiHazirlaAsync();
         await EslesenSayfalariBulAsync();
         await SayfaGosterAsync(_aktifSayfaNo);
+
+        _ = Task.Run(() =>
+        {
+            _ = _katalog.Uygulamalar;
+            Dispatcher.Invoke(DuzenleDugmesiniGuncelle);
+        });
     }
 
     private async Task GoruntuSisteminiHazirlaAsync()
@@ -187,7 +196,7 @@ public partial class BelgePenceresi : Window
     {
         string yerelKlasor = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "Bulgu",
+            "VeriDedektifi",
             "gorunum");
         Directory.CreateDirectory(yerelKlasor);
 
@@ -657,6 +666,66 @@ public partial class BelgePenceresi : Window
     private void SonrakiEslesmeDugmesi_Click(object sender, RoutedEventArgs e)
     {
         SonrakiEslesme();
+    }
+
+    private void DuzenleDugmesiniGuncelle()
+    {
+        if (_dosya == null)
+        {
+            DuzenleDugmesi.Visibility = Visibility.Collapsed;
+            _duzenleHedefi = null;
+            return;
+        }
+
+        string ozgunUzanti = _dosya.Uzanti ?? Path.GetExtension(_dosya.Yol);
+        var ozgunUygulamalar = _katalog.UzantiIcin(ozgunUzanti);
+        if (ozgunUygulamalar.Count > 0)
+        {
+            var u = ozgunUygulamalar[0];
+            DuzenleDugmesi.Content = $"Düzenle ({u.Ad})";
+            DuzenleDugmesi.Visibility = Visibility.Visible;
+            _duzenleHedefi = (u, _dosya.Yol, false);
+            return;
+        }
+
+        string? duzenlenebilirYol = BelgeYollari.Duzenlenebilir(_kaynak.DizinKlasoru, _dosya.Sha);
+        if (!string.IsNullOrWhiteSpace(duzenlenebilirYol))
+        {
+            string kopyaUzanti = Path.GetExtension(duzenlenebilirYol);
+            var kopyaUygulamalar = _katalog.UzantiIcin(kopyaUzanti);
+            if (kopyaUygulamalar.Count > 0)
+            {
+                var u = kopyaUygulamalar[0];
+                DuzenleDugmesi.Content = $"Düzenle ({u.Ad})";
+                DuzenleDugmesi.Visibility = Visibility.Visible;
+                _duzenleHedefi = (u, duzenlenebilirYol, true);
+                return;
+            }
+        }
+
+        DuzenleDugmesi.Visibility = Visibility.Collapsed;
+        _duzenleHedefi = null;
+    }
+
+    private void DuzenleDugmesi_Click(object sender, RoutedEventArgs e)
+    {
+        if (_duzenleHedefi == null || _dosya == null) return;
+
+        var (uygulama, yol, kopyaMi) = _duzenleHedefi.Value;
+        try
+        {
+            string hedefDosya = yol;
+            if (kopyaMi)
+            {
+                hedefDosya = ArtCraftKatalogu.DuzenlenebilirKopyaHazirla(yol, _dosya.Ad);
+            }
+
+            Process.Start(ArtCraftKatalogu.AcmaBilgisi(uygulama, hedefDosya));
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, "Uygulama başlatılamadı:\n" + ex.Message, "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private void AsliniAcDugmesi_Click(object sender, RoutedEventArgs e)

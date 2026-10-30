@@ -19,13 +19,14 @@ using Portal.Cekirdek;
 using Portal.Cekirdek.Dizin;
 
 /// <summary>
-/// Bulgu Arama penceresi: Video, dosya ve belge aramalarını birleşik sunar.
+/// Veri Dedektifi Arama penceresi: Video, dosya ve belge aramalarını birleşik sunar.
 /// </summary>
 public partial class AramaPenceresi : Window
 {
     private string _kokKlasor;
     private IAramaMotoru _aramaMotoru;
     private DizinKaynagi? _dizinKaynagi;
+    private readonly ArtCraftKatalogu _artCraftKatalogu = new();
     private readonly DispatcherTimer _dizinZamanlayici;
     private readonly DispatcherTimer _aramaZamanlayici;
 
@@ -85,6 +86,7 @@ public partial class AramaPenceresi : Window
         _aramaZamanlayici.Tick += AramaZamanlayici_Tick;
 
         DizinKaynagiKur();
+        _ = Task.Run(() => _ = _artCraftKatalogu.Uygulamalar);
 
         _dizinZamanlayici = new DispatcherTimer
         {
@@ -346,6 +348,7 @@ public partial class AramaPenceresi : Window
         _aramaMotoru = new MetinAramaMotoru(new IndeksOnbellek(), new DuzeltmeDeposu(_kokKlasor));
 
         DizinKaynagiKur();
+        _ = Task.Run(() => _ = _artCraftKatalogu.Uygulamalar);
 
         AramaKutusu.Text = string.Empty;
         _videolar.Clear();
@@ -581,17 +584,259 @@ public partial class AramaPenceresi : Window
 
     private void DosyaContextMenu_Opened(object sender, RoutedEventArgs e)
     {
-        if (sender is ContextMenu menu && DosyaListesi.SelectedItem is DosyaGorunumu dg)
+        if (sender is not ContextMenu menu || DosyaListesi.SelectedItem is not DosyaGorunumu dg)
         {
-            foreach (var item in menu.Items)
+            return;
+        }
+
+        MenuItem? duzenleMenu = null;
+        MenuItem? kopyaMenu = null;
+
+        foreach (var item in menu.Items)
+        {
+            if (item is MenuItem mi)
             {
-                if (item is MenuItem mi && string.Equals(mi.Header?.ToString(), "Belgede göster", StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(mi.Name, "DosyaMenuDuzenle", StringComparison.Ordinal) ||
+                    string.Equals(mi.Header?.ToString(), "Düzenle", StringComparison.OrdinalIgnoreCase))
+                {
+                    duzenleMenu = mi;
+                }
+                else if (string.Equals(mi.Name, "DosyaMenuDuzenlenebilirKopya", StringComparison.Ordinal) ||
+                         mi.Header?.ToString()?.StartsWith("Düzenlenebilir", StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    kopyaMenu = mi;
+                }
+                else if (string.Equals(mi.Header?.ToString(), "Belgede göster", StringComparison.OrdinalIgnoreCase))
                 {
                     mi.Visibility = string.Equals(dg.Durum, "tamam", StringComparison.OrdinalIgnoreCase)
                         ? Visibility.Visible
                         : Visibility.Collapsed;
                 }
             }
+        }
+
+        if (duzenleMenu != null)
+        {
+            duzenleMenu.Items.Clear();
+            var apps = _artCraftKatalogu.UzantiIcin(dg.Uzanti);
+            if (apps.Count > 0)
+            {
+                foreach (var app in apps)
+                {
+                    var item = new MenuItem { Header = $"{app.Ad} {app.Surum}" };
+                    item.Click += (_, _) => ArtCraftIleAc(app, dg.Yol);
+                    duzenleMenu.Items.Add(item);
+                }
+            }
+            else
+            {
+                duzenleMenu.Items.Add(new MenuItem { Header = "ArtCraft uygulaması bulunamadı", IsEnabled = false });
+            }
+        }
+
+        if (kopyaMenu != null)
+        {
+            string? depo = _dizinKaynagi?.DizinKlasoru ?? DizinAyari.Coz(_kokKlasor);
+            string? duzenlenebilirYol = !string.IsNullOrWhiteSpace(dg.Sha) && !string.IsNullOrWhiteSpace(depo)
+                ? BelgeYollari.Duzenlenebilir(depo, dg.Sha)
+                : null;
+
+            if (!string.IsNullOrWhiteSpace(duzenlenebilirYol))
+            {
+                string kopyaUzanti = Path.GetExtension(duzenlenebilirYol);
+                var kopyaApps = _artCraftKatalogu.UzantiIcin(kopyaUzanti);
+                var ilkApp = kopyaApps.FirstOrDefault();
+                if (ilkApp != null)
+                {
+                    kopyaMenu.Header = $"Düzenlenebilir kopyayı aç ({ilkApp.Ad})";
+                    kopyaMenu.Tag = (ilkApp, duzenlenebilirYol, dg.Ad);
+                    kopyaMenu.Visibility = Visibility.Visible;
+                }
+                else
+                {
+                    kopyaMenu.Visibility = Visibility.Collapsed;
+                }
+            }
+            else
+            {
+                kopyaMenu.Visibility = Visibility.Collapsed;
+            }
+        }
+    }
+
+    private void DosyaMenuDuzenlenebilirKopya_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem mi && mi.Tag is ValueTuple<ArtCraftUygulamasi, string, string> bilgi)
+        {
+            DuzenlenebilirKopyayiAc(bilgi.Item1, bilgi.Item2, bilgi.Item3);
+        }
+    }
+
+    private void BelgeContextMenu_Opened(object sender, RoutedEventArgs e)
+    {
+        if (sender is not ContextMenu menu || BelgeListesi.SelectedItem is not BelgeSonucGorunumu bg)
+        {
+            return;
+        }
+
+        MenuItem? duzenleMenu = null;
+        MenuItem? kopyaMenu = null;
+
+        foreach (var item in menu.Items)
+        {
+            if (item is MenuItem mi)
+            {
+                if (string.Equals(mi.Name, "BelgeMenuDuzenle", StringComparison.Ordinal) ||
+                    string.Equals(mi.Header?.ToString(), "Düzenle", StringComparison.OrdinalIgnoreCase))
+                {
+                    duzenleMenu = mi;
+                }
+                else if (string.Equals(mi.Name, "BelgeMenuDuzenlenebilirKopya", StringComparison.Ordinal) ||
+                         mi.Header?.ToString()?.StartsWith("Düzenlenebilir", StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    kopyaMenu = mi;
+                }
+            }
+        }
+
+        if (duzenleMenu != null)
+        {
+            duzenleMenu.Items.Clear();
+            string uzanti = Path.GetExtension(bg.Yol);
+            var apps = _artCraftKatalogu.UzantiIcin(uzanti);
+            if (apps.Count > 0)
+            {
+                foreach (var app in apps)
+                {
+                    var item = new MenuItem { Header = $"{app.Ad} {app.Surum}" };
+                    item.Click += (_, _) => ArtCraftIleAc(app, bg.Yol);
+                    duzenleMenu.Items.Add(item);
+                }
+            }
+            else
+            {
+                duzenleMenu.Items.Add(new MenuItem { Header = "ArtCraft uygulaması bulunamadı", IsEnabled = false });
+            }
+        }
+
+        if (kopyaMenu != null)
+        {
+            string? depo = _dizinKaynagi?.DizinKlasoru ?? DizinAyari.Coz(_kokKlasor);
+            string? duzenlenebilirYol = !string.IsNullOrWhiteSpace(bg.Sha) && !string.IsNullOrWhiteSpace(depo)
+                ? BelgeYollari.Duzenlenebilir(depo, bg.Sha)
+                : null;
+
+            if (!string.IsNullOrWhiteSpace(duzenlenebilirYol))
+            {
+                string kopyaUzanti = Path.GetExtension(duzenlenebilirYol);
+                var kopyaApps = _artCraftKatalogu.UzantiIcin(kopyaUzanti);
+                var ilkApp = kopyaApps.FirstOrDefault();
+                if (ilkApp != null)
+                {
+                    kopyaMenu.Header = $"Düzenlenebilir kopyayı aç ({ilkApp.Ad})";
+                    kopyaMenu.Tag = (ilkApp, duzenlenebilirYol, bg.Ad);
+                    kopyaMenu.Visibility = Visibility.Visible;
+                }
+                else
+                {
+                    kopyaMenu.Visibility = Visibility.Collapsed;
+                }
+            }
+            else
+            {
+                kopyaMenu.Visibility = Visibility.Collapsed;
+            }
+        }
+    }
+
+    private void BelgeMenuAc_Click(object sender, RoutedEventArgs e)
+    {
+        if (BelgeListesi.SelectedItem is BelgeSonucGorunumu bg)
+        {
+            BelgeyiAc(bg);
+        }
+    }
+
+    private void BelgeMenuAsliniAc_Click(object sender, RoutedEventArgs e)
+    {
+        if (BelgeListesi.SelectedItem is BelgeSonucGorunumu bg)
+        {
+            DosyaAc(bg.Yol);
+        }
+    }
+
+    private void BelgeMenuKlasor_Click(object sender, RoutedEventArgs e)
+    {
+        if (BelgeListesi.SelectedItem is BelgeSonucGorunumu bg)
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{bg.Yol}\"") { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, "Klasör açılamadı:\n" + ex.Message, "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+    }
+
+    private void BelgeMenuKopyala_Click(object sender, RoutedEventArgs e)
+    {
+        if (BelgeListesi.SelectedItem is BelgeSonucGorunumu bg)
+        {
+            try
+            {
+                Clipboard.SetText(bg.Yol);
+            }
+            catch
+            {
+                // Pano hatasını yut
+            }
+        }
+    }
+
+    private void BelgeMenuDuzenlenebilirKopya_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem mi && mi.Tag is ValueTuple<ArtCraftUygulamasi, string, string> bilgi)
+        {
+            DuzenlenebilirKopyayiAc(bilgi.Item1, bilgi.Item2, bilgi.Item3);
+        }
+    }
+
+    private void ArtCraftIleAc(ArtCraftUygulamasi app, string dosyaYolu)
+    {
+        if (!File.Exists(dosyaYolu))
+        {
+            MessageBox.Show(this, "Dosya bulunamadı:\n" + dosyaYolu, "Hata", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        try
+        {
+            Process.Start(ArtCraftKatalogu.AcmaBilgisi(app, dosyaYolu));
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, "Uygulama başlatılamadı:\n" + ex.Message, "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void DuzenlenebilirKopyayiAc(ArtCraftUygulamasi app, string duzenlenebilirYol, string ozgunAd)
+    {
+        if (!File.Exists(duzenlenebilirYol))
+        {
+            MessageBox.Show(this, "Düzenlenebilir kopya dosyası bulunamadı:\n" + duzenlenebilirYol, "Hata", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        try
+        {
+            string kopya = ArtCraftKatalogu.DuzenlenebilirKopyaHazirla(duzenlenebilirYol, ozgunAd);
+            Process.Start(ArtCraftKatalogu.AcmaBilgisi(app, kopya));
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, "Uygulama başlatılamadı:\n" + ex.Message, "Hata", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -641,7 +886,7 @@ public partial class AramaPenceresi : Window
             {
                 var ayrismis = DosyaSorgusu.Ayristir(_sonAramaSorgusu);
                 string belgeSorgusu = ayrismis.Icerik ?? ayrismis.DuzMetin;
-                var pencere = new BelgePenceresi(_dizinKaynagi, dg.Id, 1, belgeSorgusu)
+                var pencere = new BelgePenceresi(_dizinKaynagi, dg.Id, 1, belgeSorgusu, _artCraftKatalogu)
                 {
                     Owner = this
                 };
@@ -710,7 +955,7 @@ public partial class AramaPenceresi : Window
         {
             var ayrismis = DosyaSorgusu.Ayristir(_sonAramaSorgusu);
             string belgeSorgusu = ayrismis.Icerik ?? ayrismis.DuzMetin;
-            var pencere = new BelgePenceresi(_dizinKaynagi, bg.DosyaId, bg.SayfaNo, belgeSorgusu)
+            var pencere = new BelgePenceresi(_dizinKaynagi, bg.DosyaId, bg.SayfaNo, belgeSorgusu, _artCraftKatalogu)
             {
                 Owner = this
             };

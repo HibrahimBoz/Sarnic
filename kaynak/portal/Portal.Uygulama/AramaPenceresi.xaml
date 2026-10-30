@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:Portal.Uygulama"
         Style="{StaticResource PortalPencere}"
-        Title="Bulgu — Arama" Width="1100" Height="720"
+        Title="Veri Dedektifi — Arama" Width="1100" Height="720"
         MinWidth="800" MinHeight="500"
         Loaded="Pencere_Loaded">
     <Grid>
@@ -224,6 +224,12 @@
                         <ListView.Resources>
                             <ContextMenu x:Key="DosyaContextMenu" Opened="DosyaContextMenu_Opened">
                                 <MenuItem Header="Aç" Click="DosyaMenuAc_Click"/>
+                                <MenuItem x:Name="DosyaMenuDuzenle" Header="Düzenle"/>
+                                <MenuItem x:Name="DosyaMenuBirlikteAc" Header="Birlikte aç">
+                                    <MenuItem Header="Windows varsayılanı" Click="DosyaMenuAc_Click"/>
+                                </MenuItem>
+                                <MenuItem x:Name="DosyaMenuDuzenlenebilirKopya" Header="Düzenlenebilir kopyayı aç" Click="DosyaMenuDuzenlenebilirKopya_Click" Visibility="Collapsed"/>
+                                <Separator/>
                                 <MenuItem Header="Klasörünü aç" Click="DosyaMenuKlasor_Click"/>
                                 <MenuItem Header="Yolu kopyala" Click="DosyaMenuKopyala_Click"/>
                                 <Separator/>
@@ -314,6 +320,19 @@
                               MouseLeftButtonUp="BelgeListesi_MouseLeftButtonUp"
                               MouseDoubleClick="BelgeListesi_MouseDoubleClick"
                               KeyDown="BelgeListesi_KeyDown">
+                        <ListView.Resources>
+                            <ContextMenu x:Key="BelgeContextMenu" Opened="BelgeContextMenu_Opened">
+                                <MenuItem Header="Aç" Click="BelgeMenuAc_Click"/>
+                                <MenuItem x:Name="BelgeMenuDuzenle" Header="Düzenle"/>
+                                <MenuItem x:Name="BelgeMenuBirlikteAc" Header="Birlikte aç">
+                                    <MenuItem Header="Windows varsayılanı" Click="BelgeMenuAsliniAc_Click"/>
+                                </MenuItem>
+                                <MenuItem x:Name="BelgeMenuDuzenlenebilirKopya" Header="Düzenlenebilir kopyayı aç" Click="BelgeMenuDuzenlenebilirKopya_Click" Visibility="Collapsed"/>
+                                <Separator/>
+                                <MenuItem Header="Klasörünü aç" Click="BelgeMenuKlasor_Click"/>
+                                <MenuItem Header="Yolu kopyala" Click="BelgeMenuKopyala_Click"/>
+                            </ContextMenu>
+                        </ListView.Resources>
                         <ListView.GroupStyle>
                             <GroupStyle>
                                 <GroupStyle.HeaderTemplate>
@@ -340,6 +359,7 @@
                                 <Setter Property="Margin" Value="0,1"/>
                                 <Setter Property="Background" Value="Transparent"/>
                                 <Setter Property="Cursor" Value="Hand"/>
+                                <Setter Property="ContextMenu" Value="{StaticResource BelgeContextMenu}"/>
                                 <Setter Property="Template">
                                     <Setter.Value>
                                         <ControlTemplate TargetType="ListViewItem">

@@ -1,6 +1,7 @@
 namespace Portal.Cekirdek.Dizin;
 
 using System.IO;
+using System.Linq;
 
 /// <summary>
 /// Depo altındaki işlenmiş belge dosyalarının yollarını çözümleyen yardımcı.
@@ -28,5 +29,31 @@ public static class BelgeYollari
 
         string pdfYolu = Path.Combine(BelgeKlasoru(depo, sha), "aranabilir.pdf");
         return File.Exists(pdfYolu) ? pdfYolu : null;
+    }
+
+    /// <summary>
+    /// Düzenlenebilir kopya dosyası varsa (&lt;depo&gt;\belgeler\sha[..2]\sha\duzenlenebilir.*) ilk dosyanın yolunu, yoksa null döner.
+    /// </summary>
+    public static string? Duzenlenebilir(string depo, string? sha)
+    {
+        if (string.IsNullOrWhiteSpace(depo) || string.IsNullOrWhiteSpace(sha))
+        {
+            return null;
+        }
+
+        string klasor = BelgeKlasoru(depo, sha);
+        if (!Directory.Exists(klasor))
+        {
+            return null;
+        }
+
+        try
+        {
+            return Directory.EnumerateFiles(klasor, "duzenlenebilir.*").FirstOrDefault();
+        }
+        catch
+        {
+            return null;
+        }
     }
 }

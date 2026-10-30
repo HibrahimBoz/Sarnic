@@ -8,7 +8,9 @@ param(
     [ValidateSet('GPU', 'CPU', 'Ikisi')]
     [string]$Paket = 'Ikisi',
 
-    [switch]$ModelAtla
+    [switch]$ModelAtla,
+
+    [string[]]$ArtCraft = @('wordcraft', 'gridcraft', 'deckcraft', 'pdfcraft', 'photocraft')
 )
 
 # Hata durumunda hemen durdur ve indirme çubuğunu gizle
@@ -598,6 +600,117 @@ print(f"MODEL_TAMAMLANDI:{resolved_sha}")
     }
 
     # --------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
+    # ArtCraft Taşınabilir Uygulamaları (wordcraft, gridcraft, deckcraft, ...)
+    # --------------------------------------------------------------------------
+    Write-Host "  -> ArtCraft taşınabilir uygulamaları kontrol ediliyor..." -ForegroundColor Cyan
+
+    $artcraftIndirKlasoru = Join-Path $IndirKlasoru "artcraft"
+    if (-not (Test-Path $artcraftIndirKlasoru)) {
+        New-Item -ItemType Directory -Path $artcraftIndirKlasoru -Force | Out-Null
+    }
+
+    $artcraftGosterim = @{
+        'wordcraft'  = 'WordCraft'
+        'gridcraft'  = 'GridCraft'
+        'deckcraft'  = 'DeckCraft'
+        'pdfcraft'   = 'PdfCraft'
+        'photocraft' = 'PhotoCraft'
+        'figcraft'   = 'FigCraft'
+        'cadcraft'   = 'CADCraft'
+    }
+
+    $artcraftZipleri = @{}
+    $artcraftSurumListesi = @()
+
+    foreach ($ad in $ArtCraft) {
+        $adKucuk = $ad.ToLower().Trim()
+        $adGoster = if ($artcraftGosterim.ContainsKey($adKucuk)) { $artcraftGosterim[$adKucuk] } else { $ad }
+        $apiUrl = "https://api.github.com/repos/storytold/$adKucuk/releases/latest"
+
+        $surum = $null
+        $assetAdi = $null
+        $beklenenDigest = $null
+        $downloadUrl = $null
+        $zipGecerli = $false
+
+        try {
+            $release = Invoke-RestMethod -Uri $apiUrl -Headers @{ 'User-Agent' = 'VeriFirini-Paketleyici' } -TimeoutSec 15
+            if ($release -and $release.tag_name) {
+                $surum = $release.tag_name -replace '^v', ''
+                $assetAdi = "$adKucuk-$surum-windows-x64-portable.zip"
+                $asset = $release.assets | Where-Object { $_.name -eq $assetAdi } | Select-Object -First 1
+                if ($asset) {
+                    $downloadUrl = $asset.browser_download_url
+                    if ($asset.digest) {
+                        $beklenenDigest = ($asset.digest -replace '^sha256:', '').Trim()
+                    }
+                }
+            }
+        } catch {
+            Write-Warning "ArtCraft ($adKucuk) GitHub API hatası: $($_.Exception.Message)"
+        }
+
+        # Eğer API'den sürüm alınamadıysa önbellekte mevcut zip ara
+        if (-not $surum) {
+            $onbellekZip = Get-ChildItem -Path $artcraftIndirKlasoru -Filter "$adKucuk-*-windows-x64-portable.zip" -ErrorAction SilentlyContinue | Select-Object -Last 1
+            if ($onbellekZip -and $onbellekZip.Name -match "^$adKucuk-(.+)-windows-x64-portable\.zip$") {
+                $surum = $Matches[1]
+                $assetAdi = $onbellekZip.Name
+            }
+        }
+
+        if ($assetAdi) {
+            $hedefZip = Join-Path $artcraftIndirKlasoru $assetAdi
+
+            if (Test-Path $hedefZip) {
+                if ($beklenenDigest) {
+                    $mevcutHash = (Get-FileHash -Path $hedefZip -Algorithm SHA256).Hash
+                    if ($mevcutHash.Equals($beklenenDigest, [System.StringComparison]::OrdinalIgnoreCase)) {
+                        Write-Host "  -> ArtCraft $adKucuk önbellekte mevcut (doğru özet)." -ForegroundColor Gray
+                        $zipGecerli = $true
+                    } else {
+                        Write-Host "  -> ArtCraft $adKucuk önbellek özeti uyuşmuyor, yeniden indirilecek..." -ForegroundColor Yellow
+                        Remove-Item -Path $hedefZip -Force -ErrorAction SilentlyContinue
+                    }
+                } else {
+                    Write-Host "  -> ArtCraft $adKucuk önbellekte mevcut." -ForegroundColor Gray
+                    $zipGecerli = $true
+                }
+            }
+
+            if (-not $zipGecerli -and $downloadUrl) {
+                try {
+                    Write-Host "  -> ArtCraft $adKucuk indiriliyor: $downloadUrl"
+                    Invoke-WebRequest -Uri $downloadUrl -OutFile $hedefZip -UseBasicParsing -TimeoutSec 60
+                    if ($beklenenDigest) {
+                        $inenHash = (Get-FileHash -Path $hedefZip -Algorithm SHA256).Hash
+                        if (-not $inenHash.Equals($beklenenDigest, [System.StringComparison]::OrdinalIgnoreCase)) {
+                            Remove-Item -Path $hedefZip -Force -ErrorAction SilentlyContinue
+                            Write-Warning "ArtCraft ($adKucuk) SHA256 uyuşmazlığı! Dosya silindi. Beklenen: $beklenenDigest, Alınan: $inenHash"
+                        } else {
+                            $zipGecerli = $true
+                        }
+                    } else {
+                        $zipGecerli = $true
+                    }
+                } catch {
+                    Write-Warning "ArtCraft ($adKucuk) indirme hatası: $($_.Exception.Message)"
+                }
+            }
+
+            if ($zipGecerli -and (Test-Path $hedefZip)) {
+                $artcraftZipleri[$adKucuk] = @{
+                    Ad    = $adGoster
+                    Surum = $surum
+                    Zip   = $hedefZip
+                }
+                $artcraftSurumListesi += "$adGoster $surum (Apache-2.0, github.com/storytold/$adKucuk)"
+            }
+        }
+    }
+
+    # --------------------------------------------------------------------------
     # [9/10] Uygulama Dosyaları, Yapılandırmalar ve Dizin Düzeni
     # --------------------------------------------------------------------------
     Write-Host "[9/10] Uygulama yapılandırmaları ve kaynak dosyaları hazırlanıyor..." -ForegroundColor Cyan
@@ -696,6 +809,20 @@ print(f"MODEL_TAMAMLANDI:{resolved_sha}")
             Invoke-RobocopyMirror -Kaynak $ortakKaynak -Hedef $hedefOrtak
         }
 
+        # 13. artcraft\ klasörünü pakete aç
+        foreach ($acKey in $artcraftZipleri.Keys) {
+            $acItem = $artcraftZipleri[$acKey]
+            $hedefArtcraft = Join-Path $PaketHedefYolu "artcraft\$acKey"
+            if (-not (Test-Path $hedefArtcraft)) {
+                New-Item -ItemType Directory -Path $hedefArtcraft -Force | Out-Null
+            }
+            try {
+                Expand-Archive -Path $acItem.Zip -DestinationPath $hedefArtcraft -Force
+            } catch {
+                Write-Warning "ArtCraft ($acKey) arşiv açma hatası: $($_.Exception.Message)"
+            }
+        }
+
         # 12. Boş is\ klasörleri
         $isKlasorleri = @('gelen', 'isleniyor', 'bitti', 'hata', 'gunluk', 'dizin')
         foreach ($k in $isKlasorleri) {
@@ -750,6 +877,9 @@ print(f"MODEL_TAMAMLANDI:{resolved_sha}")
         [void]$surumSb.AppendLine("OCR Modelleri: PP-OCRv6 (Apache-2.0, PaddleOCR/RapidOCR)")
         [void]$surumSb.AppendLine("Sozluk: FrequencyWords tr_50k (CC BY-SA 4.0, hermitdave)")
         [void]$surumSb.AppendLine("PDF Kutuphanesi: PyMuPDF (AGPL-3.0)")
+        foreach ($acSatir in $artcraftSurumListesi) {
+            [void]$surumSb.AppendLine($acSatir)
+        }
         [void]$surumSb.AppendLine("")
         [void]$surumSb.AppendLine("2. MODEL COMMIT SHA BILGILERI")
         [void]$surumSb.AppendLine("--------------------------------------------------------------------------------")
@@ -823,6 +953,9 @@ print(f"MODEL_TAMAMLANDI:{resolved_sha}")
         [void]$surumSbCpu.AppendLine("OCR Modelleri: PP-OCRv6 (Apache-2.0, PaddleOCR/RapidOCR)")
         [void]$surumSbCpu.AppendLine("Sozluk: FrequencyWords tr_50k (CC BY-SA 4.0, hermitdave)")
         [void]$surumSbCpu.AppendLine("PDF Kutuphanesi: PyMuPDF (AGPL-3.0)")
+        foreach ($acSatir in $artcraftSurumListesi) {
+            [void]$surumSbCpu.AppendLine($acSatir)
+        }
         [void]$surumSbCpu.AppendLine("")
         [void]$surumSbCpu.AppendLine("2. MODEL COMMIT SHA BILGILERI")
         [void]$surumSbCpu.AppendLine("--------------------------------------------------------------------------------")
