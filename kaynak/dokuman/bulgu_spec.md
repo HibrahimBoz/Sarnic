@@ -402,3 +402,63 @@ Mevcut tüm testler geçmeye devam eder.
 - Eğiklik düzeltmesi 90°/270° yön bulunmadan önce de çalışır; dönük + eğik sayfada açı sapabilir.
 - Uzun metin sayfası dağıtımı sırasında geçen süre OCR işçisinin zaman aşımı süresinden düşer.
 - ODS'te 200'den az ardışık boş satır sonunda boş parça üretilebilir.
+
+## 11. Sürüm 2 eki (kullanıcı isteği 2026-10-30): adlar, eski biçimler, ArtCraft ile açma, simgeler
+
+### 11.1 Adlar (kullanıcının seçimi)
+- Veri işleme parçası (Python; video transkript, belge, OCR, dizinleme): **Veri Fırını**.
+- Veri sunumu parçası (WPF; video izleme, belge/dosya bulma): **Veri Dedektifi**.
+- Kullanıcıya görünen "Bulgu", "Bulgu İşleyici", "Bulgu Portalı" metinlerinin hepsi bu iki ada döner. Pencere başlıkları:
+  `Veri Dedektifi — Arama`, `Veri Dedektifi — Oynatıcı — {ad}`, `Veri Dedektifi — Belge — {ad}`. Menü başlığı: `Veri Fırını`.
+- Depo klasörü varsayılanı `<kök>\_bulgu` → `<kök>\_veridedektifi`. Yerel klasör `%LOCALAPPDATA%\Bulgu` → `%LOCALAPPDATA%\VeriDedektifi`.
+- Paket adları: `dist\VeriFirini-Paketi` (+`.7z`), `dist\VeriDedektifi` (+`.7z`). İç kod adları (videohat, Portal.*) DEĞİŞMEZ.
+
+### 11.2 Eski biçimler (2000 ve öncesi belgeler)
+Dönüştürücüler (bulunduğu sırayla denenir): paketteki `araclar\libreoffice\program\soffice.exe`, sistemdeki
+`%ProgramFiles%\LibreOffice\program\soffice.exe` (ve x86), sonra ArtCraft CLI (`wordcraft-cli convert` .doc için,
+`gridcraft-cli convert` .xls için; yalnız varsa). Her LibreOffice çağrısı geçici profil + 120 sn zaman aşımı (5.1).
+
+| Grup | Uzantılar | Yol |
+|---|---|---|
+| Metin işlemci | `.doc .dot .wpd .wps .wri .lwp .sam .sxw .stw .sdw .mcw .602 .hwp .abw .zabw .cwk` | LibreOffice → `.docx` → mevcut DOCX çıkarıcı |
+| Hesap tablosu | `.xls .xlt .xlw .xlsb .wk1 .wk3 .wk4 .123 .wq1 .wb2 .sxc .stc .sdc .dbf .dif .slk` | LibreOffice → `.xlsx` → XLSX çıkarıcı |
+| Sunum | `.ppt .pps .pot .sxi .sti .sdd .key` | LibreOffice → `.pptx` → PPTX çıkarıcı |
+| Çizim/yayın | `.vsd .vdx .pub .sxd .std .sda .cdr .wpg .cgm` | LibreOffice → `.pdf` → PDF çıkarıcı (gerekirse OCR) |
+| PyMuPDF yerel | `.xps .oxps .epub .mobi .fb2 .cbz .svg` | PyMuPDF sayfaları (metin, yoksa OCR) |
+| Eski görüntü | `.pcx .tga .dib .jpe .jfif .jp2 .j2k .jpx .psd .pnm .pbm .pgm .ppm` | Pillow/PyMuPDF → OCR |
+| DjVu | `.djvu .djv` | `djvutxt` metin katmanı; boşsa `ddjvu -format=tiff` → OCR (DjVuLibre: paket `araclar\djvulibre\` ya da `%ProgramFiles(x86)%\DjVuLibre`) |
+| Web arşivi | `.mht .mhtml` | `email` MIME → HTML çıkarıcı |
+| Yardım | `.chm` | 7-Zip (`araclar\7z\7z.exe` ya da `%ProgramFiles%\7-Zip\7z.exe`) ile aç → HTML'ler bölüm |
+| Eski düz metin | `.txt .asc .nfo .lst .prn .dos` | kodlama: BOM → UTF-8 → cp1254 / ISO-8859-9 / **cp857 (DOS Türkçe)** puanlaması (Türkçe harf sıklığı en yüksek olan; kutu çizme karakterleri cp857 lehine) |
+
+- Dönüştürülen modern kopya depoda `<sha>\duzenlenebilir.<docx|xlsx|pptx|pdf>` olarak SAKLANIR (`belge.json`'a
+  `"duzenlenebilir": "duzenlenebilir.docx"`). Veri Dedektifi bunu ArtCraft ile açma seçeneği olarak sunar.
+- Dönüştürücü yoksa: `durum='desteklenmiyor'`, `hata` hangi aracın eksik olduğunu söyler (ör. "Eski WordPerfect: LibreOffice bulunamadı").
+- Tür kuralı (5.7): bu tablodaki tüm uzantılar `belge` (görüntü satırı ve DjVu `goruntu`).
+
+### 11.3 ArtCraft ile açma (Veri Dedektifi)
+- ArtCraft (storytold/*, Apache-2.0) uygulamaları: WordCraft (`.docx .docm .dotx .dotm .doc .dot .rtf .odt .md .txt .html .tex`),
+  GridCraft (`.xlsx .xlsm .xlsb .xls .ods .csv .tsv`), DeckCraft (`.pptx .potx .ppsx`), PdfCraft (`.pdf`),
+  PhotoCraft (`.png .jpg .jpeg .tif .tiff .bmp .gif .webp .tga .psd .ico .avif`), FigCraft (`.svg`), CADCraft (`.dwg .dxf`).
+  Açma komutu: `<uygulama>.exe "<dosya>"` (kayıt defterindeki `shell\open\command` ile aynı; ölçüldü).
+- Bulma sırası (Çekirdek `ArtCraftKatalogu`): (1) Veri Dedektifi klasörü altında `artcraft\<uygulama>\**\<uygulama>.exe`
+  (paketlenen taşınabilir sürüm), (2) `%ProgramFiles%\<Uygulama>\<uygulama>.exe`, (3) `%LOCALAPPDATA%\Programs\<Uygulama>\`.
+  Aynı uygulamanın birden çok kopyası varsa **en yüksek sürüm** (FileVersionInfo.ProductVersion) seçilir.
+- Arayüz: Dosyalar ve Belgeler sonuçlarının sağ tık menüsüne `Düzenle ▸ <Uygulama sürüm>` (uzantıya uyanlar) ve
+  `Birlikte aç ▸ Windows varsayılanı`; dosyanın düzenlenebilir kopyası varsa `Düzenlenebilir kopyayı aç (<Uygulama>)` →
+  kopya önce `%USERPROFILE%\Documents\Veri Dedektifi\<özgün ad>.<yeni uzantı>`'ya kopyalanır (arşivdeki özgün değişmez).
+  Belge görüntüleyicinin üst çubuğunda `Düzenle (<Uygulama>)` düğmesi.
+- Uygun uygulama yoksa menü maddesi gri ve ipucu: "ArtCraft uygulaması bulunamadı".
+
+### 11.4 Paketleme
+- `hazirla.ps1` ve `paketle-portal.ps1`: ArtCraft uygulamalarının **en güncel** sürümü paketleme anında GitHub API ile
+  bulunur (`https://api.github.com/repos/storytold/<ad>/releases/latest`), `<ad>-<sürüm>-windows-x64-portable.zip`
+  indirilir, GitHub'ın `digest` (sha256) değeriyle doğrulanır, `artcraft\<ad>\` altına açılır. Varsayılan liste:
+  `wordcraft gridcraft deckcraft pdfcraft photocraft` (parametre `-ArtCraft`). Sürümler SURUMLER/OKU-BENI'ye yazılır.
+  İndirme başarısızsa uyarı yazılır, paketleme sürer (ArtCraft isteğe bağlıdır).
+
+### 11.5 Simgeler
+- Gemini her iki uygulama için adına göre SVG simge tasarlar: Veri Fırını (veri + fırın), Veri Dedektifi (büyüteç + belge/film).
+  256×256 görünüm kutusu, 16 piksele küçülünce de okunur, düz renk + en çok 3 renk, metin yok.
+  SVG → PNG (PyMuPDF) → çok boyutlu `.ico` (16, 24, 32, 48, 64, 128, 256; Pillow). Dosyalar: `kaynak/varliklar/veri-firini.svg`,
+  `veri-dedektifi.svg`; portal `Varliklar\uygulama.ico` + `logo-256.png`, menü `baslat\logo-256.png` bunlarla değişir.
