@@ -112,6 +112,7 @@ def json_meta(
     secim: CihazSecimi,
     sureler: dict[str, float],
     yol: Path,
+    dil: str | None = None,
 ) -> None:
     """Transkripsiyon ve yürütme üstverilerini UTF-8 JSON dosyası olarak kaydeder."""
     yol = Path(yol)
@@ -139,5 +140,7 @@ def json_meta(
         "kaynak_ozet": kaynak_ozet,
         "segmentler": segmentler,
     }
+    if dil:
+        veri["dil"] = dil
     icerik = json.dumps(veri, ensure_ascii=False, indent=2) + "\n"
     yol.write_text(icerik, encoding="utf-8")

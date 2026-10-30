@@ -32,6 +32,19 @@ class SttAyar:
     bosluk_aktif_orani: float = 0.40
     bosluk_enerji_db: float = 3.0
     bosluk_en_cok_oran: float = 1.0
+    # "otomatik": konuşma dili her kayıtta `diller` arasından Whisper ile seçilir; ya da sabit kod ("tr").
+    dil: str = "otomatik"
+    diller: list[str] = field(default_factory=lambda: ["tr", "en", "az", "ru"])
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.dil, str) or not self.dil.strip():
+            raise AyarHatasi('ayar.toml: [stt] dil "otomatik" ya da dil kodu olmalı (ör. "tr")')
+        if not isinstance(self.diller, list):
+            raise AyarHatasi('ayar.toml: [stt] diller liste olmalı (ör. ["tr", "en"])')
+        self.dil = self.dil.strip().lower()
+        self.diller = [str(d).strip().lower() for d in self.diller if str(d).strip()]
+        if not self.diller:
+            raise AyarHatasi("ayar.toml: [stt] diller boş olamaz")
 
 
 @dataclass
@@ -128,6 +141,8 @@ class OcrAyar:
     tesseract: bool = True
     sozluk: str = "sozluk\\tr_kelime.txt"
     unlu_uyumu: bool = True
+    # Kiril (Rusça) satırlar için ikinci tanıma modeli; dosya yoksa sessizce atlanır.
+    kiril: bool = True
 
     def __post_init__(self):
         if self.profil not in ("hizli", "uyarlamali", "kalite"):
@@ -138,7 +153,7 @@ class OcrAyar:
         _sayi("min_metin", self.min_metin, 0, tam=True)
         _sayi("ikinci_esik", self.ikinci_esik, 0, 1)
         _sayi("sayfa_zaman_asimi_sn", self.sayfa_zaman_asimi_sn, 0.000001)
-        for ad in ("gomulu_gorsel", "tesseract"):
+        for ad in ("gomulu_gorsel", "tesseract", "kiril"):
             if not isinstance(getattr(self, ad), bool):
                 raise AyarHatasi(f"Geçersiz {ad}: doğru/yanlış gerekli")
         if not isinstance(self.sozluk, str):

@@ -25,6 +25,24 @@ def _indirme_yasak(*args, **kwargs):
     raise OrtamHatasi("OCR çevrimdışı: model veya karakter sözlüğü eksik; indirme kapalı")
 
 
+KIRIL = "kiril"
+KIRIL_MODEL = "eslav_PP-OCRv5_rec_mobile.onnx"  # ru/uk/be + Latin; RapidOCR 3.10 resmi modeli
+KIRIL_ORNEK = 6  # sayfa kararı için Kiril modeliyle denenen en çok şüpheli satır
+KIRIL_EN_BOY = 12  # bundan uzun satır, güven yetersizse ikiye bölünerek de denenir
+KIRIL_YETERLI = .9  # bu güvenin üstündeki ilk Kiril okuması yeterli sayılır (ek aday denenmez)
+
+
+def kiril_orani(metin: str) -> float:
+    harfler = [c for c in metin if c.isalpha()]
+    return sum("Ѐ" <= c <= "ӿ" for c in harfler) / len(harfler) if harfler else 0.0
+
+
+def _kirp(gri, s):
+    x0, y0, x1, y1 = s.kutu
+    return gri[max(0, int(y0)):min(gri.shape[0], int(y1 + 1)),
+               max(0, int(x0)):min(gri.shape[1], int(x1 + 1))]
+
+
 class OcrMotoru:
     def __init__(self, ayar):
         self.ayar = ayar
@@ -35,6 +53,7 @@ class OcrMotoru:
         self.sozluk = Sozluk(sozluk, ayar.kok / ayar.stt.terimler_dosyasi,
                              unlu_uyumu=getattr(ayar.ocr, "unlu_uyumu", True))
         self.tesseract = yollar.tesseract() if ayar.ocr.tesseract else None
+        self.kiril = ayar.ocr.kiril and (yollar.kok() / "modeller-ocr" / KIRIL_MODEL).is_file()
 
     def _motor(self, det, rec):
         anahtar = det, rec
@@ -50,12 +69,18 @@ class OcrMotoru:
             threads = self.ayar.genel.cpu_threads
             if not threads:
                 threads = max(1, (os.cpu_count() or 1) // 2) if self.ayar.dizin.isci == 1 else 1
+            if rec == KIRIL:
+                rec_yol, rec_surum, rec_tur = (yollar.ocr_model(KIRIL_MODEL), OCRVersion.PPOCRV5,
+                                               ModelType.MOBILE)
+            else:
+                rec_yol, rec_surum, rec_tur = (yollar.ocr_model(f"PP-OCRv6_rec_{rec}.onnx"),
+                                               OCRVersion.PPOCRV6, ModelType(rec))
             params = {
                 "Det.model_path": str(yollar.ocr_model(f"PP-OCRv6_det_{det}.onnx")),
-                "Rec.model_path": str(yollar.ocr_model(f"PP-OCRv6_rec_{rec}.onnx")),
+                "Rec.model_path": str(rec_yol),
                 "Cls.model_path": str(yollar.ocr_model("ch_ppocr_mobile_v2.0_cls_mobile.onnx")),
-                "Det.ocr_version": OCRVersion.PPOCRV6, "Rec.ocr_version": OCRVersion.PPOCRV6,
-                "Det.model_type": ModelType(det), "Rec.model_type": ModelType(rec),
+                "Det.ocr_version": OCRVersion.PPOCRV6, "Rec.ocr_version": rec_surum,
+                "Det.model_type": ModelType(det), "Rec.model_type": rec_tur,
                 "Global.text_score": 0.0, "Global.log_level": "error",
                 "EngineConfig.onnxruntime.use_cuda": cuda and self.ayar.ocr.cihaz != "cpu",
                 # Tek süreçte çekirdekleri kullanır; çok süreçte 1'e sabitler
@@ -97,6 +122,75 @@ class OcrMotoru:
             if diger.text_cls is not None and motor.text_cls is not diger.text_cls:
                 motor.text_cls = diger.text_cls
         return motor
+
+    def _kiril_tek(self, kirpinti):
+        sonuc = self._motor("small", KIRIL)(kirpinti, use_det=False, use_cls=True, use_rec=True)
+        return (sonuc.txts[0], float(sonuc.scores[0])) if sonuc.txts else ("", 0.0)
+
+    def _kiril_rec(self, kirpinti, derinlik=0, bol=True):
+        """Kiril modeliyle tek satır tanır; en güvenli adayı döndürür.
+
+        Ölçüldü (sentetik Rusça sayfa): uzun satırlarda (en/boy 16-24) model kimi zaman boş döner
+        (0,00-0,50 güven). Adaylar: satırın kendisi, kenar boşluklu hali ve uzun satırda sözcük
+        arasındaki en açık sütundan ikiye bölünmüşü. Hiçbiri tek başına her satırda doğru değildi;
+        en yüksek güvenli aday dört satırın dördünde de doğruydu.
+        """
+        import cv2
+        import numpy as np
+        adaylar = [self._kiril_tek(kirpinti)]
+        if adaylar[0][1] >= KIRIL_YETERLI:
+            return adaylar[0]
+        adaylar.append(self._kiril_tek(
+            cv2.copyMakeBorder(kirpinti, 8, 8, 8, 8, cv2.BORDER_CONSTANT, value=255)))
+        h, w = kirpinti.shape[:2]
+        if bol and max(a[1] for a in adaylar) < KIRIL_YETERLI and derinlik < 2 and h and w / h > KIRIL_EN_BOY:
+            orta = w // 2
+            ara = kirpinti[:, orta - w // 5: orta + w // 5]
+            kes = orta - w // 5 + int(np.argmax(ara.mean(axis=0)))
+            parcalar = [self._kiril_rec(kirpinti[:, :kes], derinlik + 1),
+                        self._kiril_rec(kirpinti[:, kes:], derinlik + 1)]
+            parcalar = [(t.strip(), g, max(1, len(t.strip()))) for t, g in parcalar if t.strip()]
+            if parcalar:
+                adaylar.append((" ".join(t for t, _, _ in parcalar),
+                                sum(g * n for _, g, n in parcalar) / sum(n for _, _, n in parcalar)))
+        return max(adaylar, key=lambda a: a[1])
+
+    def _kiril_uygula(self, gri, satirlar):
+        """Sayfa Kiril yazılıysa satırları Kiril modeliyle yeniden tanır; değişen satırların id'lerini döndürür.
+
+        PP-OCRv6 çok dilli modeli Kiril harfi içermez: Rusça sayfayı düşük güvenle Latin harf çöpüne
+        çevirir (ölçüldü: kelime doğruluğu 0). Karar düşük güvenli satırlardan alınan örnekle verilir;
+        Türkçe/İngilizce sayfada Kiril modeli Latin harf döndürdüğü için sayfa işaretlenmez.
+        """
+        if not self.kiril or not satirlar:
+            return set()
+        # Şüpheli satır: düşük güvenli ya da kutusuna göre çok az harf (ölçüldü: Latin model Kiril satırı
+        # 0,88 güvenle boşluk dizisi olarak döndürüyor).
+        def supheli(s):
+            harf = sum(c.isalnum() for c in s.metin)
+            boy = max(1.0, s.kutu[3] - s.kutu[1])
+            return s.guven < self.ayar.ocr.ikinci_esik or harf < .3 * (s.kutu[2] - s.kutu[0]) / boy
+        dusuk = sorted((s for s in satirlar if supheli(s) and _kirp(gri, s).size),
+                       key=lambda s: -(s.kutu[2] - s.kutu[0]))[:KIRIL_ORNEK]
+        if not dusuk:
+            return set()
+        kazanan = 0
+        for s in dusuk:
+            metin, guven = self._kiril_rec(_kirp(gri, s), bol=False)  # örneklemede bölme yok (maliyet)
+            kazanan += kiril_orani(metin) >= .5 and guven > s.guven
+        # Tek bir kaşe/imza kutusu Türkçe sayfayı Kiril saydırmasın: en az 2 kazanan (tek satırlık sayfa hariç).
+        if kazanan * 2 < len(dusuk) or kazanan < min(2, len(satirlar)):
+            return set()
+        for s in satirlar:
+            kirpinti = _kirp(gri, s)
+            if not kirpinti.size:
+                continue
+            metin, guven = self._kiril_rec(kirpinti)
+            # Rusça belgedeki Latin sözcükleri (ad, birim) Kiril modeli de okur; yüksek güvenli olan kalır.
+            if guven > s.guven or (kiril_orani(metin) >= .5 and guven >= .5):
+                s.metin, s.guven = metin, guven
+        # Kiril sayfasının hiçbir satırına Türkçe ikinci görüş ve sözlük uygulanmaz.
+        return {id(s) for s in satirlar}
 
     def _oku(self, gorsel, det, rec, cls=True):
         sonuc = self._motor(det, rec)(gorsel, use_det=True, use_rec=True, use_cls=cls)
@@ -167,11 +261,12 @@ class OcrMotoru:
             kutu_alani = sum((s.kutu[2] - s.kutu[0]) * (s.kutu[3] - s.kutu[1]) for s in satirlar)
             if kutu_alani < .5 * metin_murekkebi(gri):
                 satirlar = self._oku(gri, "medium", "small")
+        kiril_satirlar = self._kiril_uygula(gri, satirlar)
         for s in satirlar:
+            if id(s) in kiril_satirlar:  # Kiril satırına Türkçe ikinci görüş ve sözlük uygulanmaz
+                continue
             if s.guven < self.ayar.ocr.ikinci_esik:
-                x0, y0, x1, y1 = s.kutu
-                kirpinti = gri[max(0, int(y0)):min(gri.shape[0], int(y1 + 1)),
-                               max(0, int(x0)):min(gri.shape[1], int(x1 + 1))]
+                kirpinti = _kirp(gri, s)
                 if kirpinti.size:
                     adaylar = [(s.metin, s.guven)]
                     if profil == "uyarlamali":

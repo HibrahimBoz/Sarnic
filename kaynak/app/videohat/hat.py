@@ -151,7 +151,9 @@ def isle_tek(video: Path, cikis_dir: Path, ayar: Ayar, bayraklar: Bayraklar) -> 
         from . import stt as stt_mod
         stt_yaz = stt_mod.yaz
         bolumler = olc("stt", stt_calistir)
-        duzeltme_sayisi = olc("terim_duzeltme", lambda: terimler_mod.uygula(bolumler, tm))
+        # Terim listesi Türkçedir; başka dildeki kayıtta bulanık eşleştirme doğru sözcüğü bozar.
+        duzeltme_sayisi = olc("terim_duzeltme", lambda: terimler_mod.uygula(bolumler, tm)
+                              if stt_mod.SON_DIL in (None, "tr") else 0)
         if duzeltme_sayisi:
             gunluk.info("Terim düzeltme: %d değişiklik", duzeltme_sayisi)
 
@@ -208,7 +210,7 @@ def isle_tek(video: Path, cikis_dir: Path, ayar: Ayar, bayraklar: Bayraklar) -> 
             shutil.move(str(son_video), str(nihai))
             cikti_dosyalari.append(nihai)
 
-        cikti.json_meta(bolumler, secim, sonuc.sureler, json_yolu)
+        cikti.json_meta(bolumler, secim, sonuc.sureler, json_yolu, dil=stt_mod.SON_DIL)
         sonuc.basarili = True
         sonuc.cikti_dosyalari = cikti_dosyalari
         sonuc.hata = None

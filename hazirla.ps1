@@ -511,6 +511,12 @@ print(f"MODEL_TAMAMLANDI:{resolved_sha}")
             Ad     = 'PP-OCRv6_rec_medium.onnx'
             Url    = 'https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.10.0/onnx/PP-OCRv6/rec/PP-OCRv6_rec_medium.onnx'
             SHA256 = 'eef444829dbbe18d7fea59a3f6eb75647518d2b3a9568d27c92e42940204894b'
+        },
+        @{
+            # Rusça (Kiril) taramalar için: PP-OCRv6 çok dilli modeli Kiril harfi içermez (ölçüldü).
+            Ad     = 'eslav_PP-OCRv5_rec_mobile.onnx'
+            Url    = 'https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.10.0/onnx/PP-OCRv5/rec/eslav_PP-OCRv5_rec_mobile.onnx'
+            SHA256 = '08705d6721849b1347d26187f15a5e362c431963a2a62bfff4feac578c489aab'
         }
     )
 
@@ -748,23 +754,43 @@ print(f"MODEL_TAMAMLANDI:{resolved_sha}")
 
     $libreofficeAcikKok = $sofficeDosya.Directory.Parent.FullName
 
-    # Kırpılmış kopya: yalnız dönüştürme için gerekenler (1,49 GB -> 684 MB, ölçüldü 26.8.2).
-    # - share\extensions (60 dilin yazım sözlüğü, 462 MB) çıkarılır. Ölçüldü: bu klasör varken
-    #   Writer (.doc/.docx) her taze profilde 120 sn+ askıda kaldı; çıkarınca 5 sn'de çevirdi.
-    # - Arayüz dili yalnız tr (program\resource) ve registry\res içinde yalnız tr/en-US kalır.
+    # Kırpılmış kopya (1,49 GB -> 760 MB, ölçüldü 26.8.2). Belgeler tr/en/az/ru olabilir (kullanıcı kararı):
+    # - Arayüz paketi: tr, ru, en_GB (+ ortak "common"); registry\res: tr/ru/en-US/en-GB. LibreOffice'in
+    #   Azerbaycanca arayüz paketi yok; dönüştürme arayüz dilinden bağımsızdır (az .doc/.xls/.ppt ölçüldü: %100).
+    # - Sözlük eklentileri: yalnız dict-tr, dict-en, dict-ru (yazım, heceleme, eş anlam).
+    # - Ölçüldü: dict-en ve dict-ru'daki Python tabanlı Lightproof dilbilgisi denetleyicisi varken Writer
+    #   (.doc/.docx) her taze profilde 60 sn+ askıda kaldı. Lightproof kaydı manifest'ten çıkarılınca
+    #   üç sözlükle 5,8 sn'de çevirdi. Yazım/heceleme/eş anlam dosyaları korunur.
     # - help, readmes ve 32 bit System klasörü atılır.
     # - System64'teki VC++ çalışma zamanı DLL'leri program\ yanına konur: hedef makinede
     #   VC++ yeniden dağıtılabilir paketi kurulu olmayabilir (ek kurulum istenmiyor).
     $libreofficeKok = Join-Path $libreofficeCache "kirpik-$LibreOfficeSurum"
     Invoke-RobocopyMirror -Kaynak $libreofficeAcikKok -Hedef $libreofficeKok -EkArgumanlar @('/XF', '.tamam')
-    foreach ($fazla in @('share\extensions', 'help', 'readmes', 'System', 'System64')) {
+    foreach ($fazla in @('help', 'readmes', 'System', 'System64')) {
         $fazlaYol = Join-Path $libreofficeKok $fazla
         if (Test-Path $fazlaYol) { Remove-Item -Path $fazlaYol -Recurse -Force }
     }
+    $loDilleri = @('tr', 'ru', 'en_GB', 'common')
     Get-ChildItem -Path (Join-Path $libreofficeKok "program\resource") -Directory -ErrorAction SilentlyContinue |
-        Where-Object { $_.Name -ne 'tr' } | Remove-Item -Recurse -Force
+        Where-Object { $_.Name -notin $loDilleri } | Remove-Item -Recurse -Force
     Get-ChildItem -Path (Join-Path $libreofficeKok "share\registry\res") -Filter "*.xcd" -File -ErrorAction SilentlyContinue |
-        Where-Object { $_.Name -notmatch '_(tr|en-US)\.xcd$' } | Remove-Item -Force
+        Where-Object { $_.Name -notmatch '_(tr|ru|en-US|en-GB)\.xcd$' } | Remove-Item -Force
+    $loSozlukleri = @('dict-tr', 'dict-en', 'dict-ru')
+    Get-ChildItem -Path (Join-Path $libreofficeKok "share\extensions") -Directory -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -notin $loSozlukleri } | Remove-Item -Recurse -Force
+    foreach ($sozluk in $loSozlukleri) {
+        $sozlukYol = Join-Path $libreofficeKok "share\extensions\$sozluk"
+        $manifest = Join-Path $sozlukYol "META-INF\manifest.xml"
+        if (-not (Test-Path (Join-Path $sozlukYol "Lightproof.components")) -or -not (Test-Path $manifest)) { continue }
+        $xml = [System.IO.File]::ReadAllText($manifest)
+        $xml = [regex]::Replace($xml, '<manifest:file-entry\b[^>]*?(Lightproof\.components|Linguistic\.xcu|dialog/OptionsDialog\.xc[su])[^>]*/>\s*', '',
+            [System.Text.RegularExpressions.RegexOptions]::Singleline)
+        [System.IO.File]::WriteAllText($manifest, $xml, (New-Object System.Text.UTF8Encoding($false)))
+        foreach ($lp in @('Lightproof.components', 'Lightproof.py', 'Linguistic.xcu', 'pythonpath', 'dialog')) {
+            $lpYol = Join-Path $sozlukYol $lp
+            if (Test-Path $lpYol) { Remove-Item -Path $lpYol -Recurse -Force }
+        }
+    }
     Get-ChildItem -Path (Join-Path $libreofficeAcikKok "System64") -Filter "*.dll" -File -ErrorAction SilentlyContinue |
         Copy-Item -Destination (Join-Path $libreofficeKok "program") -Force
     $kirpikMb = [int](((Get-ChildItem -Path $libreofficeKok -Recurse -File | Measure-Object Length -Sum).Sum) / 1MB)

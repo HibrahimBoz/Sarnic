@@ -21,6 +21,9 @@ bosluk_min_sn = 30
 bosluk_aktif_orani = 0.40
 bosluk_enerji_db = 3
 bosluk_en_cok_oran = 1.0
+# Konuşma dili: "otomatik" her kayıtta aşağıdaki listeden seçer; sabit için ör. "tr".
+dil = "otomatik"
+diller = ["tr", "en", "az", "ru"]
 [ses]
 highpass_hz = 80
 afftdn_nf = -25
