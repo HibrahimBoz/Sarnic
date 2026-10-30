@@ -69,6 +69,33 @@ if (Test-Path $artcraftKlasor) {
         $artcraftListesi += "$acGoster $surum (Apache-2.0, github.com/storytold/$acAd)"
     }
 }
+$araclarListesi = @()
+$loExe = Join-Path $vh 'araclar\libreoffice\program\soffice.exe'
+if (Test-Path $loExe) {
+    $loSurum = ""
+    try { $loSurum = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($loExe).ProductVersion } catch {}
+    if ($loSurum) {
+        $araclarListesi += ("{0,-26}: documentfoundation.org (MPL-2.0), kirpilmis tasinabilir kopya" -f "LibreOffice $($loSurum.Trim())")
+    }
+}
+$yediExe = Join-Path $vh 'araclar\7z\7z.exe'
+if (Test-Path $yediExe) {
+    $yediSurum = ""
+    try { $yediSurum = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($yediExe).ProductVersion } catch {}
+    if ($yediSurum) {
+        $araclarListesi += ("{0,-26}: github.com/ip7z/7zip (LGPL-2.1 + unRAR), yalniz 7z.exe/7z.dll" -f "7-Zip $($yediSurum.Trim())")
+    }
+}
+$djvuTxtExe = Join-Path $vh 'araclar\djvulibre\djvutxt.exe'
+if (Test-Path $djvuTxtExe) {
+    $djvuSurum = ""
+    $djvuSetup = Get-ChildItem (Join-Path $proje '_indir\djvulibre') -Filter 'DjVuLibre-*_DjView*' -ErrorAction SilentlyContinue | Select-Object -Last 1
+    if ($djvuSetup -and $djvuSetup.Name -match 'DjVuLibre-(.+)_DjView') {
+        $djvuSurum = $Matches[1]
+    }
+    if (-not $djvuSurum) { $djvuSurum = '3.5.29' }
+    $araclarListesi += ("{0,-26}: djvu.sourceforge.net (GPL-2.0), djvutxt/djvused/ddjvu" -f "DjVuLibre $djvuSurum")
+}
 $sv = @"
 Veri Firini paketi - bilesen listesi ($(Get-Date -Format 'yyyy-MM-dd'))
 Bu dosya paket olusturulurken gercek dosyalardan uretilmistir.
@@ -83,6 +110,7 @@ Whisper CT2 modelleri     : huggingface.co - Systran/faster-whisper-large-v3, Sy
 OCR modelleri             : PP-OCRv6 (Apache-2.0, PaddleOCR/RapidOCR)
 Sozluk                    : FrequencyWords tr_50k (CC BY-SA 4.0, hermitdave)
 PyMuPDF                   : PyMuPDF (AGPL-3.0)
+$($araclarListesi -join "`r`n")
 $($artcraftListesi -join "`r`n")
 
 MODEL COMMIT SHA

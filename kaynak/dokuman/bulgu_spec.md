@@ -416,7 +416,7 @@ Mevcut tüm testler geçmeye devam eder.
 ### 11.2 Eski biçimler (2000 ve öncesi belgeler)
 Dönüştürücüler (bulunduğu sırayla denenir): paketteki `araclar\libreoffice\program\soffice.exe`, sistemdeki
 `%ProgramFiles%\LibreOffice\program\soffice.exe` (ve x86), sonra ArtCraft CLI (`wordcraft-cli convert` .doc için,
-`gridcraft-cli convert` .xls için; yalnız varsa). Her LibreOffice çağrısı geçici profil + 120 sn zaman aşımı (5.1).
+`gridcraft-cli convert` .xls için; yalnız varsa). Paket `araclar\libreoffice` taşır: 26.8.2, `msiexec /a` ile ayıklanmış ve kırpılmış (684 MB; yazım sözlükleri, tr dışı arayüz dilleri ve yardım yok; VC++ DLL'leri `program\` yanında). Ölçüldü: sözlük klasörü varken Writer taze profilde 120 sn+ askıda kaldı, kırpılmış kopya .doc/.xls/.ppt'yi 4–5 sn'de çevirdi. Her LibreOffice çağrısı geçici profil + 120 sn zaman aşımı (5.1). Paket `araclar\7z` (7-Zip 26.05, 7z.exe+7z.dll) ve `araclar\djvulibre` (3.5.29, djvutxt/djvused/ddjvu + 32 bit VC++ DLL'leri) taşır.
 
 | Grup | Uzantılar | Yol |
 |---|---|---|

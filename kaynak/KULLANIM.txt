@@ -71,9 +71,9 @@ Tek paket her makinede çalışır: NVIDIA kart varsa (RTX 3060/3070...; sürüc
      uyarlamali        varsayılan profil; düşük güvenli satırları rec medium ile yeniden tanır.
      kalite            det medium + rec medium (6,85 sn/sayfa, yarım A4, CPU) ve Tesseract desteği.
 
-   Eski Office biçimleri (.doc, .xls, .ppt):
-     araclar\libreoffice\program\soffice.exe varsa dosyalar otomatik çevrilir.
-     LibreOffice yoksa durum desteklenmiyor olarak işaretlenir.
+   Eski Office, DjVu ve yardım biçimleri (.doc, .xls, .ppt, .djvu, .chm):
+     Paket LibreOffice, DjVuLibre ve 7-Zip araçlarını içerir; ek kurulum gerekmez.
+     LibreOffice klasörü silinirse .doc/.xls için ArtCraft yedeği denenir, diğerleri desteklenmiyor olur.
 
 6) DİZİNLEME (Veri Dedektifi için) — dizinle.bat çalıştırın:
      dizinle.bat --kok "\\sunucu\Arsiv"
@@ -112,6 +112,7 @@ Tek paket her makinede çalışır: NVIDIA kart varsa (RTX 3060/3070...; sürüc
    Sistem eski biçimleri modern biçimlere çevirir ve metin/OCR çıkarır.
    Dönüştürülen modern kopya depoda <sha>\duzenlenebilir.<uzanti> olarak saklanır.
    Veri Dedektifi bu kopyayı ArtCraft ile açma seçeneği olarak sunar.
+   Paket LibreOffice, DjVuLibre ve 7-Zip araçlarını içerir; ek kurulum gerekmez.
    Gerekli dönüştürücü araç bulunamazsa durum 'desteklenmiyor' olarak işaretlenir.
 
    Grup             Uzantılar                                              Gereken Araç

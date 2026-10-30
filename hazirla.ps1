@@ -10,7 +10,13 @@ param(
 
     [switch]$ModelAtla,
 
-    [string[]]$ArtCraft = @('wordcraft', 'gridcraft', 'deckcraft', 'pdfcraft', 'photocraft')
+    [string[]]$ArtCraft = @('wordcraft', 'gridcraft', 'deckcraft', 'pdfcraft', 'photocraft'),
+
+    [string]$LibreOfficeSurum = '26.8.2',
+
+    [string]$YediZipSurum = '26.05',
+
+    [string]$DjvuLibreSurum = '3.5.29'
 )
 
 # Hata durumunda hemen durdur ve indirme çubuğunu gizle
@@ -63,7 +69,8 @@ try {
     function Get-DosyaHashVeBoyutListesi {
         param([string]$KokDizin)
         $dosyalar = Get-ChildItem -Path $KokDizin -Recurse -File | Where-Object {
-            $_.Extension -in @('.exe', '.dll', '.bin') -or $_.Length -ge 10MB
+            ($_.Extension -in @('.exe', '.dll', '.bin') -or $_.Length -ge 10MB) -and
+            $_.FullName -notlike '*\araclar\libreoffice\*'  # LO ağacı yüzlerce DLL; MSI özeti SURUMLER'de yeterli
         }
         $sonuclar = @()
         foreach ($d in $dosyalar) {
@@ -602,6 +609,447 @@ print(f"MODEL_TAMAMLANDI:{resolved_sha}")
 
     # --------------------------------------------------------------------------
     # --------------------------------------------------------------------------
+    # LibreOffice Taşınabilir (MSI ayıklama - hedef makinede ek kurulum gerekmez)
+    # --------------------------------------------------------------------------
+    Write-Host "  -> LibreOffice $LibreOfficeSurum kontrol ediliyor..." -ForegroundColor Cyan
+
+    $libreofficeCache = Join-Path $IndirKlasoru "libreoffice"
+    if (-not (Test-Path $libreofficeCache)) {
+        New-Item -ItemType Directory -Path $libreofficeCache -Force | Out-Null
+    }
+
+    $libreofficeMsiAdi = "LibreOffice_${LibreOfficeSurum}_Win_x86-64.msi"
+    $libreofficeUrl = "https://download.documentfoundation.org/libreoffice/stable/$LibreOfficeSurum/win/x86_64/$libreofficeMsiAdi"
+    $libreofficeShaUrl = "$libreofficeUrl.sha256"
+    $libreofficeMsiYolu = Join-Path $libreofficeCache $libreofficeMsiAdi
+    $libreofficePartYolu = "$libreofficeMsiYolu.part"
+
+    $beklenenSha = $null
+    try {
+        $shaIcerik = (Invoke-RestMethod -Uri $libreofficeShaUrl -UseBasicParsing -TimeoutSec 30).Trim()
+        if ($shaIcerik) {
+            $beklenenSha = ($shaIcerik -split '\s+')[0].Trim().ToLower()
+            if ($beklenenSha -notmatch '^[0-9a-f]{64}$') {
+                Write-Warning "LibreOffice SHA256 özeti beklenen biçimde değil, yok sayıldı."
+                $beklenenSha = $null
+            }
+        }
+    } catch {
+        Write-Warning "LibreOffice SHA256 özeti indirilemedi: $($_.Exception.Message)"
+    }
+
+    $msiGecerli = $false
+    if (Test-Path $libreofficeMsiYolu) {
+        if ($beklenenSha) {
+            $mevcutSha = (Get-FileHash -Path $libreofficeMsiYolu -Algorithm SHA256).Hash.ToLower()
+            if ($mevcutSha -eq $beklenenSha) {
+                Write-Host "  -> LibreOffice MSI önbellekte mevcut (SHA256 doğrulandı)." -ForegroundColor Gray
+                $msiGecerli = $true
+            } else {
+                Write-Host "  -> LibreOffice MSI SHA256 uyuşmazlığı, yeniden indirilecek..." -ForegroundColor Yellow
+                Remove-Item -Path $libreofficeMsiYolu -Force -ErrorAction SilentlyContinue
+            }
+        } else {
+            Write-Warning "LibreOffice SHA256 özeti çekilemedi; önbellekteki mevcut MSI doğrulanmadan kullanılıyor."
+            $msiGecerli = $true
+        }
+    }
+
+    if (-not $msiGecerli -and -not $beklenenSha) {
+        throw "LibreOffice SHA256 özeti indirilemedi ve önbellekte MSI bulunamadı ($libreofficeMsiYolu)."
+    }
+
+    if (-not $msiGecerli) {
+        $indirildi = $false
+        $curlCmd = Get-Command "curl.exe" -ErrorAction SilentlyContinue
+        # Önceki koşumdan tam inmiş .part kaldıysa yeniden isteme (tam dosyaya Range isteği 416 döner).
+        if ($beklenenSha -and (Test-Path $libreofficePartYolu) -and
+            (Get-FileHash -Path $libreofficePartYolu -Algorithm SHA256).Hash.ToLower() -eq $beklenenSha) {
+            $indirildi = $true
+        }
+        for ($deneme = 1; -not $indirildi -and $deneme -le 5; $deneme++) {
+            Write-Host "  -> LibreOffice MSI indiriliyor (deneme $deneme/5): $libreofficeUrl"
+            if ($curlCmd) {
+                & $curlCmd.Source -fsSL -C - --retry 5 --retry-all-errors -o $libreofficePartYolu $libreofficeUrl
+                if ($LASTEXITCODE -eq 0 -and (Test-Path $libreofficePartYolu)) {
+                    $indirildi = $true
+                    break
+                }
+            } else {
+                try {
+                    Invoke-WebRequest -Uri $libreofficeUrl -OutFile $libreofficePartYolu -UseBasicParsing
+                    $indirildi = $true
+                    break
+                } catch {
+                    Write-Warning "LibreOffice indirme denemesi $deneme başarısız: $($_.Exception.Message)"
+                }
+            }
+            Start-Sleep -Seconds 2
+        }
+
+        if (-not $indirildi -or -not (Test-Path $libreofficePartYolu)) {
+            if (Test-Path $libreofficePartYolu) {
+                Remove-Item -Path $libreofficePartYolu -Force -ErrorAction SilentlyContinue
+            }
+            throw "LibreOffice MSI indirilemedi (5 deneme başarısız)."
+        }
+
+        if ($beklenenSha) {
+            $partSha = (Get-FileHash -Path $libreofficePartYolu -Algorithm SHA256).Hash.ToLower()
+            if ($partSha -ne $beklenenSha) {
+                Remove-Item -Path $libreofficePartYolu -Force -ErrorAction SilentlyContinue
+                throw "LibreOffice MSI SHA256 uyuşmazlığı! Dosya silindi. Beklenen: $beklenenSha, Alınan: $partSha"
+            }
+        }
+        Move-Item -Path $libreofficePartYolu -Destination $libreofficeMsiYolu -Force
+        Write-Host "  -> LibreOffice MSI indirildi ve doğrulandı." -ForegroundColor Gray
+    }
+
+    # Ayıklama (kurulum değil)
+    $libreofficeAcikKlasoru = Join-Path $libreofficeCache "acik-$LibreOfficeSurum"
+    # .tamam işareti yalnız ayıklama + kopya bütünüyle bitince yazılır; yarım kalmış ağaç yeniden ayıklanır.
+    $libreofficeTamam = Join-Path $libreofficeAcikKlasoru ".tamam"
+
+    if (-not (Test-Path $libreofficeTamam)) {
+        if (Test-Path $libreofficeAcikKlasoru) { Remove-Item -Path $libreofficeAcikKlasoru -Recurse -Force }
+        New-Item -ItemType Directory -Path $libreofficeAcikKlasoru -Force | Out-Null
+        Write-Host "  -> LibreOffice MSI ayıklanıyor (msiexec /a)..."
+        # msiexec, junction üzerinden verilen MSI yolunu açamıyor (ölçüldü: _indir junction iken kod 1620).
+        # Bu yüzden MSI gerçek bir geçici klasöre kopyalanır, orada ayıklanır, sonra önbelleğe taşınır.
+        $loGecici = Join-Path $env:TEMP "vh-libreoffice-$LibreOfficeSurum"
+        if (Test-Path $loGecici) { Remove-Item -Path $loGecici -Recurse -Force }
+        New-Item -ItemType Directory -Path $loGecici -Force | Out-Null
+        $loGeciciMsi = Join-Path $loGecici $libreofficeMsiAdi
+        Copy-Item -Path $libreofficeMsiYolu -Destination $loGeciciMsi -Force
+        $loGeciciAcik = Join-Path $loGecici "acik"
+        $msiProc = Start-Process -FilePath "msiexec.exe" -ArgumentList "/a `"$loGeciciMsi`" /qn TARGETDIR=`"$loGeciciAcik`"" -Wait -PassThru
+        if ($msiProc.ExitCode -ne 0) {
+            throw "LibreOffice MSI ayıklama başarısız oldu (msiexec ExitCode: $($msiProc.ExitCode))."
+        }
+        Invoke-RobocopyMirror -Kaynak $loGeciciAcik -Hedef $libreofficeAcikKlasoru
+        Remove-Item -Path $loGecici -Recurse -Force -ErrorAction SilentlyContinue
+        Set-Content -Path $libreofficeTamam -Value $LibreOfficeSurum
+    } else {
+        Write-Host "  -> LibreOffice zaten ayıklanmış (soffice.exe mevcut)." -ForegroundColor Gray
+    }
+
+    # Ayıklanan klasördeki fazlalık .msi kopyasını temizle (admin install kökte bırakır)
+    Get-ChildItem -Path $libreofficeAcikKlasoru -Filter "*.msi" -Recurse -File -ErrorAction SilentlyContinue |
+        Remove-Item -Force -ErrorAction SilentlyContinue
+
+    # Ağaçta program\soffice.exe dosyasını bul; onun üst-üstü = $libreofficeKok
+    $sofficeDosya = Get-ChildItem -Path $libreofficeAcikKlasoru -Filter "soffice.exe" -Recurse -File -ErrorAction SilentlyContinue |
+        Where-Object { $_.Directory.Name -ieq "program" } |
+        Select-Object -First 1
+
+    if (-not $sofficeDosya) {
+        throw "Ayıklanan LibreOffice içinde program\soffice.exe bulunamadı!"
+    }
+
+    $libreofficeAcikKok = $sofficeDosya.Directory.Parent.FullName
+
+    # Kırpılmış kopya: yalnız dönüştürme için gerekenler (1,49 GB -> 684 MB, ölçüldü 26.8.2).
+    # - share\extensions (60 dilin yazım sözlüğü, 462 MB) çıkarılır. Ölçüldü: bu klasör varken
+    #   Writer (.doc/.docx) her taze profilde 120 sn+ askıda kaldı; çıkarınca 5 sn'de çevirdi.
+    # - Arayüz dili yalnız tr (program\resource) ve registry\res içinde yalnız tr/en-US kalır.
+    # - help, readmes ve 32 bit System klasörü atılır.
+    # - System64'teki VC++ çalışma zamanı DLL'leri program\ yanına konur: hedef makinede
+    #   VC++ yeniden dağıtılabilir paketi kurulu olmayabilir (ek kurulum istenmiyor).
+    $libreofficeKok = Join-Path $libreofficeCache "kirpik-$LibreOfficeSurum"
+    Invoke-RobocopyMirror -Kaynak $libreofficeAcikKok -Hedef $libreofficeKok -EkArgumanlar @('/XF', '.tamam')
+    foreach ($fazla in @('share\extensions', 'help', 'readmes', 'System', 'System64')) {
+        $fazlaYol = Join-Path $libreofficeKok $fazla
+        if (Test-Path $fazlaYol) { Remove-Item -Path $fazlaYol -Recurse -Force }
+    }
+    Get-ChildItem -Path (Join-Path $libreofficeKok "program\resource") -Directory -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -ne 'tr' } | Remove-Item -Recurse -Force
+    Get-ChildItem -Path (Join-Path $libreofficeKok "share\registry\res") -Filter "*.xcd" -File -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -notmatch '_(tr|en-US)\.xcd$' } | Remove-Item -Force
+    Get-ChildItem -Path (Join-Path $libreofficeAcikKok "System64") -Filter "*.dll" -File -ErrorAction SilentlyContinue |
+        Copy-Item -Destination (Join-Path $libreofficeKok "program") -Force
+    $kirpikMb = [int](((Get-ChildItem -Path $libreofficeKok -Recurse -File | Measure-Object Length -Sum).Sum) / 1MB)
+    Write-Host "  -> LibreOffice kırpıldı: $kirpikMb MB ($libreofficeKok)" -ForegroundColor Gray
+
+    # --------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
+    # 7-Zip Taşınabilir (MSI ayıklama - hedef makinede ek kurulum gerekmez)
+    # --------------------------------------------------------------------------
+    Write-Host "  -> 7-Zip $YediZipSurum kontrol ediliyor..." -ForegroundColor Cyan
+
+    $yediZipTablo = @{
+        '26.05' = @{
+            Url    = 'https://github.com/ip7z/7zip/releases/download/26.05/7z2605-x64.msi'
+            SHA256 = '3fe4ab99fa15629c652944309a2b2bc6e41fc933fc6b63f5df1ebcf3aea68263'
+        }
+    }
+
+    if (-not $yediZipTablo.ContainsKey($YediZipSurum)) {
+        throw "7-Zip için SHA256 bilinmiyor ($YediZipSurum)."
+    }
+
+    $yediZipBilgi = $yediZipTablo[$YediZipSurum]
+    $yediZipBeklenenSha = $yediZipBilgi.SHA256.ToLower()
+
+    $yediZipCache = Join-Path $IndirKlasoru "7zip"
+    if (-not (Test-Path $yediZipCache)) {
+        New-Item -ItemType Directory -Path $yediZipCache -Force | Out-Null
+    }
+
+    $yediZipMsiAdi = Split-Path $yediZipBilgi.Url -Leaf
+    $yediZipMsiYolu = Join-Path $yediZipCache $yediZipMsiAdi
+    $yediZipPartYolu = "$yediZipMsiYolu.part"
+
+    $yediZipMsiGecerli = $false
+    if (Test-Path $yediZipMsiYolu) {
+        $mevcutSha = (Get-FileHash -Path $yediZipMsiYolu -Algorithm SHA256).Hash.ToLower()
+        if ($mevcutSha -eq $yediZipBeklenenSha) {
+            Write-Host "  -> 7-Zip MSI önbellekte mevcut (SHA256 doğrulandı)." -ForegroundColor Gray
+            $yediZipMsiGecerli = $true
+        } else {
+            Write-Host "  -> 7-Zip MSI SHA256 uyuşmazlığı, yeniden indirilecek..." -ForegroundColor Yellow
+            Remove-Item -Path $yediZipMsiYolu -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    if (-not $yediZipMsiGecerli) {
+        $indirildi = $false
+        $curlCmd = Get-Command "curl.exe" -ErrorAction SilentlyContinue
+        if ((Test-Path $yediZipPartYolu) -and
+            (Get-FileHash -Path $yediZipPartYolu -Algorithm SHA256).Hash.ToLower() -eq $yediZipBeklenenSha) {
+            $indirildi = $true
+        }
+        for ($deneme = 1; -not $indirildi -and $deneme -le 5; $deneme++) {
+            Write-Host "  -> 7-Zip MSI indiriliyor (deneme $deneme/5): $($yediZipBilgi.Url)"
+            if ($curlCmd) {
+                & $curlCmd.Source -fsSL -C - --retry 5 --retry-all-errors -o $yediZipPartYolu $yediZipBilgi.Url
+                if ($LASTEXITCODE -eq 0 -and (Test-Path $yediZipPartYolu)) {
+                    $indirildi = $true
+                    break
+                }
+            } else {
+                try {
+                    Invoke-WebRequest -Uri $yediZipBilgi.Url -OutFile $yediZipPartYolu -UseBasicParsing
+                    $indirildi = $true
+                    break
+                } catch {
+                    Write-Warning "7-Zip indirme denemesi $deneme başarısız: $($_.Exception.Message)"
+                }
+            }
+            Start-Sleep -Seconds 2
+        }
+
+        if (-not $indirildi -or -not (Test-Path $yediZipPartYolu)) {
+            if (Test-Path $yediZipPartYolu) {
+                Remove-Item -Path $yediZipPartYolu -Force -ErrorAction SilentlyContinue
+            }
+            throw "7-Zip MSI indirilemedi (5 deneme başarısız)."
+        }
+
+        $partSha = (Get-FileHash -Path $yediZipPartYolu -Algorithm SHA256).Hash.ToLower()
+        if ($partSha -ne $yediZipBeklenenSha) {
+            Remove-Item -Path $yediZipPartYolu -Force -ErrorAction SilentlyContinue
+            throw "7-Zip MSI SHA256 uyuşmazlığı! Dosya silindi. Beklenen: $yediZipBeklenenSha, Alınan: $partSha"
+        }
+        Move-Item -Path $yediZipPartYolu -Destination $yediZipMsiYolu -Force
+        Write-Host "  -> 7-Zip MSI indirildi ve doğrulandı." -ForegroundColor Gray
+    }
+
+    # 7-Zip MSI ayıklama (msiexec junction açamadığı için gerçek geçici klasör kullanılır)
+    $yediZipAcikKlasoru = Join-Path $yediZipCache "acik-$YediZipSurum"
+    $yediZipTamam = Join-Path $yediZipAcikKlasoru ".tamam"
+
+    if (-not (Test-Path $yediZipTamam)) {
+        if (Test-Path $yediZipAcikKlasoru) { Remove-Item -Path $yediZipAcikKlasoru -Recurse -Force }
+        New-Item -ItemType Directory -Path $yediZipAcikKlasoru -Force | Out-Null
+        Write-Host "  -> 7-Zip MSI ayıklanıyor (msiexec /a)..."
+
+        $yediZipGecici = Join-Path $env:TEMP "vh-7zip-$YediZipSurum"
+        if (Test-Path $yediZipGecici) { Remove-Item -Path $yediZipGecici -Recurse -Force }
+        New-Item -ItemType Directory -Path $yediZipGecici -Force | Out-Null
+
+        $yediZipGeciciMsi = Join-Path $yediZipGecici $yediZipMsiAdi
+        Copy-Item -Path $yediZipMsiYolu -Destination $yediZipGeciciMsi -Force
+        $yediZipGeciciAcik = Join-Path $yediZipGecici "acik"
+
+        $msiProc = Start-Process -FilePath "msiexec.exe" -ArgumentList "/a `"$yediZipGeciciMsi`" /qn TARGETDIR=`"$yediZipGeciciAcik`"" -Wait -PassThru
+        if ($msiProc.ExitCode -ne 0) {
+            throw "7-Zip MSI ayıklama başarısız oldu (msiexec ExitCode: $($msiProc.ExitCode))."
+        }
+
+        # <TARGETDIR>\Files\7-Zip\ altında 7z.exe, 7z.dll, License.txt
+        $yediZipDosyalari = Get-ChildItem -Path $yediZipGeciciAcik -Recurse -File | Where-Object {
+            $_.Name -in @('7z.exe', '7z.dll', 'License.txt')
+        }
+        foreach ($d in $yediZipDosyalari) {
+            Copy-Item -Path $d.FullName -Destination $yediZipAcikKlasoru -Force
+        }
+        Remove-Item -Path $yediZipGecici -Recurse -Force -ErrorAction SilentlyContinue
+
+        if (-not (Test-Path (Join-Path $yediZipAcikKlasoru "7z.exe")) -or -not (Test-Path (Join-Path $yediZipAcikKlasoru "7z.dll"))) {
+            throw "Ayıklanan 7-Zip içinde 7z.exe veya 7z.dll bulunamadı!"
+        }
+        Set-Content -Path $yediZipTamam -Value $YediZipSurum
+        Write-Host "  -> 7-Zip ayıklandı ($yediZipAcikKlasoru)." -ForegroundColor Gray
+    } else {
+        Write-Host "  -> 7-Zip zaten ayıklanmış (7z.exe mevcut)." -ForegroundColor Gray
+    }
+
+    $yediZipKok = $yediZipAcikKlasoru
+    $yediZipExe = Join-Path $yediZipKok "7z.exe"
+
+    # --------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
+    # DjVuLibre Taşınabilir (NSIS arşivi 7-Zip ile ayıklama - hedef makinede ek kurulum gerekmez)
+    # --------------------------------------------------------------------------
+    Write-Host "  -> DjVuLibre $DjvuLibreSurum kontrol ediliyor..." -ForegroundColor Cyan
+
+    $djvuTablo = @{
+        '3.5.29' = @{
+            Url    = 'https://downloads.sourceforge.net/project/djvu/DjVuLibre_Windows/3.5.29%2B4.12/DjVuLibre-3.5.29_DjView-4.12_Setup.exe'
+            SHA256 = '92233fbf891c63f3fb7a0b5e1ce108baa4c29a40c89a442d1313f883aae84670'
+        }
+    }
+
+    if (-not $djvuTablo.ContainsKey($DjvuLibreSurum)) {
+        throw "DjVuLibre için SHA256 bilinmiyor ($DjvuLibreSurum)."
+    }
+
+    $djvuBilgi = $djvuTablo[$DjvuLibreSurum]
+    $djvuBeklenenSha = $djvuBilgi.SHA256.ToLower()
+
+    $djvuCache = Join-Path $IndirKlasoru "djvulibre"
+    if (-not (Test-Path $djvuCache)) {
+        New-Item -ItemType Directory -Path $djvuCache -Force | Out-Null
+    }
+
+    $djvuSetupAdi = Split-Path $djvuBilgi.Url -Leaf
+    $djvuSetupYolu = Join-Path $djvuCache $djvuSetupAdi
+    $djvuPartYolu = "$djvuSetupYolu.part"
+
+    $djvuGecerli = $false
+    if (Test-Path $djvuSetupYolu) {
+        $mevcutSha = (Get-FileHash -Path $djvuSetupYolu -Algorithm SHA256).Hash.ToLower()
+        if ($mevcutSha -eq $djvuBeklenenSha) {
+            Write-Host "  -> DjVuLibre Setup önbellekte mevcut (SHA256 doğrulandı)." -ForegroundColor Gray
+            $djvuGecerli = $true
+        } else {
+            Write-Host "  -> DjVuLibre Setup SHA256 uyuşmazlığı, yeniden indirilecek..." -ForegroundColor Yellow
+            Remove-Item -Path $djvuSetupYolu -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    if (-not $djvuGecerli) {
+        $indirildi = $false
+        $curlCmd = Get-Command "curl.exe" -ErrorAction SilentlyContinue
+        if ((Test-Path $djvuPartYolu) -and
+            (Get-FileHash -Path $djvuPartYolu -Algorithm SHA256).Hash.ToLower() -eq $djvuBeklenenSha) {
+            $indirildi = $true
+        }
+        for ($deneme = 1; -not $indirildi -and $deneme -le 5; $deneme++) {
+            Write-Host "  -> DjVuLibre Setup indiriliyor (deneme $deneme/5): $($djvuBilgi.Url)"
+            if ($curlCmd) {
+                & $curlCmd.Source -fsSL -C - --retry 5 --retry-all-errors -o $djvuPartYolu $djvuBilgi.Url
+                if ($LASTEXITCODE -eq 0 -and (Test-Path $djvuPartYolu)) {
+                    $indirildi = $true
+                    break
+                }
+            } else {
+                try {
+                    Invoke-WebRequest -Uri $djvuBilgi.Url -OutFile $djvuPartYolu -UseBasicParsing
+                    $indirildi = $true
+                    break
+                } catch {
+                    Write-Warning "DjVuLibre indirme denemesi $deneme başarısız: $($_.Exception.Message)"
+                }
+            }
+            Start-Sleep -Seconds 2
+        }
+
+        if (-not $indirildi -or -not (Test-Path $djvuPartYolu)) {
+            if (Test-Path $djvuPartYolu) {
+                Remove-Item -Path $djvuPartYolu -Force -ErrorAction SilentlyContinue
+            }
+            throw "DjVuLibre Setup indirilemedi (5 deneme başarısız)."
+        }
+
+        $partSha = (Get-FileHash -Path $djvuPartYolu -Algorithm SHA256).Hash.ToLower()
+        if ($partSha -ne $djvuBeklenenSha) {
+            Remove-Item -Path $djvuPartYolu -Force -ErrorAction SilentlyContinue
+            throw "DjVuLibre Setup SHA256 uyuşmazlığı! Dosya silindi. Beklenen: $djvuBeklenenSha, Alınan: $partSha"
+        }
+        Move-Item -Path $djvuPartYolu -Destination $djvuSetupYolu -Force
+        Write-Host "  -> DjVuLibre Setup indirildi ve doğrulandı." -ForegroundColor Gray
+    }
+
+    # DjVuLibre ayıklama ve kırpma (paket-<sürüm> klasörüne yalnızca gerekenler alınır)
+    $djvuKok = Join-Path $djvuCache "paket-$DjvuLibreSurum"
+    $djvuTamam = Join-Path $djvuKok ".tamam"
+
+    if (-not (Test-Path $djvuTamam)) {
+        if (Test-Path $djvuKok) { Remove-Item -Path $djvuKok -Recurse -Force }
+        New-Item -ItemType Directory -Path $djvuKok -Force | Out-Null
+        Write-Host "  -> DjVuLibre Setup ayıklanıyor (7z x)..."
+
+        $djvuGeciciAcik = Join-Path $djvuCache "acik-$DjvuLibreSurum"
+        if (Test-Path $djvuGeciciAcik) { Remove-Item -Path $djvuGeciciAcik -Recurse -Force }
+        New-Item -ItemType Directory -Path $djvuGeciciAcik -Force | Out-Null
+
+        & $yediZipExe x -y -bso0 -bsp0 "-o$djvuGeciciAcik" $djvuSetupYolu
+        # 7z kodu 1 = uyarı (dosyalar çıkarıldı); asıl kapı aşağıdaki zorunlu dosya listesidir.
+        if ($LASTEXITCODE -gt 1) {
+            throw "DjVuLibre NSIS kurulumu 7-Zip ile açılamadı (kod $LASTEXITCODE)."
+        } elseif ($LASTEXITCODE -eq 1) {
+            Write-Warning "7-Zip DjVuLibre kurulumunu uyarıyla açtı (kod 1); dosyalar denetleniyor."
+        }
+
+        # Pakete yalnız şunlar: djvutxt.exe, djvused.exe, ddjvu.exe, libdjvulibre.dll, libjpeg.dll, libtiff.dll, libz.dll, COPYING.txt
+        $djvuGerekenler = @(
+            'djvutxt.exe', 'djvused.exe', 'ddjvu.exe',
+            'libdjvulibre.dll', 'libjpeg.dll', 'libtiff.dll', 'libz.dll'
+        )
+
+        foreach ($ad in $djvuGerekenler) {
+            $bulunan = Get-ChildItem -Path $djvuGeciciAcik -Filter $ad -Recurse -File -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($bulunan) {
+                Copy-Item -Path $bulunan.FullName -Destination (Join-Path $djvuKok $ad) -Force
+            } else {
+                throw "DjVuLibre ayıklanan dosyalar arasında $ad bulunamadı!"
+            }
+        }
+
+        $lisans = Get-ChildItem -Path $djvuGeciciAcik -Filter "COPYING*" -Recurse -File -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($lisans) {
+            Copy-Item -Path $lisans.FullName -Destination (Join-Path $djvuKok "COPYING.txt") -Force
+        } else {
+            Write-Warning "DjVuLibre lisans metni (COPYING) bulunamadı; GPL dağıtımı için elle ekleyin."
+        }
+
+        # 32 bit VC++ çalışma zamanı (vcruntime140.dll, msvcp140.dll) LibreOffice ayıklamasından kopyalanır
+        $loSystem32 = Join-Path $libreofficeAcikKok "System"
+        foreach ($vcDll in @('vcruntime140.dll', 'msvcp140.dll')) {
+            $vcYol = Join-Path $loSystem32 $vcDll
+            if (Test-Path $vcYol) {
+                Copy-Item -Path $vcYol -Destination (Join-Path $djvuKok $vcDll) -Force
+            } else {
+                $vcBulunan = Get-ChildItem -Path $libreofficeAcikKlasoru -Filter $vcDll -Recurse -File -ErrorAction SilentlyContinue |
+                    Where-Object { $_.Directory.Name -ieq "System" } | Select-Object -First 1
+                if ($vcBulunan) {
+                    Copy-Item -Path $vcBulunan.FullName -Destination (Join-Path $djvuKok $vcDll) -Force
+                } else {
+                    throw "LibreOffice ayıklamasında 32 bit $vcDll bulunamadı!"
+                }
+            }
+        }
+
+        Remove-Item -Path $djvuGeciciAcik -Recurse -Force -ErrorAction SilentlyContinue
+        Set-Content -Path $djvuTamam -Value $DjvuLibreSurum
+        Write-Host "  -> DjVuLibre hazırlandı ($djvuKok)." -ForegroundColor Gray
+    } else {
+        Write-Host "  -> DjVuLibre zaten hazırlanmış (djvutxt.exe mevcut)." -ForegroundColor Gray
+    }
+
+    # --------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # ArtCraft Taşınabilir Uygulamaları (wordcraft, gridcraft, deckcraft, ...)
     # --------------------------------------------------------------------------
     Write-Host "  -> ArtCraft taşınabilir uygulamaları kontrol ediliyor..." -ForegroundColor Cyan
@@ -788,6 +1236,18 @@ print(f"MODEL_TAMAMLANDI:{resolved_sha}")
             }
         }
 
+        if ($libreofficeKok -and (Test-Path $libreofficeKok)) {
+            Invoke-RobocopyMirror -Kaynak $libreofficeKok -Hedef (Join-Path $hedefAraclar "libreoffice")
+        }
+
+        if ($yediZipKok -and (Test-Path $yediZipKok)) {
+            Invoke-RobocopyMirror -Kaynak $yediZipKok -Hedef (Join-Path $hedefAraclar "7z") -EkArgumanlar @('/XF', '.tamam')
+        }
+
+        if ($djvuKok -and (Test-Path $djvuKok)) {
+            Invoke-RobocopyMirror -Kaynak $djvuKok -Hedef (Join-Path $hedefAraclar "djvulibre") -EkArgumanlar @('/XF', '.tamam')
+        }
+
         # 6. app\ kopyala (robocopy /MIR)
         $hedefApp = Join-Path $PaketHedefYolu "app"
         Invoke-RobocopyMirror -Kaynak $appKaynak -Hedef $hedefApp
@@ -894,6 +1354,9 @@ print(f"MODEL_TAMAMLANDI:{resolved_sha}")
         [void]$surumSb.AppendLine("OCR Modelleri: PP-OCRv6 (Apache-2.0, PaddleOCR/RapidOCR)")
         [void]$surumSb.AppendLine("Sozluk: FrequencyWords tr_50k (CC BY-SA 4.0, hermitdave)")
         [void]$surumSb.AppendLine("PDF Kutuphanesi: PyMuPDF (AGPL-3.0)")
+        [void]$surumSb.AppendLine("LibreOffice: $LibreOfficeSurum (MPL-2.0, documentfoundation.org) - tasinabilir, kurulum gerekmez")
+        [void]$surumSb.AppendLine("7-Zip: $YediZipSurum (LGPL-2.1 + unRAR, 7-zip.org) - yalniz 7z.exe/7z.dll")
+        [void]$surumSb.AppendLine("DjVuLibre: $DjvuLibreSurum (GPL-2.0, djvu.sourceforge.net) - djvutxt/djvused/ddjvu")
         foreach ($acSatir in $artcraftSurumListesi) {
             [void]$surumSb.AppendLine($acSatir)
         }
@@ -970,6 +1433,9 @@ print(f"MODEL_TAMAMLANDI:{resolved_sha}")
         [void]$surumSbCpu.AppendLine("OCR Modelleri: PP-OCRv6 (Apache-2.0, PaddleOCR/RapidOCR)")
         [void]$surumSbCpu.AppendLine("Sozluk: FrequencyWords tr_50k (CC BY-SA 4.0, hermitdave)")
         [void]$surumSbCpu.AppendLine("PDF Kutuphanesi: PyMuPDF (AGPL-3.0)")
+        [void]$surumSbCpu.AppendLine("LibreOffice: $LibreOfficeSurum (MPL-2.0, documentfoundation.org) - tasinabilir, kurulum gerekmez")
+        [void]$surumSbCpu.AppendLine("7-Zip: $YediZipSurum (LGPL-2.1 + unRAR, 7-zip.org) - yalniz 7z.exe/7z.dll")
+        [void]$surumSbCpu.AppendLine("DjVuLibre: $DjvuLibreSurum (GPL-2.0, djvu.sourceforge.net) - djvutxt/djvused/ddjvu")
         foreach ($acSatir in $artcraftSurumListesi) {
             [void]$surumSbCpu.AppendLine($acSatir)
         }
