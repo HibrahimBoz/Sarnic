@@ -10,8 +10,10 @@ from pathlib import Path
 from . import yollar
 from .ayar import Ayar
 from .hat import Bayraklar, isle_tek
+from .belge import UZANTILAR as BELGE_UZANTILARI
 
 UZANTILAR = {".mp4", ".mkv", ".mov", ".avi", ".m4a", ".wav", ".mp3"}
+UZANTILAR |= BELGE_UZANTILARI
 log = logging.getLogger("videohat")
 
 
@@ -95,7 +97,8 @@ def _geri_al(isleniyor: Path, gelen: Path, bitti: Path | None = None) -> None:
             log.warning("Yarım kalan iş geri alındı: %s", hedef.name)
             if bitti.exists():
                 adaylar = []
-                for kok in (f"{p.stem}_islenmis", f"{p.stem}_videoperisi", p.stem):
+                ekler = (f"{p.stem}_belge",) if p.suffix.lower() in BELGE_UZANTILARI else ()
+                for kok in (f"{p.stem}_islenmis", f"{p.stem}_videoperisi", p.stem) + ekler:
                     adaylar.append(bitti / kok)
                     n = 1
                     while (bitti / f"{kok}_{n}").exists():
@@ -104,6 +107,10 @@ def _geri_al(isleniyor: Path, gelen: Path, bitti: Path | None = None) -> None:
                 for yetim in adaylar:
                     if yetim.exists():
                         if yetim.is_dir():
+                            if (p.suffix.lower() in BELGE_UZANTILARI and "_belge" in yetim.name
+                                    and (yetim / "_ara").is_dir()):
+                                log.info("Belge sayfa önbelleği korundu: %s", yetim)
+                                continue
                             if not _yetim_silinebilir_mi(yetim):
                                 log.info("Tamamlanmış çıktı içeren klasör korundu: %s", yetim)
                                 continue
@@ -159,7 +166,12 @@ def tek_tur(ayar: Ayar, gorulen: dict[Path, tuple[int, float, int]], bayrak: Bay
             continue
         calisan = _benzersiz(isleniyor, p.name)
         shutil.move(str(p), str(calisan))
-        cikis_kok = _benzersiz(bitti, f"{calisan.stem}_islenmis")
+        belge_mi = calisan.suffix.lower() in BELGE_UZANTILARI
+        yarim_belge = bitti / f"{calisan.stem}_belge"
+        if belge_mi and (yarim_belge / ".yarim").exists() and (yarim_belge / "_ara").is_dir():
+            cikis_kok = yarim_belge
+        else:
+            cikis_kok = _benzersiz(bitti, f"{calisan.stem}_belge" if belge_mi else f"{calisan.stem}_islenmis")
         cikis_kok.mkdir(parents=True, exist_ok=True)
         isaret = cikis_kok / ".yarim"
         try:
@@ -167,13 +179,22 @@ def tek_tur(ayar: Ayar, gorulen: dict[Path, tuple[int, float, int]], bayrak: Bay
         except OSError:
             pass
         log.info("İş başladı: %s", calisan.name)
-        s = isle_tek(calisan, cikis_kok, ayar, bayrak)
+        if belge_mi:
+            from .belge.hat import disa_yaz
+            from types import SimpleNamespace
+            try:
+                s = disa_yaz(calisan, cikis_kok, ayar)
+            except Exception as e:
+                s = SimpleNamespace(basarili=False, hata=str(e), sureler={})
+        else:
+            s = isle_tek(calisan, cikis_kok, ayar, bayrak)
         if s.basarili:
             try:
                 isaret.unlink(missing_ok=True)
             except OSError:
                 pass
-            shutil.move(str(calisan), str(cikis_kok / calisan.name))
+            asil_hedef = _benzersiz(cikis_kok, calisan.name) if belge_mi else cikis_kok / calisan.name
+            shutil.move(str(calisan), str(asil_hedef))
             with open(durum_yolu, "a", encoding="utf-8") as f:
                 f.write(json.dumps({"parmak": parmak, "ad": calisan.name,
                                     "zaman": time.strftime("%Y-%m-%d %H:%M:%S")}, ensure_ascii=False) + "\n")

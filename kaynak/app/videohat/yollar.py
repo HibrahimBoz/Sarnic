@@ -63,3 +63,21 @@ def is_dizini(alt: str) -> Path:
     d = kok() / "is" / alt
     d.mkdir(parents=True, exist_ok=True)
     return d
+
+
+def ocr_model(ad: str) -> Path:
+    return _gerekli(kok() / "modeller-ocr" / ad, f"OCR modeli ({ad})")
+
+
+def tesseract() -> Path | None:
+    p = kok() / "araclar" / "tesseract" / "tesseract.exe"
+    return p if p.is_file() else None
+
+
+def libreoffice() -> Path | None:
+    p = kok() / "araclar" / "libreoffice" / "program" / "soffice.exe"
+    return p if p.is_file() else None
+
+
+def ortak(ad: str) -> Path:
+    return _gerekli(kok() / "ortak" / ad, f"Ortak dosya ({ad})")
