@@ -1,13 +1,14 @@
-Video Transkriptör  —  KAPALI AĞ İÇİN HAZIR (Windows 10/11, 64 bit)
+Bulgu  —  KAPALI AĞ İÇİN HAZIR (Windows 10/11, 64 bit)
 ================================================================
-KURULUM YOK. 7z dosyasını açın (örn. D:\VideoPerisi-Paketi) ve BASLAT.bat çift tıklayın.
+KURULUM YOK. 7z dosyasını açın (örn. D:\Bulgu-Paketi) ve BASLAT.bat çift tıklayın.
   - Python, ffmpeg, modeller, Kdenlive: hepsi pakette. İnternet, yönetici yetkisi, ek yazılım GEREKMEZ.
-  - Yol boşluk/Türkçe karakter içerebilir; yine de kısa bir yol (D:\VideoPerisi-Paketi) önerilir.
+  - Yol boşluk/Türkçe karakter içerebilir; yine de kısa bir yol (D:\Bulgu-Paketi) önerilir.
 
 İÇİNDEKİLER
   BASLAT.bat          menüyü açar: video seç / klasör seç / izleme / Kdenlive / test
-  VideoPerisi\        transkript + ses/görüntü iyileştirme motoru (KULLANIM.txt içinde ayrıntı)
+  VideoPerisi\        transkript + belge/OCR + dizinleme motoru (KULLANIM.txt içinde ayrıntı)
   Kdenlive\           Kdenlive 26.08.1 (taşınabilir; Kdenlive\...\bin\kdenlive.exe)
+  Menü 8 ve 9         Menü 8 belge/görüntü işler (metin + aranabilir PDF); Menü 9 portal için dizinleme başlatır.
 
 İLK ÇALIŞTIRMA
   BASLAT.bat → 5 (kendi kendine test) → "SONUÇ: GEÇTİ" görmelisiniz.

@@ -175,7 +175,7 @@ try {
     $pipFreezeCpuCikti = ""
 
     if ($Paket -in @('GPU', 'Ikisi')) {
-        if (-not (Test-Path (Join-Path $ortakSitePackagesGPU "ctranslate2"))) {
+        if (-not (Test-Path (Join-Path $ortakSitePackagesGPU "ctranslate2")) -or -not (Test-Path (Join-Path $ortakSitePackagesGPU "pymupdf")) -or -not (Test-Path (Join-Path $ortakSitePackagesGPU "rapidocr"))) {
             Write-Host "  -> GPU paketleri indiriliyor ve kuruluyor..."
             New-Item -ItemType Directory -Path $ortakSitePackagesGPU -Force | Out-Null
             $gpuPipArgs = @(
@@ -190,7 +190,18 @@ try {
                 'ctranslate2==4.8.2',
                 'av<17',
                 'nvidia-cublas-cu12',
-                'nvidia-cudnn-cu12==9.*'
+                'nvidia-cudnn-cu12==9.*',
+                'pymupdf==1.28.0',
+                'rapidocr==3.10.0',
+                'onnxruntime==1.31.1',
+                'opencv-python-headless',
+                'numpy',
+                'pillow',
+                'python-docx==1.2.0',
+                'python-pptx==1.0.2',
+                'openpyxl==3.1.5',
+                'olefile',
+                'extract-msg'
             )
             Invoke-GelistiriciPython -PythonArgumanlari $gpuPipArgs
         } else {
@@ -202,7 +213,7 @@ try {
     }
 
     if ($Paket -eq 'CPU') {
-        if (-not (Test-Path (Join-Path $ortakSitePackagesCPU "ctranslate2"))) {
+        if (-not (Test-Path (Join-Path $ortakSitePackagesCPU "ctranslate2")) -or -not (Test-Path (Join-Path $ortakSitePackagesCPU "pymupdf")) -or -not (Test-Path (Join-Path $ortakSitePackagesCPU "rapidocr"))) {
             Write-Host "  -> CPU paketleri indiriliyor ve kuruluyor (nvidia-* hariç)..."
             New-Item -ItemType Directory -Path $ortakSitePackagesCPU -Force | Out-Null
             $cpuPipArgs = @(
@@ -215,7 +226,18 @@ try {
                 '--only-binary=:all:',
                 'faster-whisper==1.2.1',
                 'ctranslate2==4.8.2',
-                'av<17'
+                'av<17',
+                'pymupdf==1.28.0',
+                'rapidocr==3.10.0',
+                'onnxruntime==1.31.1',
+                'opencv-python-headless',
+                'numpy',
+                'pillow',
+                'python-docx==1.2.0',
+                'python-pptx==1.0.2',
+                'openpyxl==3.1.5',
+                'olefile',
+                'extract-msg'
             )
             Invoke-GelistiriciPython -PythonArgumanlari $cpuPipArgs
         } else {
@@ -444,6 +466,89 @@ print(f"MODEL_TAMAMLANDI:{resolved_sha}")
     }
 
     # --------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
+    # OCR modelleri ve Türkçe sözlük listesi (_indir\modeller-ocr, _indir\sozluk)
+    # --------------------------------------------------------------------------
+    Write-Host "  -> OCR modelleri indiriliyor ve kontrol ediliyor..." -ForegroundColor Cyan
+
+    $ocrModellerKlasoru = Join-Path $IndirKlasoru "modeller-ocr"
+    if (-not (Test-Path $ocrModellerKlasoru)) {
+        New-Item -ItemType Directory -Path $ocrModellerKlasoru -Force | Out-Null
+    }
+
+    $ocrModelListesi = @(
+        @{
+            Ad     = 'ch_ppocr_mobile_v2.0_cls_mobile.onnx'
+            Url    = 'https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.10.0/onnx/PP-OCRv4/cls/ch_ppocr_mobile_v2.0_cls_mobile.onnx'
+            SHA256 = 'e47acedf663230f8863ff1ab0e64dd2d82b838fceb5957146dab185a89d6215c'
+        },
+        @{
+            Ad     = 'PP-OCRv6_det_small.onnx'
+            Url    = 'https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.10.0/onnx/PP-OCRv6/det/PP-OCRv6_det_small.onnx'
+            SHA256 = '090f04abcd9d9a7498bc4ebf677e4cb9bdce1fe4197ddb7e529f1ef44e1ff94f'
+        },
+        @{
+            Ad     = 'PP-OCRv6_det_medium.onnx'
+            Url    = 'https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.10.0/onnx/PP-OCRv6/det/PP-OCRv6_det_medium.onnx'
+            SHA256 = '92078b7355007ccfffcd4c8cd441a3afd4538904d06881b29a155e1e679907c2'
+        },
+        @{
+            Ad     = 'PP-OCRv6_rec_small.onnx'
+            Url    = 'https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.10.0/onnx/PP-OCRv6/rec/PP-OCRv6_rec_small.onnx'
+            SHA256 = '6f327246b50388f3c176ae304bd95767ea6dc0c9ae92153ef8cbe210b3c14884'
+        },
+        @{
+            Ad     = 'PP-OCRv6_rec_medium.onnx'
+            Url    = 'https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.10.0/onnx/PP-OCRv6/rec/PP-OCRv6_rec_medium.onnx'
+            SHA256 = 'eef444829dbbe18d7fea59a3f6eb75647518d2b3a9568d27c92e42940204894b'
+        }
+    )
+
+    foreach ($om in $ocrModelListesi) {
+        $omHedef = Join-Path $ocrModellerKlasoru $om.Ad
+        $indirGerekli = $true
+        if (Test-Path $omHedef) {
+            $mevcutHash = (Get-FileHash -Path $omHedef -Algorithm SHA256).Hash
+            if ($mevcutHash -eq $om.SHA256) {
+                Write-Host "  -> $($om.Ad) önbellekte mevcut (SHA256 doğrulandı)." -ForegroundColor Gray
+                $indirGerekli = $false
+            } else {
+                Write-Host "  -> $($om.Ad) SHA256 uyuşmazlığı, yeniden indirilecek..." -ForegroundColor Yellow
+                Remove-Item -Path $omHedef -Force
+            }
+        }
+        if ($indirGerekli) {
+            Write-Host "  -> $($om.Ad) indiriliyor..."
+            Invoke-WebRequest -Uri $om.Url -OutFile $omHedef -UseBasicParsing
+            $inenHash = (Get-FileHash -Path $omHedef -Algorithm SHA256).Hash
+            if ($inenHash -ne $om.SHA256) {
+                Remove-Item -Path $omHedef -Force
+                throw "SHA256 doğrulama hatası ($($om.Ad))! Beklenen: $($om.SHA256), Hesaplanan: $inenHash"
+            }
+            Write-Host "  -> $($om.Ad) indirildi ve SHA256 doğrulandı." -ForegroundColor Gray
+        }
+    }
+
+    # Türkçe sözcük sıklık listesi
+    $sozlukKlasoru = Join-Path $IndirKlasoru "sozluk"
+    if (-not (Test-Path $sozlukKlasoru)) {
+        New-Item -ItemType Directory -Path $sozlukKlasoru -Force | Out-Null
+    }
+    $sozlukHedef = Join-Path $sozlukKlasoru "tr_kelime.txt"
+    $sozlukUrl = "https://raw.githubusercontent.com/hermitdave/FrequencyWords/master/content/2018/tr/tr_50k.txt"
+    if (-not (Test-Path $sozlukHedef)) {
+        try {
+            Write-Host "  -> Türkçe sözcük sıklık listesi indiriliyor: $sozlukUrl"
+            Invoke-WebRequest -Uri $sozlukUrl -OutFile $sozlukHedef -UseBasicParsing
+            Write-Host "  -> tr_kelime.txt indirildi." -ForegroundColor Gray
+        } catch {
+            Write-Warning "Türkçe sözcük sıklık listesi indirilemedi (isteğe bağlı, paketleme sürüyor): $($_.Exception.Message)"
+        }
+    } else {
+        Write-Host "  -> tr_kelime.txt önbellekte mevcut." -ForegroundColor Gray
+    }
+
+    # --------------------------------------------------------------------------
     # [8/10] Araçlar (DeepFilterNet ve Real-ESRGAN)
     # --------------------------------------------------------------------------
     Write-Host "[8/10] Yardımcı araçlar indiriliyor (DeepFilterNet ve Real-ESRGAN)..." -ForegroundColor Cyan
@@ -569,8 +674,30 @@ print(f"MODEL_TAMAMLANDI:{resolved_sha}")
             Copy-Item -Path $_.FullName -Destination $PaketHedefYolu -Force
         }
 
-        # 9. Boş is\ klasörleri
-        $isKlasorleri = @('gelen', 'isleniyor', 'bitti', 'hata', 'gunluk')
+        # 9. modeller-ocr\ (önbellekten)
+        $ocrCache = Join-Path $IndirKlasoru "modeller-ocr"
+        if (Test-Path $ocrCache) {
+            $hedefOcr = Join-Path $PaketHedefYolu "modeller-ocr"
+            Invoke-RobocopyMirror -Kaynak $ocrCache -Hedef $hedefOcr
+        }
+
+        # 10. sozluk\tr_kelime.txt (varsa)
+        $sozlukKaynak = Join-Path $IndirKlasoru "sozluk\tr_kelime.txt"
+        if (Test-Path $sozlukKaynak) {
+            $hedefSozluk = Join-Path $PaketHedefYolu "sozluk"
+            if (-not (Test-Path $hedefSozluk)) { New-Item -ItemType Directory -Path $hedefSozluk -Force | Out-Null }
+            Copy-Item -Path $sozlukKaynak -Destination (Join-Path $hedefSozluk "tr_kelime.txt") -Force
+        }
+
+        # 11. ortak\ (kaynak\ortak klasörünün tamamı)
+        $ortakKaynak = Join-Path $KaynakKlasoru "ortak"
+        if (Test-Path $ortakKaynak) {
+            $hedefOrtak = Join-Path $PaketHedefYolu "ortak"
+            Invoke-RobocopyMirror -Kaynak $ortakKaynak -Hedef $hedefOrtak
+        }
+
+        # 12. Boş is\ klasörleri
+        $isKlasorleri = @('gelen', 'isleniyor', 'bitti', 'hata', 'gunluk', 'dizin')
         foreach ($k in $isKlasorleri) {
             $isYol = Join-Path $PaketHedefYolu "is\$k"
             if (-not (Test-Path $isYol)) {
@@ -620,6 +747,9 @@ print(f"MODEL_TAMAMLANDI:{resolved_sha}")
         [void]$surumSb.AppendLine("FFmpeg: Gyan.dev Release Essentials")
         [void]$surumSb.AppendLine("DeepFilterNet: v0.5.6")
         [void]$surumSb.AppendLine("Real-ESRGAN: v0.2.5.0-ncnn-vulkan")
+        [void]$surumSb.AppendLine("OCR Modelleri: PP-OCRv6 (Apache-2.0, PaddleOCR/RapidOCR)")
+        [void]$surumSb.AppendLine("Sozluk: FrequencyWords tr_50k (CC BY-SA 4.0, hermitdave)")
+        [void]$surumSb.AppendLine("PDF Kutuphanesi: PyMuPDF (AGPL-3.0)")
         [void]$surumSb.AppendLine("")
         [void]$surumSb.AppendLine("2. MODEL COMMIT SHA BILGILERI")
         [void]$surumSb.AppendLine("--------------------------------------------------------------------------------")
@@ -690,6 +820,9 @@ print(f"MODEL_TAMAMLANDI:{resolved_sha}")
         [void]$surumSbCpu.AppendLine("FFmpeg: Gyan.dev Release Essentials")
         [void]$surumSbCpu.AppendLine("DeepFilterNet: v0.5.6")
         [void]$surumSbCpu.AppendLine("Real-ESRGAN: v0.2.5.0-ncnn-vulkan")
+        [void]$surumSbCpu.AppendLine("OCR Modelleri: PP-OCRv6 (Apache-2.0, PaddleOCR/RapidOCR)")
+        [void]$surumSbCpu.AppendLine("Sozluk: FrequencyWords tr_50k (CC BY-SA 4.0, hermitdave)")
+        [void]$surumSbCpu.AppendLine("PDF Kutuphanesi: PyMuPDF (AGPL-3.0)")
         [void]$surumSbCpu.AppendLine("")
         [void]$surumSbCpu.AppendLine("2. MODEL COMMIT SHA BILGILERI")
         [void]$surumSbCpu.AppendLine("--------------------------------------------------------------------------------")

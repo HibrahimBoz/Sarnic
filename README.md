@@ -1,11 +1,30 @@
-# Video Transkriptör
+# Bulgu
 
-Kapalı ağda (internetsiz) Türkçe ağırlıklı ders videoları için iki ürün:
+Kapalı ağda çalışan birleşik arama paketi üç temel yetenek sunar:
 
-1. **Video Transkriptör** (`kaynak/app/videohat`, Python): videodan transkript (SRT/VTT/TXT/JSON) çıkarır, sesi ve görüntüyü iyileştirir. Motor: faster-whisper (large-v3). Elektronik harp terim sözlüğü (`kaynak/terimler.txt`) ve düzeltme katmanı içerir. Çok kameralı ve parçalı kayıtlar için `isle-grup` komutu ve ses tabanlı senkron (`senkron.py`, `parca_zinciri.py`, `ders_json.py`) vardır.
-2. **Video Portalı** (`kaynak/portal`, .NET 8 + WPF + LibVLCSharp): işlenmiş dersleri arar, transkriptteki cümleye tıklayınca videoyu o dakikada açar, çok açılı dersleri senkron oynatır. Düzenleme modu parola ister; her düzeltme ayrı dosyadır ve kim yazdığı kaydedilir.
+1. **Dosya adı araması**: Tanımlı klasörlerdeki dosya ve klasör adlarında anında alt dize araması yapar.
+2. **Belge içeriği ve OCR**: PDF, Office ve görüntü dosyalarının metinlerini ve taranmış sayfalarını arar.
+3. **Video transkript araması**: Ders videolarının konuşma dökümlerinde ve teknik terimlerinde arama yapar.
+
+Paket iki parçadan oluşur:
+
+1. **Bulgu İşleyici** (`kaynak/app/videohat`, Python): Videolardan transkript çıkarır, belgelerden metin çıkarıp OCR uygular ve arama dizini üretir. Elektronik harp terim sözlüğü (`kaynak/terimler.txt`) ve düzeltme katmanı içerir. Çok kameralı ve parçalı kayıtlar için `isle-grup` komutu ve ses tabanlı senkron (`senkron.py`, `parca_zinciri.py`, `ders_json.py`) vardır.
+2. **Bulgu Portalı** (`kaynak/portal`, .NET 8 + WPF + LibVLCSharp): Dosya adlarını, belge sayfalarını ve video transkriptlerini tek noktadan arar. Transkriptteki cümleye tıklayınca videoyu o dakikada açar, belge sonucuna tıklayınca ilgili sayfayı açar, çok açılı dersleri senkron oynatır. Düzenleme modu parola ister; her düzeltme ayrı dosyadır ve kimin yazdığı kaydedilir.
 
 Yeni çıktı klasörleri `<ad>_islenmis` ekiyle oluşturulur. Portal eski `<ad>_videoperisi` klasörlerini de tarar.
+
+## Belge ve dizin
+
+Komutlar `videohat` paketi üzerinden çalıştırılır:
+```
+python -m videohat dizinle --kok "\\sunucu\Dersler"
+python -m videohat belge "D:\belgeler\rapor.pdf" --profil uyarlamali
+```
+
+Tasarım sözleşmesi ve ortak şema dosyaları:
+- Tasarım sözleşmesi: `kaynak/dokuman/bulgu_spec.md`
+- Ortak veritabanı şeması: `kaynak/ortak/dizin_sema.sql`
+- Normalizasyon test vakaları: `kaynak/ortak/normalizasyon_vakalari.json` ve `kaynak/ortak/dosya_normalizasyon_vakalari.json`
 
 ## Derleme ve test
 ```

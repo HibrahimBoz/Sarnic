@@ -1,4 +1,4 @@
-Video Transkriptör — çevrimdışı Türkçe video transkript + ses/görüntü iyileştirme
+Bulgu İşleyici — çevrimdışı video transkript, belge metni, OCR ve dizin
 ===========================================================================
 KURULUM YOK. Bu klasörü hedef makineye olduğu gibi kopyalayın (USB/robocopy). Python, ffmpeg,
 internet, yönetici yetkisi GEREKMEZ. Yol boşluk/Türkçe karakter içerebilir.
@@ -43,6 +43,68 @@ Tek paket her makinede çalışır: NVIDIA kart varsa (RTX 3060/3070...; sürüc
    Ses tabanlı senkron (GCC-PHAT) ile ofset/drift hesaplanır, referans kanalın transkripti tam bantta
    çıkarılır ve portal ile uyumlu ders.json üretilir:
      <ders_adi>_islenmis\ders.json, .srt, .vtt, .txt, .json
+
+5) BELGE İŞLEME — belge.bat dosyasının üstüne sürükleyin ya da komut satırından çalıştırın:
+     belge.bat "D:\belgeler\rapor.pdf"
+     belge.bat "D:\belgeler" --profil uyarlamali
+   Çıktı belgenin yanındaki <ad>_belge\ klasörüne yazılır:
+     belge.json        sayfa dökümü ve üst veriler
+     metin.txt         sayfaları form feed (\f) ile ayrılmış düz metin
+     aranabilir.pdf    görünmez metin katmanlı PDF (yalnız PDF ve görüntülerde üretilir)
+
+   Desteklenen biçimler:
+     Biçim             Uzantılar
+     PDF               .pdf
+     Word              .docx, .docm
+     PowerPoint        .pptx, .pptm
+     Excel             .xlsx, .xlsm
+     OpenDocument      .odt, .ods, .odp
+     Zengin Metin      .rtf
+     Düz Metin         .txt, .csv, .tsv, .md, .log, .xml, .json, .ini, .cfg, .srt, .vtt
+     Web               .html, .htm
+     E-posta           .eml, .msg
+     Eski Office       .doc, .xls, .ppt
+     Görüntü           .png, .jpg, .jpeg, .tif, .tiff, .bmp, .gif, .webp
+
+   OCR profilleri (ayar.toml [ocr] profil):
+     hizli             det small + rec small; CPU üzerinde 0,67 sn/sayfa hızında çalışır (ölçüm yarım A4).
+     uyarlamali        varsayılan profil; düşük güvenli satırları rec medium ile yeniden tanır.
+     kalite            det medium + rec medium (6,85 sn/sayfa, yarım A4, CPU) ve Tesseract desteği.
+
+   Eski Office biçimleri (.doc, .xls, .ppt):
+     araclar\libreoffice\program\soffice.exe varsa dosyalar otomatik çevrilir.
+     LibreOffice yoksa durum desteklenmiyor olarak işaretlenir.
+
+6) DİZİNLEME (arama portalı için) — dizinle.bat çalıştırın:
+     dizinle.bat --kok "\\sunucu\Arsiv"
+   Kök klasörleri ayar.toml dosyasında [dizin] kokler alanına da yazabilirsiniz.
+   Çalışma kuralları:
+     1. Depo klasörü olarak <kok>\_bulgu kullanılır.
+     2. İlk çalıştırmada önce dosya adı kataloğu taranır ve hemen yayınlanır.
+     3. İçerik çıkarma ve OCR işlemi dosya boyutuna göre sırayla yürütülür.
+     4. İşlem kesilirse sistem kaldığı sayfadan sürdürülür.
+     5. Ağ kopması durumunda mevcut kayıtlar silinmez.
+     6. Değişiklikler ayar.toml içindeki yayin_dk aralığında yayınlanır.
+   Derse bağlı belge kuralları:
+     1. Belge *_islenmis klasörünün içindeyse derse bağlanır.
+     2. Belge <ad>_belgeler klasöründe bulunuyorsa ve yanında <ad>_islenmis varsa derse bağlanır.
+     3. Video dosyası <stem>.mp4 yanında <stem>_islenmis klasörü varsa derse bağlanır.
+
+7) ARAMA SÖZDİZİMİ (Bulgu Portalı) — arama kuralları:
+     Sözdizimi         Açıklama                                Örnek
+     terim             Sözcük veya alt dize arar               radar
+     "ifade"           Tam sözcük öbeği arar                   "darbe tekrarlama"
+     a|b               VEYA araması yapar                      radar|sonar
+     !a                Belirtilen terimi dışlar                radar !tehdit
+     *.pdf             Joker karakter ile uzantı arar          *.pdf
+     uz:pdf;docx       Uzantıya göre süzer                     uz:pdf;docx
+     tur:belge         Dosya türüne göre süzer                 tur:belge
+     boyut:>10mb       Dosya boyutuna göre süzer               boyut:>10mb
+     tarih:2026-10     Değişiklik tarihine göre süzer          tarih:2026-10
+     yol:EH            Tam dosya yolunda arar                  yol:EH
+     icerik:jammer     Belge içeriğinde arar                   icerik:jammer
+     ders:             Yalnız derse bağlı dosyaları arar       ders:
+     !ders:            Yalnız derse bağlı olmayanları arar     !ders:
 
 
 
