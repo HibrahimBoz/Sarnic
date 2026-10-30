@@ -3,3 +3,6 @@ dist/
 __pycache__/
 _indir/
 _log/
+kaynak/modeller-ocr/
+kaynak/sozluk/
+_py/
