@@ -18,6 +18,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="..\..\ortak\*.json;..\..\ortak\*.sql" Link="ortak\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Portal.Cekirdek\Portal.Cekirdek.csproj" />
   </ItemGroup>
 
