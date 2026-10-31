@@ -28,6 +28,12 @@ Copy-Item (Join-Path $proje 'kaynak\KULLANIM.txt') $vh -Force
 New-Item -ItemType Directory -Force (Join-Path $vh 'araclar') | Out-Null
 Copy-Item (Join-Path $proje 'kaynak\baslat\baslat.ps1') (Join-Path $vh 'araclar') -Force
 Copy-Item (Join-Path $proje 'kaynak\baslat\BASLAT.bat') $cikis -Force
+Copy-Item (Join-Path $proje 'kaynak\baslat\servis-kur.ps1') (Join-Path $vh 'araclar') -Force
+Copy-Item (Join-Path $proje 'kaynak\varliklar\sarnic-atolye.ico') $vh -Force
+Copy-Item (Join-Path $proje 'kaynak\bat\servis.bat') $vh -Force
+# Yönetim servisi: self-contained, hedefte .NET kurulumu gerekmez.
+dotnet publish (Join-Path $proje 'kaynak\portal\Portal.Servis\Portal.Servis.csproj') -c Release -r win-x64 --self-contained true -o (Join-Path $vh 'servis') --nologo -v q
+if ($LASTEXITCODE -ne 0) { throw "Servis yayını başarısız (kod $LASTEXITCODE)" }
 Copy-Item (Join-Path $proje 'kaynak\baslat\OKU-BENI.txt') $cikis -Force
 
 # SURUMLER.txt: gerçek dosyalardan (dist-info, commit_sha.txt) yeniden üretilir; hazirla.ps1'in eski çıktısı atılır

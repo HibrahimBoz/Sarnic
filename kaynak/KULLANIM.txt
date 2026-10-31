@@ -1,5 +1,14 @@
 Sarnıç Atölye — çevrimdışı video transkript, belge metni, OCR ve dizin
 ===========================================================================
+
+YÖNETİM SERVİSİ (Atölye'yi Sarnıç'tan yönetme)
+  1. Parolayı bir kez kurun: servis.bat --parola-ayarla
+  2. Servisi kurun (yönetici izni istemez):
+     powershell -ExecutionPolicy Bypass -File araclar\servis-kur.ps1 -Depo \\sunucu\Sarnic-Veri
+  3. Sarnıç'ta ayar.json "dizin" alanına aynı depo yolunu yazın. "Atölye Yönetimi" düğmesine basın.
+  Port izni varsa ağ servisi (HTTPS, port 8765) kullanılır. Yoksa Sarnıç paylaşım klasörüne geçer.
+  Her iş ayrı süreçte çalışır. Aynı anda tek iş çalışır. İş bitince model bellekten çıkar.
+  Kuyruğu temizleme yalnız kayıtları siler. Kaynak ve çıktı dosyaları silinmez.
 KURULUM YOK. Bu klasörü hedef makineye olduğu gibi kopyalayın (USB/robocopy). Python, ffmpeg,
 internet, yönetici yetkisi GEREKMEZ. Yol boşluk/Türkçe karakter içerebilir.
 

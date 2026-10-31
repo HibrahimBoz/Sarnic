@@ -273,6 +273,12 @@ public partial class AramaPenceresi : Window
         }
     }
 
+    private void YonetimButonu_Click(object sender, RoutedEventArgs e)
+    {
+        string depo = _dizinKaynagi?.DizinKlasoru ?? DizinAyari.Coz(_kokKlasor);
+        new YonetimPenceresi(depo) { Owner = this }.Show();
+    }
+
     private async void KokDegistirButonu_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new OpenFolderDialog
