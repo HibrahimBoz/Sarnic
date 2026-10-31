@@ -49,7 +49,7 @@
                     <TextBlock Text="Transkript" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{DynamicResource MetinFircasi}"/>
                     <Button x:Name="DuzenleDugmesi" DockPanel.Dock="Right" Content="Düzenle"
                             Padding="10,4" Click="Duzenle_Click" HorizontalAlignment="Right"/>
-                    <ToggleButton x:Name="CeviriGecisDugmesi" Content="Özgün / Türkçe" DockPanel.Dock="Right"
+                    <ToggleButton x:Name="CeviriGecisDugmesi" Style="{StaticResource SecmeliDugme}" Content="Özgün / Türkçe" DockPanel.Dock="Right"
                                   Padding="8,3" Margin="0,0,8,0" Click="CeviriGecisDugmesi_Click"
                                   Visibility="Collapsed" HorizontalAlignment="Right"/>
                 </DockPanel>

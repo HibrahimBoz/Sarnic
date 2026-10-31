@@ -163,6 +163,9 @@
                                                         <TextBlock Text="{Binding Etiket, StringFormat='  ({0})'}" Foreground="{DynamicResource SolukMetinFircasi}"/>
                                                     </DockPanel>
                                                     <TextBlock local:VurguYardimcisi.VurguBilgisi="{Binding}" Foreground="{DynamicResource MetinFircasi}" TextWrapping="Wrap" MaxHeight="40" TextTrimming="CharacterEllipsis"/>
+                                                    <TextBlock Text="çeviriden eşleşti" FontSize="11" Margin="0,2,0,0"
+                                                       Foreground="{DynamicResource SolukMetinFircasi}"
+                                                       Visibility="{Binding CeviriRozetiGorunurluk}"/>
                                                 </StackPanel>
                                             </Border>
                                         </DataTemplate>
@@ -196,7 +199,12 @@
                                                 <DockPanel>
                                                     <TextBlock Text="{Binding ZamanMetni}" DockPanel.Dock="Right" Foreground="{DynamicResource SolukMetinFircasi}" FontFamily="Consolas, monospace" Margin="10,0,0,0" VerticalAlignment="Center"/>
                                                     <TextBlock Text="{Binding DersAd}" FontWeight="Medium" Foreground="{DynamicResource VurguFircasi}" Width="160" TextTrimming="CharacterEllipsis" Margin="0,0,10,0"/>
-                                                    <TextBlock local:VurguYardimcisi.VurguBilgisi="{Binding}" Foreground="{DynamicResource MetinFircasi}" TextWrapping="Wrap" TextTrimming="CharacterEllipsis"/>
+                                                    <StackPanel>
+                                                        <TextBlock local:VurguYardimcisi.VurguBilgisi="{Binding}" Foreground="{DynamicResource MetinFircasi}" TextWrapping="Wrap" TextTrimming="CharacterEllipsis"/>
+                                                        <TextBlock Text="çeviriden eşleşti" FontSize="11" Margin="0,2,0,0"
+                                                       Foreground="{DynamicResource SolukMetinFircasi}"
+                                                       Visibility="{Binding CeviriRozetiGorunurluk}"/>
+                                                    </StackPanel>
                                                 </DockPanel>
                                             </Border>
                                         </DataTemplate>
@@ -392,19 +400,18 @@
                                     <Border DockPanel.Dock="Right" Background="{DynamicResource Yuzey2Fircasi}"
                                             BorderBrush="{DynamicResource KenarlikFircasi}" BorderThickness="1"
                                             CornerRadius="3" Padding="5,1" Margin="6,0,0,0" VerticalAlignment="Center"
-                                            Visibility="{Binding CeviriRozetiGorunurluk}">
-                                        <TextBlock Text="çeviriden eşleşti" Foreground="{DynamicResource SolukMetinFircasi}" FontSize="11"/>
-                                    </Border>
-                                    <Border DockPanel.Dock="Right" Background="{DynamicResource Yuzey2Fircasi}"
-                                            BorderBrush="{DynamicResource KenarlikFircasi}" BorderThickness="1"
-                                            CornerRadius="3" Padding="5,1" Margin="6,0,0,0" VerticalAlignment="Center"
                                             Visibility="{Binding OcrGorunur}">
                                         <TextBlock Text="{Binding OcrMetni}" Foreground="{DynamicResource SolukMetinFircasi}" FontSize="11" FontFamily="Consolas, monospace"/>
                                     </Border>
                                     <TextBlock Text="{Binding Etiket}" DockPanel.Dock="Left" Foreground="{DynamicResource VurguFircasi}"
                                                FontWeight="SemiBold" Width="100" Margin="0,0,10,0" VerticalAlignment="Center"/>
-                                    <TextBlock local:VurguYardimcisi.VurguBilgisi="{Binding}"
-                                               TextWrapping="Wrap" Foreground="{DynamicResource MetinFircasi}" VerticalAlignment="Center"/>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock local:VurguYardimcisi.VurguBilgisi="{Binding}"
+                                                   TextWrapping="Wrap" Foreground="{DynamicResource MetinFircasi}"/>
+                                        <TextBlock Text="çeviriden eşleşti" FontSize="11" Margin="0,2,0,0"
+                                                   Foreground="{DynamicResource SolukMetinFircasi}"
+                                                   Visibility="{Binding CeviriRozetiGorunurluk}"/>
+                                    </StackPanel>
                                 </DockPanel>
                             </DataTemplate>
                         </ListView.ItemTemplate>
