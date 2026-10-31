@@ -6,10 +6,10 @@ from pathlib import Path
 
 import numpy as np
 
-from videohat import stt
-from videohat.ayar import Ayar, SttAyar
-from videohat.belge.ocr import kiril_orani
-from videohat.hatalar import AyarHatasi
+from sarnicatolye import stt
+from sarnicatolye.ayar import Ayar, SttAyar
+from sarnicatolye.belge.ocr import kiril_orani
+from sarnicatolye.hatalar import AyarHatasi
 
 
 class SahteModel:

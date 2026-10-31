@@ -1,4 +1,4 @@
-"""VideoHat çok kameralı ses senkronizasyon motoru."""
+"""Sarnıç Atölye çok kameralı ses senkronizasyon motoru."""
 from dataclasses import dataclass
 import numpy as np
 

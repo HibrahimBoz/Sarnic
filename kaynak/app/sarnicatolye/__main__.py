@@ -1,4 +1,4 @@
-"""Komut satırı: python -m videohat {isle,izle,kontrol}. Çıkış: 0 ok, 1 iş hatası, 2 ortam hatası."""
+"""Komut satırı: python -m sarnicatolye {isle,izle,kontrol}. Çıkış: 0 ok, 1 iş hatası, 2 ortam hatası."""
 import argparse
 import logging
 import os
@@ -23,7 +23,7 @@ def _gunluk_kur(kok: Path) -> None:
     d = kok / "is" / "gunluk"
     d.mkdir(parents=True, exist_ok=True)
     bicim = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
-    log = logging.getLogger("videohat")
+    log = logging.getLogger("sarnicatolye")
     log.setLevel(logging.INFO)
     if log.handlers:
         return
@@ -101,7 +101,7 @@ def _isle(args) -> int:
     from .hat import Bayraklar, isle_tek
     kok = yollar.kok()
     ayar = ayar_mod.yukle(kok)
-    log = logging.getLogger("videohat")
+    log = logging.getLogger("sarnicatolye")
     bay = Bayraklar(agir_ses=args.agir_ses, goruntu=args.goruntu, upscale=args.upscale,
                     model=args.model, cihaz=args.cihaz)
     hatali = 0
@@ -139,7 +139,7 @@ def _isle_grup(args) -> int:
     from .hat import Bayraklar
     kok = yollar.kok()
     ayar = ayar_mod.yukle(kok)
-    log = logging.getLogger("videohat")
+    log = logging.getLogger("sarnicatolye")
     bay = Bayraklar(agir_ses=args.agir_ses, goruntu=args.goruntu,
                     model=args.model, cihaz=args.cihaz)
     klasor = Path(args.klasor)
@@ -170,7 +170,7 @@ def _belge(args) -> int:
     ayar = ayar_mod.yukle(yollar.kok())
     if args.profil:
         ayar.ocr.profil = args.profil
-    log = logging.getLogger("videohat")
+    log = logging.getLogger("sarnicatolye")
     hatali = 0
     tek = len(args.girdi) == 1 and Path(args.girdi[0]).is_file()
     kullanilan = set()
@@ -224,12 +224,12 @@ def _dizinle(args) -> int:
     try:
         return calistir(ayar, args.kok, args.depo, args.bir_kez, args.yalniz_ad, args.zorla_sil)
     except (IsHatasi, OSError, sqlite3.Error) as e:
-        logging.getLogger("videohat").error("Dizinleme hatası: %s", e)
+        logging.getLogger("sarnicatolye").error("Dizinleme hatası: %s", e)
         return 1
 
 
 def parser_olustur() -> argparse.ArgumentParser:
-    ap = argparse.ArgumentParser(prog="videohat", description="Sarnıç Atölye — video, belge ve dizin işleme")
+    ap = argparse.ArgumentParser(prog="sarnicatolye", description="Sarnıç Atölye — video, belge ve dizin işleme")
     alt = ap.add_subparsers(dest="komut", required=True)
     i = alt.add_parser("isle", help="dosya veya klasör işle")
     i.add_argument("girdi", nargs="+")
@@ -268,7 +268,7 @@ def main(argv=None) -> int:
     try:
         kok = yollar.kok()
         _gunluk_kur(kok)
-        if os.environ.get("VIDEOHAT_AG_KILIDI") == "1":
+        if os.environ.get("SARNICATOLYE_AG_KILIDI") == "1":
             from . import ag_kilidi
             ag_kilidi.kur()
         if args.komut == "isle":
@@ -285,7 +285,7 @@ def main(argv=None) -> int:
         from . import kontrol
         return kontrol.calistir()
     except (OrtamHatasi, AyarHatasi) as e:
-        logging.getLogger("videohat").error("Ortam/ayar hatası: %s", e)
+        logging.getLogger("sarnicatolye").error("Ortam/ayar hatası: %s", e)
         return 2
     except KeyboardInterrupt:
         return 0

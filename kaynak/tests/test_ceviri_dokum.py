@@ -8,11 +8,11 @@ from unittest.mock import MagicMock, patch
 
 import numpy as np
 
-from videohat import cikti, grup, hat
-from videohat.cihaz import CihazSecimi
-from videohat.stt import Segment
+from sarnicatolye import cikti, grup, hat
+from sarnicatolye.cihaz import CihazSecimi
+from sarnicatolye.stt import Segment
 
-from videohat.hatalar import CeviriHatasi
+from sarnicatolye.hatalar import CeviriHatasi
 
 
 class SahteCevirmen:
@@ -131,13 +131,13 @@ class TestCeviriDokum(unittest.TestCase):
         self.assertNotIn("ceviri", veri["segmentler"][0])
         self.assertEqual(veri["segmentler"][1]["ceviri"], "Geçerli")
 
-    @patch("videohat.hat._ses_akisi_var", return_value=True)
-    @patch("videohat.hat._video_akisi_var", return_value=False)
-    @patch("videohat.ses.cikar")
-    @patch("videohat.ses.temizle")
-    @patch("videohat.ses.stt_icin")
-    @patch("videohat.cihaz.sec")
-    @patch("videohat.stt.yaz")
+    @patch("sarnicatolye.hat._ses_akisi_var", return_value=True)
+    @patch("sarnicatolye.hat._video_akisi_var", return_value=False)
+    @patch("sarnicatolye.ses.cikar")
+    @patch("sarnicatolye.ses.temizle")
+    @patch("sarnicatolye.ses.stt_icin")
+    @patch("sarnicatolye.cihaz.sec")
+    @patch("sarnicatolye.stt.yaz")
     def test_dil_tr_iken_ceviriciyi_cagirmaz(
         self, mock_stt_yaz, mock_cihaz_sec, mock_stt_icin, mock_temizle, mock_cikar, mock_video_var, mock_ses_var
     ):
@@ -145,7 +145,7 @@ class TestCeviriDokum(unittest.TestCase):
         mock_stt_yaz.return_value = [Segment(0.0, 1.0, "Merhaba dünya")]
         cevirmen = SahteCevirmen()
 
-        from videohat import stt as stt_mod
+        from sarnicatolye import stt as stt_mod
         stt_mod.SON_DIL = "tr"
 
         ayar = MagicMock()
@@ -167,13 +167,13 @@ class TestCeviriDokum(unittest.TestCase):
         veri = json.loads(json_dosya.read_text(encoding="utf-8"))
         self.assertNotIn("ceviri_dil", veri)
 
-    @patch("videohat.hat._ses_akisi_var", return_value=True)
-    @patch("videohat.hat._video_akisi_var", return_value=False)
-    @patch("videohat.ses.cikar")
-    @patch("videohat.ses.temizle")
-    @patch("videohat.ses.stt_icin")
-    @patch("videohat.cihaz.sec")
-    @patch("videohat.stt.yaz")
+    @patch("sarnicatolye.hat._ses_akisi_var", return_value=True)
+    @patch("sarnicatolye.hat._video_akisi_var", return_value=False)
+    @patch("sarnicatolye.ses.cikar")
+    @patch("sarnicatolye.ses.temizle")
+    @patch("sarnicatolye.ses.stt_icin")
+    @patch("sarnicatolye.cihaz.sec")
+    @patch("sarnicatolye.stt.yaz")
     def test_cevirici_ceviri_hatasi_atinca_isleme_basarili_gunlukte_uyari(
         self, mock_stt_yaz, mock_cihaz_sec, mock_stt_icin, mock_temizle, mock_cikar, mock_video_var, mock_ses_var
     ):
@@ -181,7 +181,7 @@ class TestCeviriDokum(unittest.TestCase):
         mock_stt_yaz.return_value = [Segment(0.0, 1.0, "Hello world")]
         cevirmen = SahteCevirmen(hata_at=True)
 
-        from videohat import stt as stt_mod
+        from sarnicatolye import stt as stt_mod
         stt_mod.SON_DIL = "en"
 
         ayar = MagicMock()
@@ -194,7 +194,7 @@ class TestCeviriDokum(unittest.TestCase):
         video_dosya.write_bytes(b"sahte video")
 
         bayraklar = hat.Bayraklar()
-        with self.assertLogs("videohat", level="WARNING") as cm:
+        with self.assertLogs("sarnicatolye", level="WARNING") as cm:
             sonuc = hat.isle_tek(video_dosya, self.tmp_dir / "cikti_hata", ayar, bayraklar, cevirmen=cevirmen)
 
         self.assertTrue(sonuc.basarili)

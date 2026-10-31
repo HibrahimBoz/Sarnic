@@ -7,8 +7,8 @@ from .hatalar import OrtamHatasi
 
 
 def kok() -> Path:
-    """Paket kökü. VIDEOHAT_KOK ortam değişkeni varsa o, yoksa app\\videohat'ın iki üstü."""
-    env = os.environ.get("VIDEOHAT_KOK")
+    """Paket kökü. SARNICATOLYE_KOK ortam değişkeni varsa o, yoksa app\\sarnicatolye'ın iki üstü."""
+    env = os.environ.get("SARNICATOLYE_KOK")
     if env:
         k = env.rstrip("\\/ ") or env
         if len(k) == 2 and k[1] == ":":  # sürücü kökü: "D:" göreli yol olur, "D:\" kalmalı

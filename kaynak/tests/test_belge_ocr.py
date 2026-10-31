@@ -8,13 +8,13 @@ import numpy as np
 import pymupdf
 
 from belge_destek import GeciciTest, gorsel, gorsel_cok_satirli, pdf_yaz, FONT
-from videohat import yollar
-from videohat.belge.model import OcrSatir, Sayfa
-from videohat.belge.ocr import OcrMotoru, OcrHavuzu, OcrIsi
-from videohat.belge.onisleme import hazirla, dondur, yon_cevir, Donusum, metin_murekkebi, egiklik
-from videohat.belge.pdf_katman import olustur
-from videohat.belge.sira import birlestir
-from videohat.hatalar import OrtamHatasi
+from sarnicatolye import yollar
+from sarnicatolye.belge.model import OcrSatir, Sayfa
+from sarnicatolye.belge.ocr import OcrMotoru, OcrHavuzu, OcrIsi
+from sarnicatolye.belge.onisleme import hazirla, dondur, yon_cevir, Donusum, metin_murekkebi, egiklik
+from sarnicatolye.belge.pdf_katman import olustur
+from sarnicatolye.belge.sira import birlestir
+from sarnicatolye.hatalar import OrtamHatasi
 
 
 def yavas_isci(ayar, gelen, giden):
@@ -57,7 +57,7 @@ class OcrTest(GeciciTest):
         self.assertLessEqual(abs(aci), 0.5)
 
     def test_eksik_model_indirme_yok(self):
-        with patch("videohat.belge.ocr.yollar.ocr_model", side_effect=OrtamHatasi("model eksik")), \
+        with patch("sarnicatolye.belge.ocr.yollar.ocr_model", side_effect=OrtamHatasi("model eksik")), \
                 patch("requests.get", side_effect=AssertionError("AĞA ÇIKTI")) as ag:
             with self.assertRaisesRegex(OrtamHatasi, "model eksik"):
                 OcrMotoru(self.ayar)._motor("small", "small")
@@ -66,7 +66,7 @@ class OcrTest(GeciciTest):
     def test_downloader_kapali(self):
         from rapidocr.utils.download_file import DownloadFile
         motor = OcrMotoru(self.ayar)
-        with patch("videohat.belge.ocr.yollar.ocr_model", return_value=Path("yok.onnx")):
+        with patch("sarnicatolye.belge.ocr.yollar.ocr_model", return_value=Path("yok.onnx")):
             motor._motor("small", "small")
         with patch("requests.get") as ag:
             with self.assertRaisesRegex(OrtamHatasi, "indirme kapalı"):
@@ -109,7 +109,7 @@ class OcrTest(GeciciTest):
         self.ayar.dizin.isci = 1
         motor = OcrMotoru(self.ayar)
         beklenen_threads = max(1, (os.cpu_count() or 1) // 2)
-        with patch("videohat.belge.ocr.yollar.ocr_model", return_value=Path("yok.onnx")), \
+        with patch("sarnicatolye.belge.ocr.yollar.ocr_model", return_value=Path("yok.onnx")), \
                 patch("rapidocr.RapidOCR") as mock_rocr:
             mock_rocr.return_value.text_det = MagicMock()
             mock_rocr.return_value.text_rec = MagicMock()
@@ -127,7 +127,7 @@ class OcrTest(GeciciTest):
         self.ayar.ocr.profil = "uyarlamali"
         motor = OcrMotoru(self.ayar)
         with patch.object(motor, "_oku", return_value=[OcrSatir("iyi", .99, (0, 0, 1, 1))]) as oku, \
-                patch("videohat.belge.ocr.metin_murekkebi", return_value=100):
+                patch("sarnicatolye.belge.ocr.metin_murekkebi", return_value=100):
             motor.oku(np.full((100, 200), 255, np.uint8))
         self.assertEqual(oku.call_args_list[-1].args[1:], ("medium", "small"))
 
@@ -135,7 +135,7 @@ class OcrTest(GeciciTest):
         motor = OcrMotoru(self.ayar)
         motor.tesseract = Path("tesseract.exe")
         tsv = "level\tconf\ttext\n5\t80\tölçüm\n5\t90\ttesti\n".encode()
-        with patch("videohat.belge.ocr.calistir", return_value=tsv) as fn:
+        with patch("sarnicatolye.belge.ocr.calistir", return_value=tsv) as fn:
             metin, guven = motor._tesseract(np.full((40, 100), 255, np.uint8))
         self.assertEqual(metin, "ölçüm testi")
         self.assertAlmostEqual(guven, .85)
@@ -184,7 +184,7 @@ class OcrTest(GeciciTest):
         from PIL import Image
         yol = self.kok / "a.png"
         Image.new("RGB", (20, 20)).save(yol)
-        with patch("videohat.belge.ocr.OcrMotoru") as sinif:
+        with patch("sarnicatolye.belge.ocr.OcrMotoru") as sinif:
             sinif.return_value.oku.return_value = ([], 0)
             with OcrHavuzu(self.ayar) as havuz:
                 list(havuz.haritala([OcrIsi(str(yol)), OcrIsi(str(yol))]))
@@ -217,14 +217,14 @@ class GercekOcrTest(GeciciTest):
             raise unittest.SkipTest(str(e))
         if not FONT.exists():
             raise unittest.SkipTest("Arial yok")
-        from videohat.ayar import Ayar, OcrAyar, DizinAyar
+        from sarnicatolye.ayar import Ayar, OcrAyar, DizinAyar
         cls.motor = OcrMotoru(Ayar(yollar.kok(), ocr=OcrAyar(profil="hizli", cihaz="cpu", tesseract=False),
                                   dizin=DizinAyar(isci=1)))
 
     def test_yan_ve_bas_asagi_tarama_satir_sirasi_ve_pdf_yonu(self):
         # Ölçülen kusur: cls ters satırı düzeltip okuduğu için yön 180° şaşıyor, satır sırası tersine dönüyordu
         import cv2
-        from videohat.belge.hat import isle_belge
+        from sarnicatolye.belge.hat import isle_belge
         d = pymupdf.open(); p = d.new_page(); p.insert_font(fontname="F0", fontfile=str(FONT))
         p.insert_textbox(pymupdf.Rect(60, 60, 540, 400), "Radar frekansı ölçümü yapılır.\nSistem güvenlik kontrolü tamam."
                          "\nVeri kaydı alındı.", fontsize=16, fontname="F0")

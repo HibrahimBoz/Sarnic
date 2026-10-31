@@ -743,7 +743,7 @@ def yaz(
 ) -> list[Segment]:
     from faster_whisper import WhisperModel
 
-    log = logging.getLogger("videohat")
+    log = logging.getLogger("sarnicatolye")
     wav16 = Path(wav16)
     sr, kare = _wav_bilgi(wav16)
     toplam = kare / sr

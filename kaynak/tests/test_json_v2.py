@@ -11,9 +11,9 @@ _uygulama_dizini = Path(__file__).resolve().parent.parent / "app"
 if str(_uygulama_dizini) not in sys.path:
     sys.path.insert(0, str(_uygulama_dizini))
 
-from videohat.cihaz import CihazSecimi
-from videohat.cikti import json_meta
-from videohat.stt import Segment
+from sarnicatolye.cihaz import CihazSecimi
+from sarnicatolye.cikti import json_meta
+from sarnicatolye.stt import Segment
 
 
 class TestJsonV2(unittest.TestCase):

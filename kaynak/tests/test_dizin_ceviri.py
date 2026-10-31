@@ -6,10 +6,10 @@ from unittest.mock import Mock, patch
 from pathlib import Path
 
 from belge_destek import GeciciTest
-from videohat.belge.onbellek import json_yaz
-from videohat.dizin import vt
-from videohat.dizin.dizinle import ceviri_gecisi, icerikleri_isle
-from videohat.dizin.normal import icerik_normalle
+from sarnicatolye.belge.onbellek import json_yaz
+from sarnicatolye.dizin import vt
+from sarnicatolye.dizin.dizinle import ceviri_gecisi, icerikleri_isle
+from sarnicatolye.dizin.normal import icerik_normalle
 
 
 class DizinCeviriTest(GeciciTest):
@@ -210,8 +210,8 @@ class DizinCeviriTest(GeciciTest):
                 v["ceviri_surum"] = 1
                 return True
 
-            with patch("videohat.dizin.dizinle.isle_belge") as mock_isle_belge, \
-                 patch("videohat.dizin.dizinle.ceviri_ekle", side_effect=sahte_ceviri_ekle):
+            with patch("sarnicatolye.dizin.dizinle.isle_belge") as mock_isle_belge, \
+                 patch("sarnicatolye.dizin.dizinle.ceviri_ekle", side_effect=sahte_ceviri_ekle):
                 islenen = ceviri_gecisi(db, depo, self.ayar, cevirmen=object())
 
             # isle_belge (OCR çıkarma) kesinlikle çağrılmadı
@@ -281,7 +281,7 @@ class DizinCeviriTest(GeciciTest):
                 # Zaten ceviri_surum var, değişiklik yapmadı
                 return False
 
-            with patch("videohat.dizin.dizinle.ceviri_ekle", side_effect=degismeyen_ceviri_ekle):
+            with patch("sarnicatolye.dizin.dizinle.ceviri_ekle", side_effect=degismeyen_ceviri_ekle):
                 ceviri_gecisi(db, depo, self.ayar, cevirmen=object())
 
             # Değişmese de sayfalari_yaz çağrılmış ve veritabanı kurtarılmıştır

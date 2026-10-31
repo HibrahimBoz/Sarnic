@@ -7,10 +7,10 @@ from unittest.mock import patch
 import pymupdf
 
 from belge_destek import GeciciTest, SahteHavuz, pdf_yaz
-from videohat.belge.hat import isle_belge, disa_yaz, sha256
-from videohat.belge.cikar import cikar
-from videohat.hatalar import IsHatasi
-from videohat.__main__ import main
+from sarnicatolye.belge.hat import isle_belge, disa_yaz, sha256
+from sarnicatolye.belge.cikar import cikar
+from sarnicatolye.hatalar import IsHatasi
+from sarnicatolye.__main__ import main
 
 
 class HatTest(GeciciTest):
@@ -43,7 +43,7 @@ class HatTest(GeciciTest):
         shutil.copyfile(yol, diger)
         depo = self.kok / "depo"
         ilk = isle_belge(yol, depo, self.ayar)
-        with patch("videohat.belge.hat.cikar", side_effect=AssertionError("TEKRAR İŞLENDİ")):
+        with patch("sarnicatolye.belge.hat.cikar", side_effect=AssertionError("TEKRAR İŞLENDİ")):
             ikinci = isle_belge(diger, depo, self.ayar)
         self.assertEqual(ilk.sha, ikinci.sha)
         self.assertEqual(len(list(depo.rglob("belge.json"))), 1)
@@ -58,8 +58,8 @@ class HatTest(GeciciTest):
         depo = self.kok / "depo"
         doc = self.kok / "a.doc"
         doc.write_bytes(b"bos")
-        with patch("videohat.belge.ofis.yollar.libreoffice", return_value=None), \
-                patch("videohat.belge.ofis.yollar.artcraft_cli", return_value=None):
+        with patch("sarnicatolye.belge.ofis.yollar.libreoffice", return_value=None), \
+                patch("sarnicatolye.belge.ofis.yollar.artcraft_cli", return_value=None):
             kayit = isle_belge(doc, depo, self.ayar)
         self.assertEqual(kayit.veri["durum"], "desteklenmiyor")
         self.assertFalse((kayit.hedef / "belge.json").exists())
@@ -99,14 +99,14 @@ class HatTest(GeciciTest):
     def test_disa_yaz_hata_durumunda_ara_temizlenir(self):
         # 14. bulgu: disa_yaz hata fırlattığında _ara temizlenir
         cikti = self.kok / "cikti_hata"
-        with patch("videohat.belge.hat.isle_belge", side_effect=IsHatasi("test hatası")):
+        with patch("sarnicatolye.belge.hat.isle_belge", side_effect=IsHatasi("test hatası")):
             with self.assertRaises(IsHatasi):
                 disa_yaz(self.kok / "a.txt", cikti, self.ayar)
         self.assertFalse((cikti / "_ara").exists())
 
     def test_izle_bos_ara_korunmaz_ve_yarim_temizlenir(self):
         # 14. bulgu: izle._geri_al içinde boş _ara koruma altına alınmaz
-        from videohat import izle
+        from sarnicatolye import izle
         bitti = self.kok / "is" / "bitti"
         isleniyor = self.kok / "is" / "isleniyor"
         gelen = self.kok / "is" / "gelen"
@@ -123,20 +123,20 @@ class HatTest(GeciciTest):
     def test_cli_belge_ve_hata_kodlari(self):
         yol = self.kok / "a.txt"
         yol.write_text("Türkçe ölçüm", encoding="utf-8")
-        with patch("videohat.__main__._gunluk_kur"), patch("videohat.ayar.yukle", return_value=self.ayar):
+        with patch("sarnicatolye.__main__._gunluk_kur"), patch("sarnicatolye.ayar.yukle", return_value=self.ayar):
             self.assertEqual(main(["belge", str(yol), "--cikis", str(self.kok / "cikti")]), 0)
             self.assertEqual(main(["belge", str(self.kok / "yok.txt")]), 1)
             self.assertEqual(main(["dizinle", "--bir-kez"]), 2)
         self.assertTrue((self.kok / "cikti" / "metin.txt").is_file())
 
     def test_izleyici_belge_yonu_video_hatti_cagrilmaz(self):
-        from videohat import izle
+        from sarnicatolye import izle
         for ad in ("gelen", "isleniyor", "bitti", "hata"):
             (self.kok / "is" / ad).mkdir(parents=True)
         yol = self.kok / "is" / "gelen" / "metin.txt"
         yol.write_text("İzlenen belge", encoding="utf-8")
         self.ayar.izle.sabit_tur = 1
-        with patch("videohat.izle.yollar.kok", return_value=self.kok), patch("videohat.izle.isle_tek") as video:
+        with patch("sarnicatolye.izle.yollar.kok", return_value=self.kok), patch("sarnicatolye.izle.isle_tek") as video:
             self.assertEqual(izle.tek_tur(self.ayar, {}), 1)
         video.assert_not_called()
         cikis = self.kok / "is" / "bitti" / "metin_belge"

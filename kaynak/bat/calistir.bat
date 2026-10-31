@@ -7,12 +7,12 @@ set "TRANSFORMERS_OFFLINE=1"
 set "HF_HUB_DISABLE_TELEMETRY=1"
 set "PYTHONNOUSERSITE=1"
 set "PYTHONUTF8=1"
-set "VIDEOHAT_KOK=%ROOT%"
+set "SARNICATOLYE_KOK=%ROOT%"
 set "PATH=%ROOT%ffmpeg\bin;%ROOT%cuda;%ROOT%python;%SystemRoot%\System32;%SystemRoot%"
 
-"%ROOT%python\python.exe" -m videohat isle %*
+"%ROOT%python\python.exe" -m sarnicatolye isle %*
 set "HATA_KODU=%ERRORLEVEL%"
 
-if "%VIDEOHAT_PAUSE%"=="0" exit /b %HATA_KODU%
+if "%SARNICATOLYE_PAUSE%"=="0" exit /b %HATA_KODU%
 pause
 exit /b %HATA_KODU%

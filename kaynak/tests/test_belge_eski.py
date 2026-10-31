@@ -13,18 +13,18 @@ import pymupdf
 from PIL import Image
 
 from belge_destek import GeciciTest, SahteHavuz, gorsel
-from videohat import yollar
-from videohat.__main__ import parser_olustur
-from videohat.belge import ESKI_OFIS_HEDEFLERI, UZANTILAR
-from videohat.belge.cikar import cikar, metin_oku, _chm
-from videohat.belge.hat import isle_belge, disa_yaz
-from videohat.belge.model import BelgeSonucu, OcrSatir
-from videohat.belge.ocr import OcrHavuzu
-from videohat.belge.ofis import eski_cevir
-from videohat.belge.surec import calistir
-from videohat.dizin.dizinle import calistir as dizinle, varsayilan_depo
-from videohat.dizin.tarayici import tur_bul
-from videohat.hatalar import IsHatasi, OrtamHatasi
+from sarnicatolye import yollar
+from sarnicatolye.__main__ import parser_olustur
+from sarnicatolye.belge import ESKI_OFIS_HEDEFLERI, UZANTILAR
+from sarnicatolye.belge.cikar import cikar, metin_oku, _chm
+from sarnicatolye.belge.hat import isle_belge, disa_yaz
+from sarnicatolye.belge.model import BelgeSonucu, OcrSatir
+from sarnicatolye.belge.ocr import OcrHavuzu
+from sarnicatolye.belge.ofis import eski_cevir
+from sarnicatolye.belge.surec import calistir
+from sarnicatolye.dizin.dizinle import calistir as dizinle, varsayilan_depo
+from sarnicatolye.dizin.tarayici import tur_bul
+from sarnicatolye.hatalar import IsHatasi, OrtamHatasi
 
 METIN = "Eski arsiv: Radar kontrol raporu ve sistem guvenlik olcumu."
 TURKCE = "ŞİĞÜÖÇ şığüöç"
@@ -82,8 +82,8 @@ class EskiBicimTest(GeciciTest):
     def test_tum_ofis_gruplari_donusum_ve_dagitim(self):
         beklenen = {uz: hedef for hedef, uzantilar in OFIS_GRUPLARI.items() for uz in uzantilar.split()}
         self.assertEqual(ESKI_OFIS_HEDEFLERI, beklenen)
-        with patch("videohat.yollar.libreoffice", return_value=Path("soffice.exe")), \
-                patch("videohat.belge.ofis.calistir", side_effect=self.sahte_donusum):
+        with patch("sarnicatolye.yollar.libreoffice", return_value=Path("soffice.exe")), \
+                patch("sarnicatolye.belge.ofis.calistir", side_effect=self.sahte_donusum):
             for uz, hedef in beklenen.items():
                 with self.subTest(uz=uz):
                     yol = self.kok / ("eski" + uz)
@@ -95,8 +95,8 @@ class EskiBicimTest(GeciciTest):
                     self.assertIn(METIN, "\n".join(s.metin for s in sonuc.sayfalar))
 
     def test_araclar_yok_turkce_neden(self):
-        with patch("videohat.yollar.libreoffice", return_value=None), \
-                patch("videohat.yollar.artcraft_cli", return_value=None) as cli:
+        with patch("sarnicatolye.yollar.libreoffice", return_value=None), \
+                patch("sarnicatolye.yollar.artcraft_cli", return_value=None) as cli:
             for uz in (".doc", ".xls", ".wpd", ".xlsb", ".key", ".pub"):
                 with self.subTest(uz=uz):
                     cli.reset_mock()
@@ -124,9 +124,9 @@ class EskiBicimTest(GeciciTest):
                     self.assertEqual((sn, arac), (120, ad + "-cli"))
                     modern_yaz(komut[3])
 
-                with patch("videohat.yollar.libreoffice", return_value=None), \
-                        patch("videohat.yollar.artcraft_cli", return_value=exe) as bul, \
-                        patch("videohat.belge.ofis.calistir", side_effect=cevir):
+                with patch("sarnicatolye.yollar.libreoffice", return_value=None), \
+                        patch("sarnicatolye.yollar.artcraft_cli", return_value=exe) as bul, \
+                        patch("sarnicatolye.belge.ofis.calistir", side_effect=cevir):
                     sonuc = self.oku(yol)
                 bul.assert_called_once_with(ad)
                 self.assertIn(METIN, sonuc.sayfalar[0].metin)
@@ -135,8 +135,8 @@ class EskiBicimTest(GeciciTest):
         ara = self.kok / "ara"
         ara.mkdir()
         modern_yaz(ara / "eski.docx")
-        with patch("videohat.yollar.libreoffice", return_value=Path("soffice.exe")), \
-                patch("videohat.belge.ofis.calistir", return_value=b""):
+        with patch("sarnicatolye.yollar.libreoffice", return_value=Path("soffice.exe")), \
+                patch("sarnicatolye.belge.ofis.calistir", return_value=b""):
             with self.assertRaisesRegex(IsHatasi, "LibreOffice çıktı oluşturmadı"):
                 eski_cevir(self.kok / "eski.doc", ara)
 
@@ -145,8 +145,8 @@ class EskiBicimTest(GeciciTest):
             with self.subTest(uz=uz):
                 yol = self.kok / ("eski" + uz)
                 yol.write_bytes(uz.encode())
-                with patch("videohat.yollar.libreoffice", return_value=Path("soffice.exe")), \
-                        patch("videohat.belge.ofis.calistir", side_effect=self.sahte_donusum):
+                with patch("sarnicatolye.yollar.libreoffice", return_value=Path("soffice.exe")), \
+                        patch("sarnicatolye.belge.ofis.calistir", side_effect=self.sahte_donusum):
                     kayit = isle_belge(yol, self.kok / "depo", self.ayar, SahteHavuz())
                 ad = "duzenlenebilir." + ESKI_OFIS_HEDEFLERI[uz]
                 self.assertEqual(kayit.veri["duzenlenebilir"], ad)
@@ -154,15 +154,15 @@ class EskiBicimTest(GeciciTest):
                 self.assertFalse((kayit.hedef / "_ara").exists())
                 veri = json.loads((kayit.hedef / "belge.json").read_text(encoding="utf-8"))
                 self.assertEqual(veri["duzenlenebilir"], ad)
-                with patch("videohat.belge.hat.cikar", side_effect=AssertionError("Tekrar çıkarıldı")):
+                with patch("sarnicatolye.belge.hat.cikar", side_effect=AssertionError("Tekrar çıkarıldı")):
                     ikinci = isle_belge(yol, self.kok / "depo", self.ayar)
                 self.assertEqual(ikinci.veri["duzenlenebilir"], ad)
 
     def test_duzenlenebilir_disa_yaz_ve_donusumsuz_null(self):
         yol = self.kok / "eski.doc"
         yol.write_bytes(b"doc")
-        with patch("videohat.yollar.libreoffice", return_value=Path("soffice.exe")), \
-                patch("videohat.belge.ofis.calistir", side_effect=self.sahte_donusum):
+        with patch("sarnicatolye.yollar.libreoffice", return_value=Path("soffice.exe")), \
+                patch("sarnicatolye.belge.ofis.calistir", side_effect=self.sahte_donusum):
             kayit = disa_yaz(yol, self.kok / "cikti", self.ayar, SahteHavuz())
         self.assertTrue((kayit.hedef / "duzenlenebilir.docx").is_file())
         self.assertFalse((kayit.hedef / "_ara").exists())
@@ -193,7 +193,7 @@ class EskiBicimTest(GeciciTest):
         self.assertIn(METIN, " ".join(s.metin.replace("\n", " ") for s in sonuc.sayfalar))
 
     def test_yerel_dagitim_ve_svg_ocr(self):
-        with patch("videohat.belge.cikar._pdf") as oku:
+        with patch("sarnicatolye.belge.cikar._pdf") as oku:
             for uz in YEREL.split():
                 self.oku(self.kok / ("yerel" + uz))
             self.assertEqual(oku.call_count, len(YEREL.split()))
@@ -202,7 +202,7 @@ class EskiBicimTest(GeciciTest):
                        '<rect width="180" height="80" fill="black"/></svg>', encoding="utf-8")
         motor = Mock()
         motor.oku.return_value = ([OcrSatir("çizim metni", .95, (5, 5, 150, 30))], .95)
-        with patch("videohat.belge.ocr.OcrMotoru", return_value=motor), OcrHavuzu(self.ayar) as havuz:
+        with patch("sarnicatolye.belge.ocr.OcrMotoru", return_value=motor), OcrHavuzu(self.ayar) as havuz:
             sonuc = self.oku(yol, havuz)
         self.assertEqual(sonuc.sayfalar[0].metin, "çizim metni")
         self.assertEqual(sonuc.sayfalar[0].kaynak, "ocr")
@@ -228,7 +228,7 @@ class EskiBicimTest(GeciciTest):
                 Image.new(kip, (100, 50), "white").save(yol, format=bicim)
                 motor = Mock()
                 motor.oku.return_value = ([OcrSatir("eski resim", .95, (5, 5, 80, 25))], .95)
-                with patch("videohat.belge.ocr.OcrMotoru", return_value=motor), OcrHavuzu(self.ayar) as havuz:
+                with patch("sarnicatolye.belge.ocr.OcrMotoru", return_value=motor), OcrHavuzu(self.ayar) as havuz:
                     sonuc = self.oku(yol, havuz)
                 self.assertEqual(sonuc.sayfalar[0].metin, "eski resim")
                 self.assertEqual(sonuc.sayfalar[0].gorsel_boyut, (100, 50))
@@ -239,7 +239,7 @@ class EskiBicimTest(GeciciTest):
         motor = Mock()
         motor.oku.return_value = ([OcrSatir("guvenlik", .95, (20, 30, 300, 70))], .95)
         with patch("PIL.Image.open", side_effect=OSError("Pillow açamadı")), \
-                patch("videohat.belge.ocr.OcrMotoru", return_value=motor), OcrHavuzu(self.ayar) as havuz:
+                patch("sarnicatolye.belge.ocr.OcrMotoru", return_value=motor), OcrHavuzu(self.ayar) as havuz:
             kayit = isle_belge(yol, self.kok / "depo", self.ayar, havuz)
         self.assertEqual(kayit.veri["sayfalar"][0]["metin"], "guvenlik")
         with pymupdf.open(kayit.hedef / "aranabilir.pdf") as belge:
@@ -261,22 +261,22 @@ class EskiBicimTest(GeciciTest):
 
         motor = Mock()
         motor.oku.return_value = ([OcrSatir("ikinci sayfa", .95, (5, 5, 80, 25))], .95)
-        with patch("videohat.yollar.djvulibre", side_effect=lambda ad: Path(ad + ".exe")), \
-                patch("videohat.belge.cikar.calistir", side_effect=calis), \
-                patch("videohat.belge.ocr.OcrMotoru", return_value=motor), OcrHavuzu(self.ayar) as havuz:
+        with patch("sarnicatolye.yollar.djvulibre", side_effect=lambda ad: Path(ad + ".exe")), \
+                patch("sarnicatolye.belge.cikar.calistir", side_effect=calis), \
+                patch("sarnicatolye.belge.ocr.OcrMotoru", return_value=motor), OcrHavuzu(self.ayar) as havuz:
             sonuc = self.oku(yol, havuz)
         self.assertEqual([(s.no, s.kaynak, s.metin) for s in sonuc.sayfalar],
                          [(1, "metin", "Metin katmani"), (2, "ocr", "ikinci sayfa")])
         self.assertEqual(sonuc.sayfalar[1].gorsel_boyut, (100, 50))
 
     def test_djvu_arac_yok(self):
-        with patch("videohat.yollar.djvulibre", return_value=None):
+        with patch("sarnicatolye.yollar.djvulibre", return_value=None):
             sonuc = self.oku(self.kok / "eski.djv")
         self.assertEqual(sonuc.durum, "desteklenmiyor")
         self.assertIn("DjVuLibre", sonuc.hata)
         self.assertIn("djvutxt", sonuc.hata)
-        with patch("videohat.yollar.djvulibre", side_effect=lambda ad: None if ad == "ddjvu" else Path(ad)), \
-                patch("videohat.belge.cikar.calistir", side_effect=[b"", b"1"]):  # djvutxt boş, djvused 1 sayfa
+        with patch("sarnicatolye.yollar.djvulibre", side_effect=lambda ad: None if ad == "ddjvu" else Path(ad)), \
+                patch("sarnicatolye.belge.cikar.calistir", side_effect=[b"", b"1"]):  # djvutxt boş, djvused 1 sayfa
             sonuc = self.oku(self.kok / "bos.djvu")
         self.assertEqual(sonuc.durum, "desteklenmiyor")
         self.assertIn("ddjvu", sonuc.hata)
@@ -298,7 +298,7 @@ class EskiBicimTest(GeciciTest):
 
     def test_chm_bolum_sirasi_ve_arac_yok(self):
         yol = self.kok / "yardim.chm"
-        with patch("videohat.yollar.yedizip", return_value=None):
+        with patch("sarnicatolye.yollar.yedizip", return_value=None):
             sonuc = self.oku(yol)
         self.assertEqual(sonuc.durum, "desteklenmiyor")
         self.assertIn("7-Zip", sonuc.hata)
@@ -314,8 +314,8 @@ class EskiBicimTest(GeciciTest):
             (ara / "a.HTM").write_text("<p>Birinci</p><script>gizli</script>", encoding="utf-8")
             (ara / "resim.png").write_bytes(b"gorsel")
 
-        with patch("videohat.yollar.yedizip", return_value=Path("7z.exe")), \
-                patch("videohat.belge.cikar.calistir", side_effect=ac):
+        with patch("sarnicatolye.yollar.yedizip", return_value=Path("7z.exe")), \
+                patch("sarnicatolye.belge.cikar.calistir", side_effect=ac):
             sonuc = self.oku(yol)
         self.assertEqual([(s.etiket, s.metin) for s in sonuc.sayfalar],
                          [("Bölüm 1", "Birinci"), ("Bölüm 2", "İkinci")])
@@ -349,7 +349,7 @@ class EskiBicimTest(GeciciTest):
         paket, pf, x86 = (self.kok / ad for ad in ("paket", "pf", "x86"))
         adaylar = [paket / "araclar/libreoffice/program/soffice.exe", pf / "LibreOffice/program/soffice.exe",
                    x86 / "LibreOffice/program/soffice.exe"]
-        with patch("videohat.yollar.kok", return_value=paket), \
+        with patch("sarnicatolye.yollar.kok", return_value=paket), \
                 patch.dict(os.environ, {"ProgramFiles": str(pf), "ProgramFiles(x86)": str(x86)}):
             for bul, yollar_ in (
                 (yollar.libreoffice, adaylar),
@@ -374,8 +374,8 @@ class EskiBicimTest(GeciciTest):
         self.assertIn("_sarnic", self.ayar.dizin.haric)
         self.assertIn("_veridedektifi", self.ayar.dizin.haric)
         self.assertIn("_bulgu", self.ayar.dizin.haric)
-        with patch("videohat.dizin.dizinle.vt.yazar_kilidi", return_value=nullcontext()), \
-                patch("videohat.dizin.dizinle._dongu", return_value=0) as dongu:
+        with patch("sarnicatolye.dizin.dizinle.vt.yazar_kilidi", return_value=nullcontext()), \
+                patch("sarnicatolye.dizin.dizinle._dongu", return_value=0) as dongu:
             self.assertEqual(dizinle(self.ayar, kokler=[self.kok], bir_kez=True), 0)
         self.assertEqual(dongu.call_args.args[2], self.kok / "_sarnic")
 
@@ -432,8 +432,8 @@ class EskiBicimTest(GeciciTest):
                 return dis_dosya.resolve()
             return gercek_resolve(p, *args, **kwargs)
 
-        with patch("videohat.yollar.yedizip", return_value=Path("7z.exe")), \
-                patch("videohat.belge.cikar.calistir", side_effect=sahte_ac), \
+        with patch("sarnicatolye.yollar.yedizip", return_value=Path("7z.exe")), \
+                patch("sarnicatolye.belge.cikar.calistir", side_effect=sahte_ac), \
                 patch.object(Path, "is_symlink", autospec=True, side_effect=sahte_is_symlink), \
                 patch.object(Path, "resolve", autospec=True, side_effect=sahte_resolve):
             _chm(yol, self.ayar, None, ara, sonuc)
@@ -460,9 +460,9 @@ class EskiBicimTest(GeciciTest):
                 modern_yaz(komut[3])
                 return b""
 
-        with patch("videohat.yollar.libreoffice", return_value=lo_exe), \
-                patch("videohat.yollar.artcraft_cli", return_value=cli_exe), \
-                patch("videohat.belge.ofis.calistir", side_effect=sahte_calistir):
+        with patch("sarnicatolye.yollar.libreoffice", return_value=lo_exe), \
+                patch("sarnicatolye.yollar.artcraft_cli", return_value=cli_exe), \
+                patch("sarnicatolye.belge.ofis.calistir", side_effect=sahte_calistir):
             sonuc = self.oku(yol)
 
         self.assertEqual(sonuc.durum, "tamam")
@@ -482,7 +482,7 @@ class EskiBicimTest(GeciciTest):
             p.parent.mkdir(parents=True, exist_ok=True)
             p.touch()
 
-        with patch("videohat.yollar.kok", return_value=paket), \
+        with patch("sarnicatolye.yollar.kok", return_value=paket), \
                 patch.dict(os.environ, {"LOCALAPPDATA": str(lap), "ProgramFiles": str(self.kok / "pf")}):
             self.assertEqual(yollar.artcraft_cli("wordcraft"), v20)
             v20.unlink()
@@ -512,7 +512,7 @@ class GercekEskiAracTest(GeciciTest):
                                "--convert-to", eski, "--outdir", ara, kaynak], 120, "LibreOffice")
         yol = ara / ("deneme." + eski)
         self.assertTrue(yol.is_file(), f"LibreOffice .{eski} üretmedi")
-        with patch("videohat.belge.ofis.calistir", side_effect=self.arac_calistir):
+        with patch("sarnicatolye.belge.ofis.calistir", side_effect=self.arac_calistir):
             sonuc = cikar(yol, self.ayar, None, self.kok / "okuma")
             self.assertIn(METIN, "\n".join(s.metin for s in sonuc.sayfalar))
             if eski != "rtf":
@@ -545,7 +545,7 @@ class GercekEskiAracTest(GeciciTest):
         Image.fromarray(gorsel()).convert("1").save(pbm)
         self.arac_calistir([araclar["cjb2"], "-dpi", "150", pbm, yol], 120, "cjb2")
         self.assertFalse(self.arac_calistir([araclar["djvutxt"], "--page=1", yol], 120, "djvutxt").strip())
-        with patch("videohat.belge.cikar.calistir", side_effect=self.arac_calistir), OcrHavuzu(self.ayar) as havuz:
+        with patch("sarnicatolye.belge.cikar.calistir", side_effect=self.arac_calistir), OcrHavuzu(self.ayar) as havuz:
             sonuc = cikar(yol, self.ayar, havuz, self.kok / "ara")
         self.assertEqual(sonuc.sayfalar[0].kaynak, "ocr")
         for sozcuk in ("frekansı", "ölçümü", "güvenlik"):
@@ -562,6 +562,6 @@ class GercekEskiAracTest(GeciciTest):
         ara = self.kok / "ara"
         ara.mkdir()
         sonuc = BelgeSonucu("chm")
-        with patch("videohat.belge.cikar.calistir", side_effect=self.arac_calistir):
+        with patch("sarnicatolye.belge.cikar.calistir", side_effect=self.arac_calistir):
             _chm(yol, self.ayar, None, ara, sonuc)
         self.assertEqual([s.metin for s in sonuc.sayfalar], ["Birinci", "İkinci"])

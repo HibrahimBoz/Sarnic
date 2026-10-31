@@ -3,10 +3,10 @@ import sqlite3
 from unittest.mock import patch
 
 from belge_destek import GeciciTest
-from videohat.dizin import vt
-from videohat.dizin.tarayici import tara
-from videohat.dizin.yayin import Yayinci
-from videohat.hatalar import OrtamHatasi
+from sarnicatolye.dizin import vt
+from sarnicatolye.dizin.tarayici import tara
+from sarnicatolye.dizin.yayin import Yayinci
+from sarnicatolye.hatalar import OrtamHatasi
 
 
 class YayinTest(GeciciTest):
@@ -68,7 +68,7 @@ class YayinTest(GeciciTest):
     def test_kopya_yerel_atomik_ve_ag_hatasi_eski_isareti_korur(self):
         ilk = self.yayinci.yayinla()
         self.degistir(2)
-        with patch("videohat.dizin.yayin.shutil.copyfile", side_effect=OSError("ağ kesildi")) as kopya:
+        with patch("sarnicatolye.dizin.yayin.shutil.copyfile", side_effect=OSError("ağ kesildi")) as kopya:
             with self.assertRaises(OSError):
                 self.yayinci.yayinla()
         kaynak, hedef = kopya.call_args.args

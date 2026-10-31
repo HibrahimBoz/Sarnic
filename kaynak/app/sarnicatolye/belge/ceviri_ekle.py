@@ -5,7 +5,7 @@ from typing import Any
 
 from ..ceviri import dil_tahmin
 
-log = logging.getLogger("videohat")
+log = logging.getLogger("sarnicatolye")
 
 
 def ceviri_ekle(veri: dict[str, Any], cevirmen: Any = None) -> bool:

@@ -23,7 +23,7 @@ Tarih: 2026-10-31. Durum: kullanıcı onayladı (2026-10-31).
 | C. TranslateGemma | — | — | — | Gemma | Ölçülmedi. Yeni çalışma ortamı gerekir. az desteği doğrulanmadı. |
 
 ## 4. Sarnıç Atölye tarafı (Python)
-1. Yeni modül `videohat/ceviri.py`. Model bir kez yüklenir. Cihaz `cihaz.py` kuralıyla seçilir (GPU yoksa CPU).
+1. Yeni modül `sarnicatolye/ceviri.py`. Model bir kez yüklenir. Cihaz `cihaz.py` kuralıyla seçilir (GPU yoksa CPU).
 2. Girdi metni cümlelere bölünür. Bölücü sıra sayısında ve kısaltmada ("I.", "12.", "Dr.") bölmez. Cümleler toplu (batch) çevrilir. Çıktı cümle sayısına kesilmez (NLLB ölçümü kesmesizdi).
 3. Kaynak dil kodları: `en` → `eng_Latn`, `az` → `azj_Latn`, `ru` → `rus_Cyrl`. Hedef `tur_Latn`.
 4. Ayar: `ayar.toml` içinde yeni `[ceviri]` bölümü: `etkin = true`, `model = "<yol>"`, `diller = ["en", "az", "ru"]`.

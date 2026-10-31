@@ -4,8 +4,8 @@ from pathlib import Path
 import time
 import unittest
 
-from videohat import yollar
-from videohat.ceviri import Cevirmen, _cihaz
+from sarnicatolye import yollar
+from sarnicatolye.ceviri import Cevirmen, _cihaz
 
 VERI = {
     "en": [

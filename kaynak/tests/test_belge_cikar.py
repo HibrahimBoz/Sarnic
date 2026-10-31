@@ -9,9 +9,9 @@ import zipfile
 import zlib
 
 from belge_destek import GeciciTest, SahteHavuz, pdf_yaz
-from videohat.belge.cikar import cikar
-from videohat.belge.ofis import eski_cevir, docx_bolumleri, odf_parcalari
-from videohat.hatalar import IsHatasi
+from sarnicatolye.belge.cikar import cikar
+from sarnicatolye.belge.ofis import eski_cevir, docx_bolumleri, odf_parcalari
+from sarnicatolye.hatalar import IsHatasi
 
 
 class CikarmaTest(GeciciTest):
@@ -262,7 +262,7 @@ class CikarmaTest(GeciciTest):
 
         # Çeşitli yakalanmayan istisnalar
         for exc in (RuntimeError("pdf error"), ET.ParseError("xml"), LookupError("cp0"), zlib.error("zlib"), TypeError("str")):
-            with patch("videohat.belge.cikar._cikar", side_effect=exc):
+            with patch("sarnicatolye.belge.cikar._cikar", side_effect=exc):
                 with self.assertRaises(IsHatasi):
                     cikar(self.kok / "test.pdf", self.ayar, None, self.kok / "ara")
 
@@ -301,8 +301,8 @@ class CikarmaTest(GeciciTest):
         from docx import Document
         yol = self.kok / "eski.doc"
         yol.write_bytes(b"eski")
-        with patch("videohat.belge.ofis.yollar.libreoffice", return_value=None), \
-                patch("videohat.belge.ofis.yollar.artcraft_cli", return_value=None):
+        with patch("sarnicatolye.belge.ofis.yollar.libreoffice", return_value=None), \
+                patch("sarnicatolye.belge.ofis.yollar.artcraft_cli", return_value=None):
             s = self.oku(yol)
         self.assertEqual(s.durum, "desteklenmiyor")
         self.assertEqual(s.hata, "Eski .doc biçimi: LibreOffice veya wordcraft-cli bulunamadı")
@@ -314,21 +314,21 @@ class CikarmaTest(GeciciTest):
             d.add_paragraph("Çevrildi")
             d.save(Path(komut[-2]) / "eski.docx")
 
-        with patch("videohat.belge.ofis.yollar.libreoffice", return_value=Path("soffice.exe")), patch("videohat.belge.ofis.calistir", side_effect=donustur):
+        with patch("sarnicatolye.belge.ofis.yollar.libreoffice", return_value=Path("soffice.exe")), patch("sarnicatolye.belge.ofis.calistir", side_effect=donustur):
             s = self.oku(yol)
         self.assertIn("Çevrildi", s.sayfalar[0].metin)
 
     def test_libreoffice_zaman_asimi(self):
         yol = self.kok / "a.doc"
-        with patch("videohat.belge.ofis.yollar.libreoffice", return_value=Path("soffice.exe")), patch("videohat.belge.ofis.calistir", side_effect=IsHatasi("LibreOffice zaman aşımı")):
+        with patch("sarnicatolye.belge.ofis.yollar.libreoffice", return_value=Path("soffice.exe")), patch("sarnicatolye.belge.ofis.calistir", side_effect=IsHatasi("LibreOffice zaman aşımı")):
             with self.assertRaisesRegex(IsHatasi, "zaman aşımı"):
                 eski_cevir(yol, self.kok / "ara")
 
     def test_harici_surec_zaman_asiminda_agac_oldurulur(self):
         import subprocess
         import os
-        from videohat.belge.surec import calistir
-        with patch("videohat.belge.surec.subprocess.Popen") as popen, patch("videohat.belge.surec.subprocess.run") as agac:
+        from sarnicatolye.belge.surec import calistir
+        with patch("sarnicatolye.belge.surec.subprocess.Popen") as popen, patch("sarnicatolye.belge.surec.subprocess.run") as agac:
             p = popen.return_value
             p.pid = 1234
             p.communicate.side_effect = [subprocess.TimeoutExpired("soffice", 120), (b"", b"")]

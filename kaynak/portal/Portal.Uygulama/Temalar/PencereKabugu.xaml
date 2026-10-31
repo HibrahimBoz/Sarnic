@@ -7,7 +7,7 @@
         <ResourceDictionary Source="Tema.xaml"/>
     </ResourceDictionary.MergedDictionaries>
 
-    <BitmapImage x:Key="VideoTranskriptorLogosu" UriSource="pack://application:,,,/Varliklar/logo-256.png"/>
+    <BitmapImage x:Key="SarnicLogosu" UriSource="pack://application:,,,/Varliklar/logo-256.png"/>
 
     <!-- Başlık Çubuğu Simge Durumuna Al / Büyüt Düğmeleri Stili -->
     <Style x:Key="PencereBaslikDugmesi" TargetType="{x:Type Button}">
@@ -72,7 +72,7 @@
     <!-- Portal Pencere Ana Stili (WindowChrome + Özel Başlık Çubuğu) -->
     <Style x:Key="PortalPencere" TargetType="{x:Type Window}">
         <Setter Property="yerlesim:PencereYerlesimi.Etkin" Value="True"/>
-        <Setter Property="Icon" Value="{StaticResource VideoTranskriptorLogosu}"/>
+        <Setter Property="Icon" Value="{StaticResource SarnicLogosu}"/>
         <Setter Property="Background" Value="{DynamicResource ArkaPlanFircasi}"/>
         <Setter Property="Foreground" Value="{DynamicResource MetinFircasi}"/>
         <Setter Property="WindowChrome.WindowChrome">
@@ -112,7 +112,7 @@
 
                                     <!-- Solda logo + Title metni -->
                                     <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,8,0">
-                                        <Image Source="{StaticResource VideoTranskriptorLogosu}"
+                                        <Image Source="{StaticResource SarnicLogosu}"
                                                Width="18" Height="18" Stretch="Uniform"
                                                VerticalAlignment="Center" Margin="0,0,8,0"/>
                                         <TextBlock Text="{TemplateBinding Title}"

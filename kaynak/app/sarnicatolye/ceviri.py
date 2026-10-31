@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, Any
 from . import yollar
 from .hatalar import CeviriHatasi
 
-log = logging.getLogger("videohat")
+log = logging.getLogger("sarnicatolye")
 
 if TYPE_CHECKING:
     from .ayar import Ayar

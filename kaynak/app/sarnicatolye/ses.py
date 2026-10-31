@@ -1,4 +1,4 @@
-"""VideoHat ses çıkarma, filtreleme ve normalizasyon modülü."""
+"""Sarnıç Atölye ses çıkarma, filtreleme ve normalizasyon modülü."""
 import logging
 import re
 import subprocess
@@ -155,7 +155,7 @@ def temizle(wav_in: Path, wav_out: Path, agir: bool, ayar: Ayar) -> None:
                 _ffmpeg_calistir(komut)
                 return
         except Exception as hata:
-            gunluk = logging.getLogger("videohat")
+            gunluk = logging.getLogger("sarnicatolye")
             gunluk.warning(
                 "deep-filter kullanılamadı veya başarısız oldu, normal temizlemeye geçiliyor: %s",
                 hata,

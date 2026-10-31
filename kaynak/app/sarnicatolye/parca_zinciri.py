@@ -1,5 +1,5 @@
 """
-Video Transkriptör - Parça Zinciri Modülü
+Sarnıç Atölye - Parça Zinciri Modülü
 Kamera parça dosyalarını sanal zaman çizelgesine dönüştüren saf mantık bileşeni.
 """
 

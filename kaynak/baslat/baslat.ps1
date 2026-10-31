@@ -10,7 +10,7 @@ $ErrorActionPreference = 'Continue'
 $kok = Split-Path -Parent $PSScriptRoot          # ...\SarnicAtolye  (bu dosya araclar\ altında)
 $paketKok = Split-Path -Parent $kok              # ...\SarnicAtolye-Paketi
 $kdenlive = Get-ChildItem (Join-Path $paketKok 'Kdenlive') -Recurse -Filter kdenlive.exe -ErrorAction SilentlyContinue | Select-Object -First 1
-$env:VIDEOHAT_PAUSE = '0'
+$env:SARNICATOLYE_PAUSE = '0'
 
 function Baslik {
     Clear-Host
@@ -90,7 +90,7 @@ function Calistir-Python([string[]]$PythonArgs) {
     $env:HF_HUB_DISABLE_TELEMETRY = '1'
     $env:PYTHONNOUSERSITE = '1'
     $env:PYTHONUTF8 = '1'
-    $env:VIDEOHAT_KOK = $kok
+    $env:SARNICATOLYE_KOK = $kok
     $env:PATH = "$kok\ffmpeg\bin;$kok\cuda;$kok\python;$env:PATH"
     # Çıktı ekrana gider; işlev yalnız çıkış kodunu döndürür
     & $pythonExe @PythonArgs | Out-Host
@@ -179,7 +179,7 @@ while ($true) {
             if ($g.Count) {
                 Write-Host ''
                 Write-Host 'Belgeler işleniyor... (pencereyi kapatmayın)' -ForegroundColor Green
-                $pyArgs = @('-m', 'videohat', 'belge') + $g
+                $pyArgs = @('-m', 'sarnicatolye', 'belge') + $g
                 $kod = Calistir-Python $pyArgs
                 Write-Host ''
                 if ($kod -eq 0) { Write-Host 'BİTTİ. Çıktılar her belgenin yanındaki "<ad>_belge" klasöründe.' -ForegroundColor Green }
@@ -196,7 +196,7 @@ while ($true) {
                 $klasor = $k[0]
                 Write-Host ''
                 Write-Host "Dizinleme başlatılıyor: $klasor (Ctrl+C ile durur; pencere açık kalsın)..." -ForegroundColor Green
-                $pyArgs = @('-m', 'videohat', 'dizinle', '--kok', $klasor)
+                $pyArgs = @('-m', 'sarnicatolye', 'dizinle', '--kok', $klasor)
                 $kod = Calistir-Python $pyArgs
                 Write-Host ''
                 if ($kod -eq 0) { Write-Host 'BİTTİ. Dizinleme tamamlandı.' -ForegroundColor Green }

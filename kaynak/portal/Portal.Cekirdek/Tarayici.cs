@@ -1,7 +1,7 @@
 namespace Portal.Cekirdek;
 
 /// <summary>
-/// Video Transkriptör çıktı klasörlerini özyinelemeli olarak tarayan sınıf.
+/// Sarnıç Atölye çıktı klasörlerini özyinelemeli olarak tarayan sınıf.
 /// </summary>
 public static class Tarayici
 {

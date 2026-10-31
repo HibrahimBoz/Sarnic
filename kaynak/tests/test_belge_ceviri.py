@@ -6,10 +6,10 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from videohat.belge import ceviri_ekle, hat, onbellek
-from videohat.belge.model import BelgeSonucu, Sayfa
+from sarnicatolye.belge import ceviri_ekle, hat, onbellek
+from sarnicatolye.belge.model import BelgeSonucu, Sayfa
 
-from videohat.hatalar import CeviriHatasi
+from sarnicatolye.hatalar import CeviriHatasi
 
 
 class SahteCevirmen:
@@ -135,7 +135,7 @@ class TestBelgeCeviri(unittest.TestCase):
         self.assertNotIn("ceviri", sayfa)
         self.assertFalse(cevirmen.cagrildi)
 
-    @patch("videohat.belge.hat.cikar")
+    @patch("sarnicatolye.belge.hat.cikar")
     def test_onbellekteki_eski_belge_json_ocrsiz_guncellenir(self, mock_cikar):
         yol = self.tmp_dir / "belge.pdf"
         yol.write_bytes(b"%PDF-1.4 sahte pdf icerigi")

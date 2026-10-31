@@ -46,12 +46,12 @@ try {
     # --------------------------------------------------------------------------
     # Yardımcı Fonksiyonlar
     # --------------------------------------------------------------------------
-    # Ceviri modeli (NLLB-200) kaynagi: ortam degiskeni, sonra _indir, sonra eski kardes VideoHat\_indir. Yoksa $null.
+    # Ceviri modeli (NLLB-200) kaynagi: ortam degiskeni, sonra _indir, sonra kardes ana\_indir. Yoksa $null.
     function Get-CeviriModeliKaynagi {
         $ad = 'nllb-200-distilled-1.3B-ct2-int8'
         $adaylar = @($env:SARNIC_CEVIRI_MODELI,
                      (Join-Path $IndirKlasoru "modeller-ceviri\$ad"),
-                     (Join-Path (Split-Path $ProjeKoku -Parent) "VideoHat\_indir\modeller-ceviri\$ad"))
+                     (Join-Path (Split-Path $ProjeKoku -Parent) "ana\_indir\modeller-ceviri\$ad"))
         foreach ($aday in $adaylar) {
             if ($aday -and (Test-Path (Join-Path $aday 'model.bin'))) { return $aday }
         }

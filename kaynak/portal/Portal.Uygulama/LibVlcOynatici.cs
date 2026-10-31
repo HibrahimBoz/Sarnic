@@ -394,7 +394,7 @@ public sealed class LibVlcOynatici : IOynatici, IDisposable
                 hedefDosya = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                     "Pictures",
-                    "VideoPortal",
+                    "Sarnic",
                     $"video-{DateTime.Now:yyyyMMdd-HHmmss-fff}.png");
             }
 

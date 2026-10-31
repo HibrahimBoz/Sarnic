@@ -1,4 +1,4 @@
-# VideoHat terim sözlüğü — elektronik harp (EH), radar, sinyal işleme, haberleşme
+# Sarnıç Atölye terim sözlüğü — elektronik harp (EH), radar, sinyal işleme, haberleşme
 # Bölümler: [istem] kısa öncelikli liste (Whisper'a ipucu; ~480 karakterde kesilir, en önemlisi başta)
 #           [bulanik] yabancı terimler: çıktıda yakın yazımlar buna düzeltilir (yalnız >=7 harfli tek sözcük)
 #           [duzeltme] yanlış => doğru (kesin kural; boşluk esnek, büyük/küçük harf duyarsız)

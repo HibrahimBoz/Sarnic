@@ -1,4 +1,4 @@
-"""VideoHat altyazı (SRT, VTT), düz metin (TXT) ve JSON meta veri çıktı modülü."""
+"""Sarnıç Atölye altyazı (SRT, VTT), düz metin (TXT) ve JSON meta veri çıktı modülü."""
 import hashlib
 import json
 import textwrap

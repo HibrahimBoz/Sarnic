@@ -5,9 +5,9 @@ import unittest
 
 import pymupdf
 
-from videohat import yollar
-from videohat.ayar import Ayar, DizinAyar, OcrAyar
-from videohat.belge.model import OcrSatir, Sayfa
+from sarnicatolye import yollar
+from sarnicatolye.ayar import Ayar, DizinAyar, OcrAyar
+from sarnicatolye.belge.model import OcrSatir, Sayfa
 
 TURKCE = "Radar frekansı ölçümü ve güvenlik kontrolü"
 FONT = Path("C:/Windows/Fonts/arial.ttf")

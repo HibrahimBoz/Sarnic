@@ -18,8 +18,7 @@ Belgeler derse bağlı olabilir (ders klasöründe) ya da bağımsız olabilir. 
 1000+ sayfa.
 
 **Ad:** paketin ürün adı **Bulgu**. Parçalar: *Bulgu Portalı* (WPF arayüz) ve *Bulgu İşleyici* (Python:
-video transkript + belge/OCR + dizinleyici). İç kod adları (`videohat` paketi, `Portal.*` ad alanları,
-`_islenmis` eki) DEĞİŞMEZ: testler, eski kurulumlar ve klasör düzeni korunur.
+video transkript + belge/OCR + dizinleyici). İç kod adları: `sarnicatolye` paketi, `Portal.*` ad alanları, `_islenmis` eki.
 
 ## 2. Mimari
 
@@ -81,7 +80,7 @@ Geçersiz değer → `AyarHatasi` (mevcut desen: `__post_init__`).
 **4.1 İçerik normalizasyonu** (`sayfa_fts`, video araması). `TrNormalizasyon.Normalle` (C#, mevcut) referanstır;
 iki küçük ek ile (C# tarafında da uygulanır): **birleştirici işaretler (kategori Mn) atılır** (boşluk da olmaz:
 `i̇` → `i`) ve **BMP dışı karakter** (C#'ta vekil çift, Python'da `ord > 0xFFFF`) → boşluk.
-Python karşılığı `videohat/dizin/normal.py: icerik_normalle(s)`:
+Python karşılığı `sarnicatolye/dizin/normal.py: icerik_normalle(s)`:
 - `ı İ I i î Î → i`, `ş Ş → s`, `ğ Ğ → g`, `ü Ü û Û → u`, `ö Ö → o`, `ç Ç → c`, `â Â → a`;
 - `' ’ ‘ \` ´` → boşluk; A-Z → küçük harf;
 - Unicode kategorisi P* (noktalama), S* (simge), Z* ya da `\t\n\v\f\r\x85\xa0` (boşluk), Cc (denetim) → boşluk;
@@ -101,8 +100,8 @@ normalize metin arasındaki eşleme (MetinEsleme) karakter karakter kurulabilir.
 
 ## 5. Bulgu İşleyici (Python) — yeni modüller
 
-Paket: `kaynak/app/videohat/`. Yeni alt paketler `belge/` ve `dizin/`. Mevcut kod üslubu: Türkçe ad, kısa yorum,
-`logging.getLogger("videohat")`, hatalar `hatalar.py`'deki sınıflarla (`IsHatasi` vb.).
+Paket: `kaynak/app/sarnicatolye/`. Yeni alt paketler `belge/` ve `dizin/`. Mevcut kod üslubu: Türkçe ad, kısa yorum,
+`logging.getLogger("sarnicatolye")`, hatalar `hatalar.py`'deki sınıflarla (`IsHatasi` vb.).
 
 ### 5.1 Bağımlılıklar (paketleyici `hazirla.ps1` kurar)
 `pymupdf`, `rapidocr` (onnxruntime ile; onnxruntime zaten var), `opencv-python-headless`, `numpy`, `pillow`,
@@ -261,9 +260,9 @@ Adımlar:
   anlık görüntüler silinmeye çalışılır (kilitliyse sessizce kalır). Yayın: tarama sonunda, her `yayin_dk`
   dakikada bir ve içerik bitince.
 - **Komutlar** (`__main__.py`):
-  - `python -m videohat dizinle [--kok K]... [--depo D] [--bir-kez] [--yalniz-ad] [--profil hizli|uyarlamali|kalite]`
+  - `python -m sarnicatolye dizinle [--kok K]... [--depo D] [--bir-kez] [--yalniz-ad] [--profil hizli|uyarlamali|kalite]`
     — varsayılan izleme kipidir (tara → işle → yayınla → `tarama_dk` bekle); Ctrl+C ile düzgün durur.
-  - `python -m videohat belge <dosya|klasör>... [--cikis K] [--profil ...]` — tek başına belge işleme:
+  - `python -m sarnicatolye belge <dosya|klasör>... [--cikis K] [--profil ...]` — tek başına belge işleme:
     çıktı `<ad>_belge\` klasörüne (`belge.json`, `metin.txt`, `aranabilir.pdf`).
   - Çıkış kodları mevcut düzenle aynı: 0 ok, 1 iş hatası, 2 ortam hatası.
 - **İzleme entegrasyonu** (`izle.py`): `is\gelen\`e atılan belge/görüntü `belge` komutuyla işlenir, sonuç
@@ -411,7 +410,7 @@ Mevcut tüm testler geçmeye devam eder.
 - Pencere başlıkları: `<başlık> — Arama`, `<başlık> — Oynatıcı — {ad}`, `<başlık> — Belge — {ad}`. `<başlık>` = paket `ayar.json` içindeki `kurum` doluysa `<kurum> Sarnıç`, boşsa `Sarnıç` (`Portal.Cekirdek.UrunAdi`). Menü başlığı: `Sarnıç Atölye`.
 - Depo klasörü: `_sarnic` varsa o; yoksa `_veridedektifi`; yoksa `_bulgu`; hiçbiri yoksa `_sarnic`. Python (`dizinle.varsayilan_depo`) ve C# (`DizinAyari.Coz`) aynı kuralı uygular. Tarama dışı listesi üçünü de içerir.
 - Yerel klasör `%LOCALAPPDATA%\Sarnic`. Kullanıcı ayarı yoksa eski `%LOCALAPPDATA%\VideoPortali\kullanici.json` okunur.
-- İç kod adları (videohat, Portal.*, VIDEOHAT_*) DEĞİŞMEZ.
+- İç kod adları: `sarnicatolye`, `Portal.*`, `SARNICATOLYE_*`. Eski adlar (`_videoperisi`, `_veridedektifi`, `_bulgu`, `VideoPortali`) yalnız var olan veriyi okumak için kalır.
 
 ### 11.2 Eski biçimler (2000 ve öncesi belgeler)
 Dönüştürücüler (bulunduğu sırayla denenir): paketteki `araclar\libreoffice\program\soffice.exe`, sistemdeki
