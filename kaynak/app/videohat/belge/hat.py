@@ -41,9 +41,14 @@ def isle_belge(
 ) -> BelgeKaydi:
     bas = time.monotonic()
     yol, depo = Path(yol), Path(depo)
-    if cevirmen is _YOK:
-        from ..ceviri import cevirmen_olustur
-        cevirmen = cevirmen_olustur(ayar)
+
+    def _cevirmen():
+        # Model yalnız çeviri gerekince yüklenir (önbellekte çevrilmiş belge için hiç yüklenmez).
+        if cevirmen is _YOK:
+            from ..ceviri import cevirmen_olustur
+            return cevirmen_olustur(ayar)
+        return cevirmen
+
     sha = sha256(yol)
     hedef = depo / "belgeler" / sha[:2] / sha
     belge_json = hedef / "belge.json"
@@ -58,7 +63,7 @@ def isle_belge(
                              and (hedef / veri["duzenlenebilir"]).is_file()))):
                 veri.setdefault("duzenlenebilir", None)
                 if not veri.get("ceviri_surum"):
-                    if ceviri_ekle(veri, cevirmen):
+                    if ceviri_ekle(veri, _cevirmen()):
                         json_yaz(belge_json, veri)
                 return BelgeKaydi(sha, hedef, veri)
         except (OSError, ValueError):
@@ -101,7 +106,7 @@ def isle_belge(
                          for s in sonuc.sayfalar], "uyarilar": sonuc.uyarilar,
             "durum": sonuc.durum, "hata": sonuc.hata}
     if sonuc.durum == "tamam":
-        ceviri_ekle(veri, cevirmen)
+        ceviri_ekle(veri, _cevirmen())
         json_yaz(belge_json, veri)  # Tamam işareti en son.
     if not ayar.genel.ara_dosya_sakla:
         shutil.rmtree(ara, ignore_errors=True)

@@ -46,6 +46,18 @@ try {
     # --------------------------------------------------------------------------
     # Yardımcı Fonksiyonlar
     # --------------------------------------------------------------------------
+    # Ceviri modeli (NLLB-200) kaynagi: ortam degiskeni, sonra _indir, sonra eski kardes VideoHat\_indir. Yoksa $null.
+    function Get-CeviriModeliKaynagi {
+        $ad = 'nllb-200-distilled-1.3B-ct2-int8'
+        $adaylar = @($env:SARNIC_CEVIRI_MODELI,
+                     (Join-Path $IndirKlasoru "modeller-ceviri\$ad"),
+                     (Join-Path (Split-Path $ProjeKoku -Parent) "VideoHat\_indir\modeller-ceviri\$ad"))
+        foreach ($aday in $adaylar) {
+            if ($aday -and (Test-Path (Join-Path $aday 'model.bin'))) { return $aday }
+        }
+        return $null
+    }
+
     function Invoke-RobocopyMirror {
         param(
             [string]$Kaynak,
@@ -1366,12 +1378,14 @@ print(f"MODEL_TAMAMLANDI:{resolved_sha}")
         }
 
         # Ceviri modeli (NLLB-200)
-        $ceviriModelKaynak = if ($env:SARNIC_CEVIRI_MODELI) { $env:SARNIC_CEVIRI_MODELI } else { Join-Path (Split-Path $ProjeKoku -Parent) "VideoHat\_indir\modeller-ceviri\nllb-200-distilled-1.3B-ct2-int8" }
+        $ceviriModelKaynak = Get-CeviriModeliKaynagi
         $gpuCeviriModel = Join-Path $GpuPaketYolu "modeller\nllb-200-distilled-1.3B-ct2-int8"
-        if (Test-Path $ceviriModelKaynak) {
+        if ($ModelAtla) {
+            Write-Host "  -> -ModelAtla: ceviri modeli kopyalanmadi." -ForegroundColor Yellow
+        } elseif ($ceviriModelKaynak) {
             Invoke-RobocopyMirror -Kaynak $ceviriModelKaynak -Hedef $gpuCeviriModel
         } else {
-            Write-Warning "Ceviri modeli bulunamadi ($ceviriModelKaynak). Paket cevirisiz calisir."
+            Write-Warning "Ceviri modeli bulunamadi. Paket cevirisiz calisir."
         }
 
         # GPU SURUMLER.txt
@@ -1385,6 +1399,7 @@ print(f"MODEL_TAMAMLANDI:{resolved_sha}")
         [void]$surumSb.AppendLine("1. BILESEN SURUMLERI")
         [void]$surumSb.AppendLine("--------------------------------------------------------------------------------")
         [void]$surumSb.AppendLine("Python: 3.12.10 (Embeddable AMD64)")
+        [void]$surumSb.AppendLine("Ceviri modeli: NLLB-200 distilled 1.3B CT2 int8 (Meta, CC-BY-NC 4.0, yalniz ticari olmayan kullanim)")
         [void]$surumSb.AppendLine("FFmpeg: Gyan.dev Release Essentials")
         [void]$surumSb.AppendLine("DeepFilterNet: v0.5.6")
         [void]$surumSb.AppendLine("Real-ESRGAN: v0.2.5.0-ncnn-vulkan")
@@ -1454,16 +1469,14 @@ print(f"MODEL_TAMAMLANDI:{resolved_sha}")
         }
 
         # Ceviri modeli (NLLB-200)
-        $ceviriModelKaynak = if ($env:SARNIC_CEVIRI_MODELI) { $env:SARNIC_CEVIRI_MODELI } else { Join-Path (Split-Path $ProjeKoku -Parent) "VideoHat\_indir\modeller-ceviri\nllb-200-distilled-1.3B-ct2-int8" }
+        $ceviriModelKaynak = Get-CeviriModeliKaynagi
         $cpuCeviriModel = Join-Path $CpuPaketYolu "modeller\nllb-200-distilled-1.3B-ct2-int8"
-        if (Test-Path $ceviriModelKaynak) {
-            if (-not (Test-Path $cpuCeviriModel)) {
-                Invoke-RobocopyMirror -Kaynak $ceviriModelKaynak -Hedef $cpuCeviriModel
-            }
+        if ($ModelAtla) {
+            Write-Host "  -> -ModelAtla: ceviri modeli kopyalanmadi." -ForegroundColor Yellow
+        } elseif ($ceviriModelKaynak) {
+            Invoke-RobocopyMirror -Kaynak $ceviriModelKaynak -Hedef $cpuCeviriModel
         } else {
-            if ($Paket -eq 'CPU') {
-                Write-Warning "Ceviri modeli bulunamadi ($ceviriModelKaynak). Paket cevirisiz calisir."
-            }
+            Write-Warning "Ceviri modeli bulunamadi. Paket cevirisiz calisir."
         }
 
         # CPU SURUMLER.txt
@@ -1477,6 +1490,7 @@ print(f"MODEL_TAMAMLANDI:{resolved_sha}")
         [void]$surumSbCpu.AppendLine("1. BILESEN SURUMLERI")
         [void]$surumSbCpu.AppendLine("--------------------------------------------------------------------------------")
         [void]$surumSbCpu.AppendLine("Python: 3.12.10 (Embeddable AMD64)")
+        [void]$surumSbCpu.AppendLine("Ceviri modeli: NLLB-200 distilled 1.3B CT2 int8 (Meta, CC-BY-NC 4.0, yalniz ticari olmayan kullanim)")
         [void]$surumSbCpu.AppendLine("FFmpeg: Gyan.dev Release Essentials")
         [void]$surumSbCpu.AppendLine("DeepFilterNet: v0.5.6")
         [void]$surumSbCpu.AppendLine("Real-ESRGAN: v0.2.5.0-ncnn-vulkan")

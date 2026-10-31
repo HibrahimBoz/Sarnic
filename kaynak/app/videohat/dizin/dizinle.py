@@ -77,15 +77,17 @@ def icerikleri_isle(db, depo, ayar, havuz, yayinci=None, cevirmen=None):
 
 
 def ceviri_gecisi(db, depo, ayar, cevirmen=None, ilerleme=None):
-    if cevirmen is None:  # model yokken dil yazılmaz; model gelince belge yeniden denenir
-        return 0
     kayitlar = db.execute(
         "SELECT id, yol, sha FROM dosya "
         "WHERE durum='tamam' AND sha IS NOT NULL AND sha != '' "
-        "AND EXISTS (SELECT 1 FROM sayfa WHERE sayfa.dosya_id=dosya.id AND sayfa.dil IS NULL) "
+        "AND id IN (SELECT dosya_id FROM sayfa WHERE dil IS NULL) "  # kısmi dizin ix_sayfa_dil_yok
         "ORDER BY id"
     ).fetchall()
     if not kayitlar:
+        return 0
+    if cevirmen is None:
+        cevirmen = cevirmen_olustur(ayar)
+    if cevirmen is None:  # model yokken dil yazılmaz; model gelince belge yeniden denenir
         return 0
     islenen = 0
     depo = Path(depo)
@@ -135,7 +137,6 @@ def calistir(ayar, kokler=None, depo=None, bir_kez=False, yalniz_ad=False, zorla
 def _dongu(ayar, kokler, depo, db_yol, bir_kez, yalniz_ad, zorla_sil):
     db = vt.ac(db_yol)
     hatali = 0
-    cevirmen = cevirmen_olustur(ayar) if not yalniz_ad else None
     try:
         with Yayinci(db, depo, ayar.dizin.sakla_yayin) as yayinci, OcrHavuzu(ayar) as havuz:
             while True:
@@ -147,7 +148,7 @@ def _dongu(ayar, kokler, depo, db_yol, bir_kez, yalniz_ad, zorla_sil):
                     except (OSError, sqlite3.Error, IsHatasi) as e:
                         log.warning("Tarama sonu yayın yapılamadı: %s", e)
                 if not yalniz_ad:
-                    hatali += icerikleri_isle(db, depo, ayar, havuz, etkin_yayinci, cevirmen=cevirmen)
+                    hatali += icerikleri_isle(db, depo, ayar, havuz, etkin_yayinci)
                 if etkin_yayinci:
                     try:
                         yayinci.yayinla()

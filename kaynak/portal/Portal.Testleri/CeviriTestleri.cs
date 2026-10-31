@@ -116,6 +116,38 @@ public class CeviriTestleri : IDisposable
     }
 
     [Fact]
+    public async Task VideoAramasi_OzgunKismiCeviriTam_CeviriKazanir()
+    {
+        // İnceleme bulgusu: özgün metin 3 sözcükten 2'sinde (ortak sayı/özel ad) kısmi eşleşince çeviriye bakılmıyordu.
+        string yol = DokumYaz("ders_kismi",
+            """{ "no": 0, "bas": 0.0, "son": 3.0, "metin": "NATO 2026 учения начнутся.", "ceviri": "NATO 2026 tatbikatı başlayacak." }""");
+        var ders = new DersKaydi("ders_kismi", Path.GetDirectoryName(yol)!, yol, null);
+
+        using var motor = new MetinAramaMotoru(new IndeksOnbellek(Path.Combine(_geciciKlasor, "indeks2.json")));
+        await motor.IndeksleAsync(new[] { ders });
+
+        var bulunan = motor.Ara("nato 2026 tatbikat");
+        Assert.Single(bulunan);
+        Assert.True(bulunan[0].CevirideEslesti);
+    }
+
+    [Fact]
+    public void KullaniciAyari_KokVeCeviriGoster_BirbiriniSilmez()
+    {
+        string yol = Path.Combine(_geciciKlasor, "kullanici.json");
+
+        KokYapilandirma.CeviriGosterKaydet(true, yol);
+        KokYapilandirma.Kaydet(_geciciKlasor, yol);
+
+        Assert.True(KokYapilandirma.CeviriGosterOku(yol));
+        Assert.Contains("\"kok\"", File.ReadAllText(yol));
+
+        KokYapilandirma.CeviriGosterKaydet(false, yol);
+        Assert.False(KokYapilandirma.CeviriGosterOku(yol));
+        Assert.Contains("\"kok\"", File.ReadAllText(yol));
+    }
+
+    [Fact]
     public void IcerikAramasi_YalnizCeviride_CevirideEslestiVeAlintiCeviriden()
     {
         using var testDizini = new TestDizini();

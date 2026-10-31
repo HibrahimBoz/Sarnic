@@ -41,6 +41,7 @@ public partial class BelgePenceresi : Window
     private IReadOnlyList<SayfaKaydi> _tumSayfalar = [];
     private readonly List<int> _eslesenSayfalar = [];
     private readonly Dictionary<int, string> _normMetinOnbellek = [];
+    private bool _ceviriGoster;
     private int _toplamSayfa;
 
     private int _aktifSayfaNo;
@@ -60,9 +61,11 @@ public partial class BelgePenceresi : Window
     private readonly ArtCraftKatalogu _katalog;
     private (ArtCraftUygulamasi Uygulama, string Yol, bool KopyaMi)? _duzenleHedefi;
 
-    public BelgePenceresi(DizinKaynagi kaynak, long dosyaId, int sayfaNo, string? sorgu, ArtCraftKatalogu? katalog = null)
+    public BelgePenceresi(DizinKaynagi kaynak, long dosyaId, int sayfaNo, string? sorgu, ArtCraftKatalogu? katalog = null,
+        bool baslangictaCeviri = false)
     {
         InitializeComponent();
+        _ceviriGoster = baslangictaCeviri || KokYapilandirma.CeviriGosterOku();
 
         _kaynak = kaynak;
         _dosyaId = dosyaId;
@@ -116,16 +119,7 @@ public partial class BelgePenceresi : Window
         SayfaNoKutusu.Text = _aktifSayfaNo.ToString();
         ToplamSayfaMetni.Text = $"/ {_toplamSayfa}";
 
-        await Task.Run(() =>
-        {
-            foreach (var s in _tumSayfalar)
-            {
-                if (!string.IsNullOrEmpty(s.Metin))
-                {
-                    _normMetinOnbellek[s.No] = TrNormalizasyon.Normalle(s.Metin);
-                }
-            }
-        });
+        await NormOnbellegiKurAsync();
 
         await GoruntuSisteminiHazirlaAsync();
         await EslesenSayfalariBulAsync();
@@ -438,8 +432,13 @@ public partial class BelgePenceresi : Window
             OcrBilgiKutusu.Visibility = Visibility.Collapsed;
         }
 
+        bool ceviriVar = !string.IsNullOrWhiteSpace(sayfa.Ceviri);
+        CeviriPaneli.Visibility = ceviriVar ? Visibility.Visible : Visibility.Collapsed;
+        CeviriGecisDugmesi.IsChecked = _ceviriGoster;
+        CeviriUyariMetni.Visibility = ceviriVar && _ceviriGoster ? Visibility.Visible : Visibility.Collapsed;
+
         SayfaMetniBlok.Inlines.Clear();
-        string metin = sayfa.Metin ?? string.Empty;
+        string metin = GosterilenMetin(sayfa);
         string aranan = BelgeAramaKutusu.Text?.Trim() ?? string.Empty;
 
         if (string.IsNullOrWhiteSpace(aranan))
@@ -497,6 +496,48 @@ public partial class BelgePenceresi : Window
         }
     }
 
+    /// <summary>
+    /// Türkçe görünümde çevirisi olan sayfanın çevirisi, yoksa özgün metni.
+    /// </summary>
+    private string GosterilenMetin(SayfaKaydi sayfa)
+    {
+        return _ceviriGoster && !string.IsNullOrWhiteSpace(sayfa.Ceviri) ? sayfa.Ceviri! : sayfa.Metin ?? string.Empty;
+    }
+
+    private async Task NormOnbellegiKurAsync()
+    {
+        var sayfalar = _tumSayfalar;
+        var yeni = await Task.Run(() =>
+        {
+            var sozluk = new Dictionary<int, string>();
+            foreach (var s in sayfalar)
+            {
+                string metin = GosterilenMetin(s);
+                if (!string.IsNullOrEmpty(metin))
+                {
+                    sozluk[s.No] = TrNormalizasyon.Normalle(metin);
+                }
+            }
+
+            return sozluk;
+        });
+        _normMetinOnbellek.Clear();
+        foreach (var (no, norm) in yeni)
+        {
+            _normMetinOnbellek[no] = norm;
+        }
+    }
+
+    private async void CeviriGecisDugmesi_Click(object sender, RoutedEventArgs e)
+    {
+        _ceviriGoster = CeviriGecisDugmesi.IsChecked == true;
+        KokYapilandirma.CeviriGosterKaydet(_ceviriGoster);
+        // Pencere içi arama geçerli görünümün metninde çalışır.
+        await NormOnbellegiKurAsync();
+        await EslesenSayfalariBulAsync();
+        MetniGoster(_aktifSayfaNo);
+    }
+
     private void BelgeAramaKutusu_TextChanged(object sender, TextChangedEventArgs e)
     {
         _belgeAramaZamanlayici.Stop();
@@ -528,7 +569,7 @@ public partial class BelgePenceresi : Window
             {
                 string norm = _normMetinOnbellek.TryGetValue(sayfa.No, out var cachedNorm)
                     ? cachedNorm
-                    : TrNormalizasyon.Normalle(sayfa.Metin);
+                    : TrNormalizasyon.Normalle(GosterilenMetin(sayfa));
 
                 bool onEslesme = false;
                 foreach (var k in kelimeler)
@@ -542,7 +583,7 @@ public partial class BelgePenceresi : Window
 
                 if (onEslesme)
                 {
-                    var vurgular = MetinEsleme.Vurgula(sayfa.Metin, kelimeler);
+                    var vurgular = MetinEsleme.Vurgula(GosterilenMetin(sayfa), kelimeler);
                     if (vurgular.Length > 0)
                     {
                         sonuc.Add(sayfa.No);

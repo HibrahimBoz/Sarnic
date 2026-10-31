@@ -32,6 +32,39 @@ class TestBelgeCeviri(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.tmp_dir = Path(self.tmp.name)
 
+    def test_ceviri_hatasi_kalici_olmaz(self):
+        # İnceleme bulgusu: hata sonrası ceviri_surum ve dil yazılırsa belge bir daha denenmiyordu.
+        veri = {"surum": 1, "uyarilar": [], "sayfalar": [
+            {"no": 1, "metin": "Это важный отчет о безопасности системы."},
+            {"no": 2, "metin": "Bu sayfa Türkçe yazılmış bir rapordur ve çevrilmez."}]}
+        ceviri_ekle.ceviri_ekle(veri, SahteCevirmen(hata_at=True))
+        self.assertNotIn("ceviri_surum", veri)
+        self.assertNotIn("dil", veri["sayfalar"][0])  # yeniden denenecek
+        self.assertEqual(veri["sayfalar"][1]["dil"], "tr")
+        self.assertTrue(any("Çeviri yapılamadı" in u for u in veri["uyarilar"]))
+
+        sahte = SahteCevirmen()
+        ceviri_ekle.ceviri_ekle(veri, sahte)
+        self.assertEqual(veri["sayfalar"][0]["ceviri"], "tr: Это важный отчет о безопасности системы.")
+        self.assertEqual(veri.get("ceviri_surum"), 1)
+
+    def test_ayni_dildeki_sayfalar_tek_cagrida_cevrilir(self):
+        veri = {"surum": 1, "sayfalar": [
+            {"no": i, "metin": f"Это страница номер {i} отчета о безопасности."} for i in range(1, 4)]}
+        sahte = SahteCevirmen()
+        ceviri_ekle.ceviri_ekle(veri, sahte)
+        self.assertEqual(len(sahte.cagrilar), 1)
+        self.assertEqual(len(sahte.cagrilar[0][0]), 3)
+
+    def test_ayardaki_diller_disindaki_dil_cevrilmez(self):
+        veri = {"surum": 1, "sayfalar": [{"no": 1, "metin": "Это важный отчет о безопасности системы."}]}
+        sahte = SahteCevirmen()
+        sahte.diller = ("en",)
+        ceviri_ekle.ceviri_ekle(veri, sahte)
+        self.assertFalse(sahte.cagrildi)
+        self.assertEqual(veri["sayfalar"][0]["dil"], "ru")
+        self.assertNotIn("ceviri", veri["sayfalar"][0])
+
     def test_rusca_sayfa_dil_ru_ceviri_dolu(self):
         rusca_metin = "Это важный отчет о безопасности системы и результатах тестирования радара."
         veri = {

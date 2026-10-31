@@ -161,7 +161,17 @@ public sealed class DosyaAramaMotoru
                 string ftsIcerik = string.Join(" ", kelimeler.Select(k => $"\"{k.Replace("\"", "\"\"")}\"*"));
                 string p = $"@icr{pIndex++}";
                 cmd.Parameters.AddWithValue(p, ftsIcerik);
-                string ceviriKosulu = IcerikAramaMotoru.CeviriAramasiVarMi(conn)
+                bool ceviriVar;
+                try
+                {
+                    ceviriVar = IcerikAramaMotoru.CeviriAramasiVarMi(conn);
+                }
+                catch (SqliteException ex) when (ex.SqliteErrorCode == 9 || iptal.IsCancellationRequested)
+                {
+                    throw new OperationCanceledException("Sorgu iptal edildi.", ex, iptal);
+                }
+
+                string ceviriKosulu = ceviriVar
                     ? $" UNION SELECT rowid FROM sayfa_ceviri_fts WHERE sayfa_ceviri_fts MATCH {p}"
                     : string.Empty;
                 whereListesi.Add($"id IN (SELECT DISTINCT dosya_id FROM sayfa WHERE id IN (SELECT rowid FROM sayfa_fts WHERE sayfa_fts MATCH {p}{ceviriKosulu}))");

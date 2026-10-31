@@ -150,12 +150,11 @@ def json_meta(
     }
     if dil:
         veri["dil"] = dil
-    if ceviriler is not None:
+    # Kök alanlar yalnız en az bir segment çevrildiyse yazılır.
+    if any("ceviri" in s for s in segmentler):
         veri["ceviri_dil"] = "tr"
         if ceviri_model:
             veri["ceviri_model"] = ceviri_model
-    elif ceviri_model:
-        veri["ceviri_model"] = ceviri_model
 
     icerik = json.dumps(veri, ensure_ascii=False, indent=2) + "\n"
     yol.write_text(icerik, encoding="utf-8")

@@ -110,10 +110,6 @@ def isle_tek(
         sonuc.hata = "ses akışı yok"
         return sonuc
 
-    if cevirmen is None:
-        from .ceviri import cevirmen_olustur
-        cevirmen = cevirmen_olustur(ayar)
-
     ara = cikis_dir / "_ara"
     cikti_dosyalari: list[Path] = []
     try:
@@ -225,7 +221,13 @@ def isle_tek(
         ceviriler = None
         ceviri_model_ad = None
         dil = stt_mod.SON_DIL
-        if cevirmen is not None and dil and dil != "tr" and bolumler:
+        if dil and dil != "tr" and bolumler and cevirmen is None:
+            # Model yalnız Türkçe dışı kayıtta, STT'den sonra yüklenir (Whisper ile VRAM paylaşımı az).
+            from .ceviri import cevirmen_olustur
+            cevirmen = cevirmen_olustur(ayar)
+        izinli = getattr(cevirmen, "diller", None)
+        if (cevirmen is not None and dil and dil != "tr" and bolumler
+                and (izinli is None or dil in izinli)):
             try:
                 metinler = [s.metin for s in bolumler]
                 def _cevir_islem():

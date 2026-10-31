@@ -70,6 +70,24 @@ class DizinCeviriTest(GeciciTest):
         finally:
             db.close()
 
+    def test_tetikleyici_gocu_yalniz_bir_kez_yapilir(self):
+        # İnceleme bulgusu: her açılışta DROP+CREATE yapılıyordu (atomik değil, gereksiz şema yazımı).
+        db_yol = self.kok / "dizin_tetik.db"
+        db = vt.ac(db_yol)
+        db.close()
+        db = vt.ac(db_yol)
+        try:
+            ilk = db.execute("PRAGMA schema_version").fetchone()[0]
+        finally:
+            db.close()
+        db = vt.ac(db_yol)
+        try:
+            self.assertEqual(db.execute("PRAGMA schema_version").fetchone()[0], ilk)
+            sql = db.execute("SELECT sql FROM sqlite_master WHERE name='sayfa_ad'").fetchone()[0]
+            self.assertIn("sayfa_ceviri_fts", sql)
+        finally:
+            db.close()
+
     def test_toplanti_sorgusu_sayfa_ceviri_ftsde_rusca_sayfayi_bulur(self):
         """Toplanti sorgusu sayfa_ceviri_fts'de Rusça sayfayı bulur."""
         db_yol = self.kok / "dizin.db"

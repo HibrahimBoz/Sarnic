@@ -1099,7 +1099,8 @@ public partial class AramaPenceresi : Window
         {
             var ayrismis = DosyaSorgusu.Ayristir(_sonAramaSorgusu);
             string belgeSorgusu = ayrismis.Icerik ?? ayrismis.DuzMetin;
-            var pencere = new BelgePenceresi(_dizinKaynagi, bg.DosyaId, bg.SayfaNo, belgeSorgusu, _artCraftKatalogu)
+            var pencere = new BelgePenceresi(_dizinKaynagi, bg.DosyaId, bg.SayfaNo, belgeSorgusu, _artCraftKatalogu,
+                bg.Sonuc.CevirideEslesti)
             {
                 Owner = this
             };
@@ -1246,7 +1247,7 @@ public partial class AramaPenceresi : Window
         }
 
         double baslangicSn = Math.Max(0, oge.BasSn - 2.0);
-        DersPenceresiniAc(ders, baslangicSn);
+        DersPenceresiniAc(ders, baslangicSn, oge.Sonuc.CevirideEslesti);
     }
 
     private void SeciliDersiAc()
@@ -1255,7 +1256,7 @@ public partial class AramaPenceresi : Window
         DersPenceresiniAc(ders, 0.0);
     }
 
-    private void DersPenceresiniAc(DersKaydi ders, double baslangicSn)
+    private void DersPenceresiniAc(DersKaydi ders, double baslangicSn, bool ceviriGorunumu = false)
     {
         try
         {
@@ -1264,11 +1265,17 @@ public partial class AramaPenceresi : Window
             if (File.Exists(dersJson))
             {
                 var dersTanimi = DersTanimiOkuyucu.Oku(dersJson);
-                pencere = new CokAciliOynaticiPenceresi(dersTanimi, baslangicSn, ders.JsonYolu, _aramaMotoru as MetinAramaMotoru);
+                var cokAcili = new CokAciliOynaticiPenceresi(dersTanimi, baslangicSn, ders.JsonYolu, _aramaMotoru as MetinAramaMotoru);
+                if (ceviriGorunumu)
+                {
+                    cokAcili.CeviriGorunumuneGec();
+                }
+
+                pencere = cokAcili;
             }
             else
             {
-                pencere = new OynaticiPenceresi(ders, baslangicSn, _aramaMotoru as MetinAramaMotoru)
+                pencere = new OynaticiPenceresi(ders, baslangicSn, _aramaMotoru as MetinAramaMotoru, ceviriGorunumu)
                 {
                     Dizin = _dizinKaynagi
                 };
@@ -1363,6 +1370,7 @@ public sealed class BelgeSonucGorunumu(IcerikSonucu sonuc)
     public string? Sha => Sonuc.Sha;
 
     public Visibility DersRozetiGorunurluk => !string.IsNullOrWhiteSpace(Ders) ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility CeviriRozetiGorunurluk => Sonuc.CevirideEslesti ? Visibility.Visible : Visibility.Collapsed;
     public Visibility OcrGorunur => string.Equals(Kaynak, "ocr", StringComparison.OrdinalIgnoreCase) ? Visibility.Visible : Visibility.Collapsed;
     public string OcrMetni
     {
@@ -1386,6 +1394,7 @@ public sealed class SonucGorunumu(AramaSonucu sonuc)
     public string ZamanMetni => ZamanBicim.Bicimle(Sonuc.BasSn);
     public string Metin => Sonuc.Metin;
     public (int Bas, int Uzunluk)[] Vurgular => Sonuc.Vurgular;
+    public Visibility CeviriRozetiGorunurluk => Sonuc.CevirideEslesti ? Visibility.Visible : Visibility.Collapsed;
 }
 
 /// <summary>

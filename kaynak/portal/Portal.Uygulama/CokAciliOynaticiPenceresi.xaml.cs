@@ -40,6 +40,7 @@ public partial class CokAciliOynaticiPenceresi : Window
     private Transkript? _hamTranskript;
     private DersKaydi? _dersKaydi;
     private MetinAramaMotoru? _aramaMotoru;
+    private bool _ceviriGoster = KokYapilandirma.CeviriGosterOku();
 
     public CokAciliOynaticiPenceresi(DersTanimi ders, double baslangicSanalSn = 0)
         : this(ders, baslangicSanalSn, null, null)
@@ -162,7 +163,8 @@ public partial class CokAciliOynaticiPenceresi : Window
     /// Arama akışından veya taranan ders kaydından pencereyi açar.
     /// Ders klasöründe ders.json varsa çok açılı oynatıcı penceresi açılır; yoksa tekli oynatıcı açılır.
     /// </summary>
-    public static Window Ac(DersKaydi kayit, double baslangicSanalSn = 0, MetinAramaMotoru? aramaMotoru = null)
+    public static Window Ac(DersKaydi kayit, double baslangicSanalSn = 0, MetinAramaMotoru? aramaMotoru = null,
+        bool baslangictaCeviri = false)
     {
         ArgumentNullException.ThrowIfNull(kayit);
         string dersJson = Path.Combine(kayit.KlasorYolu, "ders.json");
@@ -170,12 +172,17 @@ public partial class CokAciliOynaticiPenceresi : Window
         {
             var ders = DersTanimiOkuyucu.Oku(dersJson);
             var pencere = new CokAciliOynaticiPenceresi(ders, baslangicSanalSn, kayit.JsonYolu, aramaMotoru);
+            if (baslangictaCeviri)
+            {
+                pencere.CeviriGorunumuneGec();
+            }
+
             pencere.Show();
             return pencere;
         }
 
         // ders.json yoksa tek video modunda oynatıcı açılır
-        var tekliPencere = new OynaticiPenceresi(kayit, baslangicSanalSn, aramaMotoru);
+        var tekliPencere = new OynaticiPenceresi(kayit, baslangicSanalSn, aramaMotoru, baslangictaCeviri);
         tekliPencere.Show();
         return tekliPencere;
     }
@@ -314,12 +321,39 @@ public partial class CokAciliOynaticiPenceresi : Window
         string duzeltmeKlasoru = DuzenlemeKontrolu.DuzeltmelerKlasoruBul();
         var depo = new DuzeltmeDeposu(duzeltmeKlasoru);
         var birlestirme = depo.Birlestir(_hamTranskript, duzeltmeKlasoru);
+        bool turkce = _ceviriGoster && _hamTranskript.CeviriVar;
         foreach (var ef in birlestirme.Segmentler)
         {
             string rozet = ef.Cakisma ? "  [ÇAKIŞMA]" : string.Empty;
-            _transkript.Add(new TranskriptSatiri(ef, ZamanBicimle(ef.Bas) + "  " + ef.Metin + rozet));
+            string metin = turkce && !string.IsNullOrWhiteSpace(ef.Ceviri) ? ef.Ceviri : ef.Metin;
+            _transkript.Add(new TranskriptSatiri(ef, ZamanBicimle(ef.Bas) + "  " + metin + rozet));
         }
         TranskriptDurumu.Text = _transkript.Count == 0 ? "Transkriptte gösterilecek segment yok." : string.Empty;
+        CeviriArayuzunuGuncelle();
+    }
+
+    /// <summary>
+    /// Arama sonucu çeviriden eşleştiyse pencere Türkçe görünümde açılır (kullanıcı ayarı değişmez).
+    /// </summary>
+    public void CeviriGorunumuneGec()
+    {
+        _ceviriGoster = true;
+        TranskriptiGuncelle();
+    }
+
+    private void CeviriArayuzunuGuncelle()
+    {
+        bool ceviriVar = _hamTranskript?.CeviriVar == true;
+        CeviriGecisDugmesi.Visibility = ceviriVar ? Visibility.Visible : Visibility.Collapsed;
+        CeviriGecisDugmesi.IsChecked = _ceviriGoster;
+        CeviriUyariMetni.Visibility = ceviriVar && _ceviriGoster ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void CeviriGecisDugmesi_Click(object sender, RoutedEventArgs e)
+    {
+        _ceviriGoster = CeviriGecisDugmesi.IsChecked == true;
+        KokYapilandirma.CeviriGosterKaydet(_ceviriGoster);
+        TranskriptiGuncelle();
     }
 
     private void Duzenle_Click(object sender, RoutedEventArgs e)

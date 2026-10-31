@@ -47,6 +47,7 @@ public partial class OynaticiPenceresi : Window
     private MetinAramaMotoru? _aramaMotoru;
     private string? _kokKlasor;
     private Transkript? _hamTranskript;
+    private bool _ceviriGoster;
 
     public DersKaydi Kayit { get; }
     public double BaslangicSn { get; }
@@ -63,7 +64,7 @@ public partial class OynaticiPenceresi : Window
     {
     }
 
-    public OynaticiPenceresi(DersKaydi kayit, double baslangicSn, MetinAramaMotoru? aramaMotoru)
+    public OynaticiPenceresi(DersKaydi kayit, double baslangicSn, MetinAramaMotoru? aramaMotoru, bool baslangictaCeviri = false)
     {
         Kayit = kayit ?? new DersKaydi(string.Empty, string.Empty, string.Empty, null);
         BaslangicSn = baslangicSn;
@@ -72,6 +73,7 @@ public partial class OynaticiPenceresi : Window
             ? Kayit.KlasorYolu
             : Directory.GetCurrentDirectory();
 
+        _ceviriGoster = baslangictaCeviri || KokYapilandirma.CeviriGosterOku();
         InitializeComponent();
 
         Title = !string.IsNullOrWhiteSpace(Kayit.Ad) ? $"{UrunAdi.Etkin} — Oynatıcı — {Kayit.Ad}" : $"{UrunAdi.Etkin} — Oynatıcı";
@@ -138,6 +140,7 @@ public partial class OynaticiPenceresi : Window
         try
         {
             _hamTranskript = TranskriptOkuyucu.Oku(transkriptYolu);
+            CeviriArayuzunuGuncelle();
             if (string.IsNullOrEmpty(Kayit.JsonYolu))
             {
                 var guncelKayit = new DersKaydi(Kayit.Ad, Kayit.KlasorYolu, transkriptYolu, Kayit.VideoYolu);
@@ -377,15 +380,57 @@ public partial class OynaticiPenceresi : Window
         FiltreyiUygula();
     }
 
+    private void CeviriArayuzunuGuncelle()
+    {
+        bool ceviriVar = _hamTranskript?.CeviriVar == true;
+        CeviriGecisDugmesi.Visibility = ceviriVar ? Visibility.Visible : Visibility.Collapsed;
+        CeviriGecisDugmesi.IsChecked = _ceviriGoster;
+        CeviriUyariMetni.Visibility = (ceviriVar && _ceviriGoster) ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void CeviriGecisDugmesi_Click(object sender, RoutedEventArgs e)
+    {
+        _ceviriGoster = CeviriGecisDugmesi.IsChecked == true;
+        KokYapilandirma.CeviriGosterKaydet(_ceviriGoster);
+        CeviriArayuzunuGuncelle();
+        GeciciSrtYolunuSifirla();
+        if (_tamEkran)
+        {
+            AltyaziyiTamEkranaYukle();
+        }
+        FiltreyiUygula();
+    }
+
+    /// <summary>
+    /// Türkçe görünümde çevirisi olan segmentin metni çeviriyle değiştirilmiş kopyası; aksi hâlde segmentin kendisi.
+    /// </summary>
+    private EfektifSegment GorunumSegmenti(EfektifSegment s)
+    {
+        return _ceviriGoster && _hamTranskript?.CeviriVar == true && !string.IsNullOrWhiteSpace(s.Ceviri)
+            ? s with { Metin = s.Ceviri }
+            : s;
+    }
+
     private void FiltreyiUygula()
     {
         string arama = TranskriptAramaKutusu.Text?.Trim() ?? string.Empty;
-        var filtrelenmis = OynaticiYardimcisi.SegmentFiltrele(_efektifSegmentler, arama);
+        // Süzme ve gösterim geçerli görünümün metniyle yapılır; satır yine özgün segmenti taşır
+        // (düzeltme paneli çeviriyi özgün metin sanmasın).
+        var asilSegment = new Dictionary<EfektifSegment, EfektifSegment>(ReferenceEqualityComparer.Instance);
+        var gorunenler = new List<EfektifSegment>();
+        foreach (var s in _efektifSegmentler)
+        {
+            var gorunen = GorunumSegmenti(s);
+            asilSegment[gorunen] = s;
+            gorunenler.Add(gorunen);
+        }
+
+        var filtrelenmis = OynaticiYardimcisi.SegmentFiltrele(gorunenler, arama);
 
         _goruntulenenSegmentler.Clear();
         foreach (var seg in filtrelenmis)
         {
-            var vm = new TranskriptSatirGorunumu(seg)
+            var vm = new TranskriptSatirGorunumu(asilSegment[seg], seg.Metin)
             {
                 Vurgulu = _oncekiAktifSegment != null && seg.No == _oncekiAktifSegment.No
             };
@@ -534,7 +579,7 @@ public partial class OynaticiPenceresi : Window
             {
                 if (string.IsNullOrEmpty(_geciciSrtYolu) || !File.Exists(_geciciSrtYolu))
                 {
-                    _geciciSrtYolu = SrtUretici.GeciciSrtDosyasiOlustur(_efektifSegmentler);
+                    _geciciSrtYolu = SrtUretici.GeciciSrtDosyasiOlustur(_efektifSegmentler.Select(GorunumSegmenti));
                 }
 
                 if (string.Equals(_geciciSrtYolu, _ekliGeciciSrtYolu, StringComparison.OrdinalIgnoreCase))
@@ -974,7 +1019,7 @@ public sealed class TranskriptSatirGorunumu : INotifyPropertyChanged
 
     public EfektifSegment Segment { get; }
     public string ZamanMetni => ZamanBicim.Bicimle(Segment.Bas);
-    public string Metin => Segment.Metin;
+    public string Metin { get; }
     public bool Cakisma => Segment.Cakisma;
 
     public bool Vurgulu
@@ -990,9 +1035,10 @@ public sealed class TranskriptSatirGorunumu : INotifyPropertyChanged
         }
     }
 
-    public TranskriptSatirGorunumu(EfektifSegment segment)
+    public TranskriptSatirGorunumu(EfektifSegment segment, string? gosterilenMetin = null)
     {
         Segment = segment;
+        Metin = gosterilenMetin ?? segment.Metin;
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;

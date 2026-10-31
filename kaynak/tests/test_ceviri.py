@@ -10,6 +10,12 @@ from videohat.hatalar import CeviriHatasi
 
 
 class CeviriTestleri(unittest.TestCase):
+    def test_romen_harfli_sozcuk_cumleyi_boler(self):
+        # İnceleme bulgusu: "dil.", "did." Romen rakamı sanılıyordu.
+        self.assertEqual(len(cumlelere_bol("Bu ana dil. Sonra okul geldi.")), 2)
+        self.assertEqual(len(cumlelere_bol("He did. Then he left.")), 2)
+        self.assertEqual(len(cumlelere_bol("XIV. Louis geldi. Sonra gitti.")), 2)
+
     def test_cumle_sira_sayisi(self):
         metin = "I. Dünya Savaşı başladı. Sonra bitti."
         cumleler = cumlelere_bol(metin)
@@ -30,6 +36,13 @@ class CeviriTestleri(unittest.TestCase):
         parcalar = cumlelere_bol(metin)
         self.assertEqual(len(parcalar), 3)
         self.assertEqual([len(p) for p in parcalar], [400, 400, 100])
+
+    def test_dil_tahmin_x_ve_q_turkce_ingilizceyi_azerice_yapmaz(self):
+        # İnceleme bulgusu: q/x oranı kuralı Türkçe matematik ve İngilizce metni "az" sayıyordu.
+        self.assertEqual(dil_tahmin("f(x) fonksiyonu x değişkeni için türevlenebilir bir fonksiyondur"), "tr")
+        self.assertEqual(dil_tahmin("Explain the experiment and the box plot for the next exam"), "en")
+        self.assertEqual(dil_tahmin("Install Intel drivers"), "en")
+        self.assertEqual(dil_tahmin("Biz bu qerari xalq ucun verdik ve bu qanun olan bir xidmetdir"), "az")
 
     def test_dil_tahmin(self):
         # ru/az/tr/en birer örnek

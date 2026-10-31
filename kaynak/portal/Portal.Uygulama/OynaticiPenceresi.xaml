@@ -58,10 +58,17 @@
                     <Button x:Name="BelgelerDugmesi" Content="Belgeler (0)" DockPanel.Dock="Right"
                             Padding="8,3" Margin="8,0,0,0" Click="BelgelerDugmesi_Click"
                             Visibility="Collapsed" HorizontalAlignment="Right"/>
+                    <ToggleButton x:Name="CeviriGecisDugmesi" Content="Özgün / Türkçe" DockPanel.Dock="Right"
+                                  Padding="8,3" Margin="8,0,0,0" Click="CeviriGecisDugmesi_Click"
+                                  Visibility="Collapsed" HorizontalAlignment="Right"/>
                     <CheckBox x:Name="OtoKaydirKutusu" Content="Otomatik kaydır" IsChecked="True"
                               DockPanel.Dock="Right" HorizontalAlignment="Right" VerticalAlignment="Center"
                               Foreground="{DynamicResource SolukMetinFircasi}"/>
                 </DockPanel>
+                <TextBlock x:Name="CeviriUyariMetni" Margin="0,0,0,6"
+                           Text="Makine çevirisi. Hata içerebilir. Kesin bilgi için özgün metne bakın."
+                           FontSize="11" Foreground="{DynamicResource SolukMetinFircasi}" TextWrapping="Wrap"
+                           Visibility="Collapsed"/>
                 <DockPanel>
                     <TextBlock Text="Ara:" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="{DynamicResource SolukMetinFircasi}"/>
                     <TextBox x:Name="TranskriptAramaKutusu" Padding="6,4"

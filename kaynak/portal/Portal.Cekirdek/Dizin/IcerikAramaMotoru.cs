@@ -219,7 +219,15 @@ public sealed class IcerikAramaMotoru
         string whereSql = whereListesi.Count > 0 ? $"WHERE {string.Join(" AND ", whereListesi)}" : string.Empty;
 
         // Eski dizinde çeviri sütunları ve sayfa_ceviri_fts yoktur; o zaman sorgu eskisiyle aynıdır.
-        bool ceviriVar = CeviriAramasiVarMi(conn);
+        bool ceviriVar;
+        try
+        {
+            ceviriVar = CeviriAramasiVarMi(conn);
+        }
+        catch (SqliteException ex) when (ex.SqliteErrorCode == 9 || iptal.IsCancellationRequested)
+        {
+            throw new OperationCanceledException("Sorgu iptal edildi.", ex, iptal);
+        }
 
         var sbSql = new StringBuilder();
         sbSql.AppendLine("WITH fts_sonuclari AS (");

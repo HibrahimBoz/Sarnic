@@ -407,11 +407,13 @@ public class MetinAramaMotoru : IAramaMotoru, IDisposable
             var (puan, tier) = Puanla(seg.NormMetin, seg.KelimelerVeKonumlar, normSorgu, benzersizKelimeler);
             bool cevirideEslesti = false;
 
-            if (puan <= 0 && !string.IsNullOrWhiteSpace(seg.NormCeviri) && seg.CeviriKelimelerVeKonumlar != null)
+            // Özgün metin kısmi eşleşse de çeviri daha iyi eşleşebilir (ortak sayı/özel ad); eşitlikte özgün kalır.
+            if (puan < 100.0 && !string.IsNullOrWhiteSpace(seg.NormCeviri) && seg.CeviriKelimelerVeKonumlar != null)
             {
-                (puan, tier) = Puanla(seg.NormCeviri, seg.CeviriKelimelerVeKonumlar, normSorgu, benzersizKelimeler);
-                if (puan > 0)
+                var (ceviriPuan, ceviriTier) = Puanla(seg.NormCeviri, seg.CeviriKelimelerVeKonumlar, normSorgu, benzersizKelimeler);
+                if (ceviriPuan > puan)
                 {
+                    (puan, tier) = (ceviriPuan, ceviriTier);
                     cevirideEslesti = true;
                 }
             }

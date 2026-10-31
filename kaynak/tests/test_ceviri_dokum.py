@@ -69,6 +69,14 @@ class TestCeviriDokum(unittest.TestCase):
         self.assertEqual(veri["segmentler"][0]["ceviri"], "Merhaba dünya")
         self.assertEqual(veri["segmentler"][1]["ceviri"], "Bu bir test")
 
+    def test_hepsi_bos_ceviride_kok_alanlari_yazilmaz(self):
+        json_yolu = self.tmp_dir / "cikti_bos_ceviri.json"
+        cikti.json_meta(self.segmentler, self.secim, self.sureler, json_yolu, dil="en",
+                        ceviriler=["", "  "], ceviri_model="nllb-200-distilled-1.3B")
+        veri = json.loads(json_yolu.read_text(encoding="utf-8"))
+        self.assertNotIn("ceviri_dil", veri)
+        self.assertNotIn("ceviri_model", veri)
+
     def test_verilmeyince_eskisiyle_bayt_bayt_ayni(self):
         json1 = self.tmp_dir / "json1.json"
         json2 = self.tmp_dir / "json2.json"

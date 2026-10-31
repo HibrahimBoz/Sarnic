@@ -34,7 +34,9 @@ KISALTMALAR: set[str] = {
     "st", "jr", "г", "т", "др", "им"
 }
 
-_ROMEN_RAKAMI_RE = re.compile(r"^[ivxlcdm]+$", re.IGNORECASE)
+# Yalnız büyük harfli geçerli Romen rakamı ("I.", "XIV."); "did.", "dil.", "mix." gibi sözcükler değil.
+_ROMEN_RAKAMI_RE = re.compile(r"M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})")
+_ONBELLEK_SINIRI = 20000  # metin; aşılınca önbellek boşaltılır
 
 # Durak sözcükleri (küçük harf)
 _TR_DURAK: set[str] = {
@@ -47,7 +49,8 @@ _AZ_DURAK: set[str] = {
     "və", "bir", "bu", "üçün", "ilə", "olan", "edir", "deyil", "kimi", "daha", "çox"
 }
 
-_TURKCE_OZEL_HARFLER: set[str] = set("ğışİçöüĞIŞÇÖÜ")
+# Büyük "I" İngilizcede de sık geçer; sayılmaz.
+_TURKCE_OZEL_HARFLER: set[str] = set("ğışİçöüĞŞÇÖÜ")
 
 
 def _parcala_400(metin: str) -> list[str]:
@@ -112,7 +115,7 @@ def cumlelere_bol(metin: str) -> list[str]:
                     kucuk = temiz_kelime.lower()
                     if (kucuk in KISALTMALAR or
                         temiz_kelime.isdigit() or
-                        bool(_ROMEN_RAKAMI_RE.fullmatch(kucuk))):
+                        (temiz_kelime and _ROMEN_RAKAMI_RE.fullmatch(temiz_kelime))):
                         continue
 
             cumle = p[baslangic:isaret_sonu].strip()
@@ -137,9 +140,12 @@ def dil_tahmin(metin: str) -> str:
     Sırayla:
     1. harf < 5 -> 'tr'
     2. Kiril harf oranı >= 0.5 -> 'ru'
-    3. ə/Ə var ya da (harf >= 20 ve (q+x) oranı >= 0.01) -> 'az'
-    4. durak sözcüğü sayımı: tr / en / az — en yüksek sayı kazanır
-    5. eşitlikte ya da hepsi 0 ise Türkçe harf oranı >= 0.02 -> 'tr', değilse 'en'
+    3. ə/Ə var -> 'az'
+    4. İngilizce durak sözcüğü tek başına en çoksa -> 'en'
+    5. q/x içeren (en az 3 harfli) sözcük >= 2 ve sözcüklerin >= %10'u -> 'az'
+       (Türkçede q/x yalnız "f(x)" gibi tek harfli değişkende geçer; kural tasarımdır, ölçülmedi)
+    6. durak sözcüğü sayımı: tr / en / az — en yüksek sayı kazanır
+    7. eşitlikte ya da hepsi 0 ise Türkçe harf oranı >= 0.02 -> 'tr', değilse 'en'
     """
     harfler = [c for c in metin if c.isalpha()]
     toplam_harf = len(harfler)
@@ -151,9 +157,7 @@ def dil_tahmin(metin: str) -> str:
     if kiril_harf_sayisi / toplam_harf >= 0.5:
         return "ru"
 
-    # Azerice kuralı
-    qx_sayisi = sum(1 for c in metin.lower() if c in ("q", "x"))
-    if ("ə" in metin or "Ə" in metin) or (toplam_harf >= 20 and (qx_sayisi / toplam_harf >= 0.01)):
+    if "ə" in metin or "Ə" in metin:
         return "az"
 
     # Durak sözcüğü sayımı
@@ -162,6 +166,13 @@ def dil_tahmin(metin: str) -> str:
     tr_skor = sum(1 for s in sozcukler if s in _TR_DURAK)
     en_skor = sum(1 for s in sozcukler if s in _EN_DURAK)
     az_skor = sum(1 for s in sozcukler if s in _AZ_DURAK)
+    if en_skor > max(tr_skor, az_skor):
+        return "en"
+
+    # Azerice q/x: OCR ə'yi düşürse de "qərar", "xalq" gibi sözcükler q/x taşır.
+    qx_sozcuk = sum(1 for s in sozcukler if len(s) >= 3 and ("q" in s or "x" in s))
+    if qx_sozcuk >= 2 and qx_sozcuk >= 0.1 * len(sozcukler):
+        return "az"
 
     en_yuksek = max(tr_skor, en_skor, az_skor)
     if en_yuksek > 0:
@@ -192,10 +203,12 @@ class Cevirmen:
         compute_type: str = "int8",
         cevirici: Any = None,
         batch: int = 16,
+        diller: tuple[str, ...] | None = None,
     ) -> None:
         self.model_yolu = Path(model_yolu)
         self.model_ad = self.model_yolu.name
         self.batch = batch
+        self.diller = diller  # ayar.ceviri.diller; None = DIL_KODLARI'ndaki her dil
         self.cihaz = cihaz
         self.compute_type = compute_type
         self._onbellek: dict[tuple[str, str], str] = {}
@@ -257,6 +270,8 @@ class Cevirmen:
         cevrilen = self._parcalari_cevir(parcalar, kaynak_kod)
         for i, anahtar, bas, adet in bekleyen:
             tam = " ".join(p for p in cevrilen[bas:bas + adet] if p)
+            if len(self._onbellek) >= _ONBELLEK_SINIRI:  # uzun dizinle/izle süreci belleği doldurmasın
+                self._onbellek.clear()
             self._onbellek[anahtar] = tam
             sonuclar[i] = tam
         return [s if s is not None else "" for s in sonuclar]
@@ -269,20 +284,22 @@ class Cevirmen:
             [kaynak_kod] + (self.sp.encode(p, out_type=str) if self.sp is not None else p.split()) + ["</s>"]
             for p in parcalar
         ]
-        # Uzunluk sınırı parça başına değil çağrı başınadır; en uzun parçaya göre (Genel kısıtlar).
-        max_dec = min(512, int(2.0 * max(len(b) for b in belirtecler) + 16))
-        try:
-            ceviriler = self.cevirici.translate_batch(
-                belirtecler,
-                target_prefix=[["tur_Latn"]] * len(belirtecler),
-                max_batch_size=self.batch,
-                beam_size=4,
-                repetition_penalty=1.0,
-                no_repeat_ngram_size=0,
-                max_decoding_length=max_dec,
-            )
-        except Exception as e:
-            raise CeviriHatasi(f"Çeviri işlemi sırasında hata: {e}") from e
+        ceviriler = []
+        # Uzunluk sınırı çağrı başınadır; dilim başına hesaplanır ki tek uzun cümle bütün çağrıyı uzatmasın.
+        for bas in range(0, len(belirtecler), self.batch):
+            dilim = belirtecler[bas:bas + self.batch]
+            max_dec = min(512, int(2.0 * max(len(b) for b in dilim) + 16))
+            try:
+                ceviriler.extend(self.cevirici.translate_batch(
+                    dilim,
+                    target_prefix=[["tur_Latn"]] * len(dilim),
+                    beam_size=4,
+                    repetition_penalty=1.0,
+                    no_repeat_ngram_size=0,
+                    max_decoding_length=max_dec,
+                ))
+            except Exception as e:
+                raise CeviriHatasi(f"Çeviri işlemi sırasında hata: {e}") from e
 
         cikti: list[str] = []
         for sonuc in ceviriler:
@@ -307,7 +324,8 @@ def _cihaz() -> tuple[str, str]:
     return "cpu", "int8"
 
 
-_HAZIR: dict[tuple[str, int], Cevirmen] = {}
+# Başarısız yükleme de (None) saklanır: her belgede yeniden denenip günlüğü doldurmasın.
+_HAZIR: dict[tuple[str, int, tuple[str, ...]], Cevirmen | None] = {}
 
 
 def cevirmen_olustur(ayar: Ayar) -> Cevirmen | None:
@@ -319,12 +337,13 @@ def cevirmen_olustur(ayar: Ayar) -> Cevirmen | None:
     if ceviri_ayar is None or not ceviri_ayar.etkin:
         return None
     model_yolu = Path(ceviri_ayar.model) if ceviri_ayar.model.strip() else yollar.ceviri_modeli()
-    anahtar = (str(model_yolu), ceviri_ayar.batch)
+    anahtar = (str(model_yolu), ceviri_ayar.batch, ceviri_ayar.diller)
     if anahtar not in _HAZIR:
         cihaz_ad, compute_type = _cihaz()
         try:
-            _HAZIR[anahtar] = Cevirmen(model_yolu, cihaz_ad, compute_type, batch=ceviri_ayar.batch)
+            _HAZIR[anahtar] = Cevirmen(model_yolu, cihaz_ad, compute_type,
+                                       batch=ceviri_ayar.batch, diller=ceviri_ayar.diller)
         except CeviriHatasi as e:
             log.warning("Çeviri yapılamadı: %s", e)
-            return None
+            _HAZIR[anahtar] = None
     return _HAZIR[anahtar]

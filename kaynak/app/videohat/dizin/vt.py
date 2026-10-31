@@ -62,11 +62,17 @@ def ac(yol) -> sqlite3.Connection:
             db.execute("ALTER TABLE sayfa ADD COLUMN ceviri TEXT")
         # Çeviri geçişi her turda "dil IS NULL" sayfalı belgeyi arar; tam tablo taraması olmasın.
         db.execute("CREATE INDEX IF NOT EXISTS ix_sayfa_dil_yok ON sayfa(dosya_id) WHERE dil IS NULL")
-        db.execute("DROP TRIGGER IF EXISTS sayfa_ad")
-        db.execute("""CREATE TRIGGER IF NOT EXISTS sayfa_ad AFTER DELETE ON sayfa BEGIN
-            DELETE FROM sayfa_fts WHERE rowid = old.id;
-            DELETE FROM sayfa_ceviri_fts WHERE rowid = old.id;
-        END;""")
+        # Eski dizinin tetikleyicisi yalnız sayfa_fts'den siler; tek işlemde değiştir (yarıda kalırsa
+        # tetikleyicisiz dizin kalmasın). Güncel dizinde dokunulmaz.
+        tetik = db.execute("SELECT sql FROM sqlite_master WHERE type='trigger' AND name='sayfa_ad'").fetchone()
+        if tetik is None or "sayfa_ceviri_fts" not in tetik[0]:
+            db.executescript("""BEGIN;
+                DROP TRIGGER IF EXISTS sayfa_ad;
+                CREATE TRIGGER sayfa_ad AFTER DELETE ON sayfa BEGIN
+                    DELETE FROM sayfa_fts WHERE rowid = old.id;
+                    DELETE FROM sayfa_ceviri_fts WHERE rowid = old.id;
+                END;
+                COMMIT;""")
         # Yazar ek dizini: büyük/küçük harfi değişmiş yolu tam tablo taraması olmadan bulur (okurlar kullanmaz)
         db.execute("CREATE INDEX IF NOT EXISTS ix_dosya_yol_nocase ON dosya(yol COLLATE NOCASE)")
     except BaseException:

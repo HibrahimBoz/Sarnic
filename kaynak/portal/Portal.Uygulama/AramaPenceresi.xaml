@@ -392,6 +392,12 @@
                                     <Border DockPanel.Dock="Right" Background="{DynamicResource Yuzey2Fircasi}"
                                             BorderBrush="{DynamicResource KenarlikFircasi}" BorderThickness="1"
                                             CornerRadius="3" Padding="5,1" Margin="6,0,0,0" VerticalAlignment="Center"
+                                            Visibility="{Binding CeviriRozetiGorunurluk}">
+                                        <TextBlock Text="çeviriden eşleşti" Foreground="{DynamicResource SolukMetinFircasi}" FontSize="11"/>
+                                    </Border>
+                                    <Border DockPanel.Dock="Right" Background="{DynamicResource Yuzey2Fircasi}"
+                                            BorderBrush="{DynamicResource KenarlikFircasi}" BorderThickness="1"
+                                            CornerRadius="3" Padding="5,1" Margin="6,0,0,0" VerticalAlignment="Center"
                                             Visibility="{Binding OcrGorunur}">
                                         <TextBlock Text="{Binding OcrMetni}" Foreground="{DynamicResource SolukMetinFircasi}" FontSize="11" FontFamily="Consolas, monospace"/>
                                     </Border>
@@ -526,8 +532,13 @@
                                     <GridViewColumn Header="Cümle" Width="550">
                                         <GridViewColumn.CellTemplate>
                                             <DataTemplate>
-                                                <TextBlock local:VurguYardimcisi.VurguBilgisi="{Binding}"
-                                                           TextWrapping="Wrap" Foreground="{DynamicResource MetinFircasi}"/>
+                                                <StackPanel>
+                                                    <TextBlock local:VurguYardimcisi.VurguBilgisi="{Binding}"
+                                                               TextWrapping="Wrap" Foreground="{DynamicResource MetinFircasi}"/>
+                                                    <TextBlock Text="çeviriden eşleşti" FontSize="11" Margin="0,2,0,0"
+                                                               Foreground="{DynamicResource SolukMetinFircasi}"
+                                                               Visibility="{Binding CeviriRozetiGorunurluk}"/>
+                                                </StackPanel>
                                             </DataTemplate>
                                         </GridViewColumn.CellTemplate>
                                     </GridViewColumn>
