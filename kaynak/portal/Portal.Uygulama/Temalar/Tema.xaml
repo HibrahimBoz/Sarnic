@@ -297,6 +297,44 @@
         </Setter>
     </Style>
 
+    <!-- Seçmeli düğme (Özgün / Türkçe): varsayılan düğme görünümü, seçiliyken vurgu rengi -->
+    <Style x:Key="SecmeliDugme" TargetType="{x:Type ToggleButton}">
+        <Setter Property="Background" Value="{StaticResource YuzeyFircasi}"/>
+        <Setter Property="Foreground" Value="{StaticResource MetinFircasi}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource KenarlikFircasi}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Padding" Value="10,5"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type ToggleButton}">
+                    <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="6" SnapsToDevicePixels="True">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                          Margin="{TemplateBinding Padding}"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource VurguFircasi}"/>
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource Yuzey2Fircasi}"/>
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource VurguFircasi}"/>
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource Yuzey2Fircasi}"/>
+                            <Setter Property="Foreground" Value="{StaticResource VurguFircasi}"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource VurguBasiliFircasi}"/>
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource KenarlikFircasi}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- TextBox -->
     <Style TargetType="{x:Type TextBox}">
         <Setter Property="Background" Value="{StaticResource YuzeyFircasi}"/>

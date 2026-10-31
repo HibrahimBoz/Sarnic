@@ -58,7 +58,7 @@
                     <Button x:Name="BelgelerDugmesi" Content="Belgeler (0)" DockPanel.Dock="Right"
                             Padding="8,3" Margin="8,0,0,0" Click="BelgelerDugmesi_Click"
                             Visibility="Collapsed" HorizontalAlignment="Right"/>
-                    <ToggleButton x:Name="CeviriGecisDugmesi" Content="Özgün / Türkçe" DockPanel.Dock="Right"
+                    <ToggleButton x:Name="CeviriGecisDugmesi" Style="{StaticResource SecmeliDugme}" Content="Özgün / Türkçe" DockPanel.Dock="Right"
                                   Padding="8,3" Margin="8,0,0,0" Click="CeviriGecisDugmesi_Click"
                                   Visibility="Collapsed" HorizontalAlignment="Right"/>
                     <CheckBox x:Name="OtoKaydirKutusu" Content="Otomatik kaydır" IsChecked="True"
