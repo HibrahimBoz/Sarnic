@@ -1,5 +1,5 @@
 # ==============================================================================
-# VideoHat Dağıtım Paketi Hazırlama Betiği (hazirla.ps1)
+# Sarnıç Atölye Dağıtım Paketi Hazırlama Betiği (hazirla.ps1)
 # Windows PowerShell 5.1+ ve PowerShell 7 uyumludur.
 # ==============================================================================
 
@@ -33,8 +33,8 @@ try {
     $KaynakKlasoru = Join-Path $ProjeKoku 'kaynak'
     $DistKlasoru = Join-Path $ProjeKoku 'dist'
 
-    $GpuPaketYolu = Join-Path $DistKlasoru 'VideoHat-GPU'
-    $CpuPaketYolu = Join-Path $DistKlasoru 'VideoHat-CPU'
+    $GpuPaketYolu = Join-Path $DistKlasoru 'SarnicAtolye-GPU'
+    $CpuPaketYolu = Join-Path $DistKlasoru 'SarnicAtolye-CPU'
 
     if (-not (Test-Path $IndirKlasoru)) {
         New-Item -ItemType Directory -Path $IndirKlasoru -Force | Out-Null
@@ -1110,7 +1110,7 @@ print(f"MODEL_TAMAMLANDI:{resolved_sha}")
         $zipGecerli = $false
 
         try {
-            $release = Invoke-RestMethod -Uri $apiUrl -Headers @{ 'User-Agent' = 'VeriFirini-Paketleyici' } -TimeoutSec 15
+            $release = Invoke-RestMethod -Uri $apiUrl -Headers @{ 'User-Agent' = 'SarnicAtolye-Paketleyici' } -TimeoutSec 15
             if ($release -and $release.tag_name) {
                 $surum = $release.tag_name -replace '^v', ''
                 $assetAdi = "$adKucuk-$surum-windows-x64-portable.zip"
@@ -1367,7 +1367,7 @@ print(f"MODEL_TAMAMLANDI:{resolved_sha}")
         $gpuBuyukler = Get-DosyaHashVeBoyutListesi -KokDizin $GpuPaketYolu
         $surumSb = [System.Text.StringBuilder]::new()
         [void]$surumSb.AppendLine("================================================================================")
-        [void]$surumSb.AppendLine("VideoHat Dagitim Paketi: dist\VideoHat-GPU")
+        [void]$surumSb.AppendLine("SarnicAtolye Dagitim Paketi: dist\SarnicAtolye-GPU")
         [void]$surumSb.AppendLine("Olusturma Tarihi: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')")
         [void]$surumSb.AppendLine("================================================================================")
         [void]$surumSb.AppendLine("")
@@ -1409,7 +1409,7 @@ print(f"MODEL_TAMAMLANDI:{resolved_sha}")
         }
 
         [System.IO.File]::WriteAllText((Join-Path $GpuPaketYolu "SURUMLER.txt"), $surumSb.ToString(), [System.Text.Encoding]::UTF8)
-        $uretilenPaketler += @{ Ad = "dist\VideoHat-GPU"; Yol = $GpuPaketYolu; Buyukler = $gpuBuyukler }
+        $uretilenPaketler += @{ Ad = "dist\SarnicAtolye-GPU"; Yol = $GpuPaketYolu; Buyukler = $gpuBuyukler }
     }
 
     # CPU Paketini Kur
@@ -1446,7 +1446,7 @@ print(f"MODEL_TAMAMLANDI:{resolved_sha}")
         $cpuBuyukler = Get-DosyaHashVeBoyutListesi -KokDizin $CpuPaketYolu
         $surumSbCpu = [System.Text.StringBuilder]::new()
         [void]$surumSbCpu.AppendLine("================================================================================")
-        [void]$surumSbCpu.AppendLine("VideoHat Dagitim Paketi: dist\VideoHat-CPU")
+        [void]$surumSbCpu.AppendLine("SarnicAtolye Dagitim Paketi: dist\SarnicAtolye-CPU")
         [void]$surumSbCpu.AppendLine("Olusturma Tarihi: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')")
         [void]$surumSbCpu.AppendLine("================================================================================")
         [void]$surumSbCpu.AppendLine("")
@@ -1489,7 +1489,7 @@ print(f"MODEL_TAMAMLANDI:{resolved_sha}")
         }
 
         [System.IO.File]::WriteAllText((Join-Path $CpuPaketYolu "SURUMLER.txt"), $surumSbCpu.ToString(), [System.Text.Encoding]::UTF8)
-        $uretilenPaketler += @{ Ad = "dist\VideoHat-CPU"; Yol = $CpuPaketYolu; Buyukler = $cpuBuyukler }
+        $uretilenPaketler += @{ Ad = "dist\SarnicAtolye-CPU"; Yol = $CpuPaketYolu; Buyukler = $cpuBuyukler }
     }
 
     # --------------------------------------------------------------------------

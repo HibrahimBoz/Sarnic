@@ -266,26 +266,33 @@ public sealed class ArtCraftKataloguTestleri : IDisposable
     }
 
     [Fact]
-    public void DizinAyari_VarsayilanVeriDedektifiVeEskiBulguGecisi()
+    public void DizinAyari_VarsayilanSarnicVeEskiKlasorGecisi()
     {
         string testKok = Path.Combine(_geciciKlasor, "kok");
         Directory.CreateDirectory(testKok);
+        string ayarYolu = Path.Combine(testKok, "olmayan_ayar.json");
 
-        // Durum 1: İki klasör de yokken -> <kok>\_veridedektifi
-        string yol1 = DizinAyari.Coz(testKok);
-        Assert.Equal(Path.Combine(testKok, "_veridedektifi"), yol1);
+        // Durum 1: Hiçbiri yok -> <kok>\_sarnic
+        string yol1 = DizinAyari.Coz(testKok, ayarYolu);
+        Assert.Equal(Path.Combine(testKok, "_sarnic"), yol1);
 
-        // Durum 2: Yalnızca eski _bulgu varken -> <kok>\_bulgu
-        string eskiBulgu = Path.Combine(testKok, "_bulgu");
-        Directory.CreateDirectory(eskiBulgu);
-        string yol2 = DizinAyari.Coz(testKok);
-        Assert.Equal(eskiBulgu, yol2);
+        // Durum 2: Yalnız _bulgu varken -> <kok>\_bulgu
+        string bulgu = Path.Combine(testKok, "_bulgu");
+        Directory.CreateDirectory(bulgu);
+        string yol2 = DizinAyari.Coz(testKok, ayarYolu);
+        Assert.Equal(bulgu, yol2);
 
-        // Durum 3: Yeni _veridedektifi de varken -> <kok>\_veridedektifi öncelikli
-        string yeniVeriDedektifi = Path.Combine(testKok, "_veridedektifi");
-        Directory.CreateDirectory(yeniVeriDedektifi);
-        string yol3 = DizinAyari.Coz(testKok);
-        Assert.Equal(yeniVeriDedektifi, yol3);
+        // Durum 3: _bulgu + _veridedektifi varken -> <kok>\_veridedektifi
+        string veriDedektifi = Path.Combine(testKok, "_veridedektifi");
+        Directory.CreateDirectory(veriDedektifi);
+        string yol3 = DizinAyari.Coz(testKok, ayarYolu);
+        Assert.Equal(veriDedektifi, yol3);
+
+        // Durum 4: Üçü de varken -> <kok>\_sarnic
+        string sarnic = Path.Combine(testKok, "_sarnic");
+        Directory.CreateDirectory(sarnic);
+        string yol4 = DizinAyari.Coz(testKok, ayarYolu);
+        Assert.Equal(sarnic, yol4);
     }
 
     [Theory]

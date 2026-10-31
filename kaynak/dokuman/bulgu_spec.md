@@ -406,12 +406,12 @@ Mevcut tüm testler geçmeye devam eder.
 ## 11. Sürüm 2 eki (kullanıcı isteği 2026-10-30): adlar, eski biçimler, ArtCraft ile açma, simgeler
 
 ### 11.1 Adlar (kullanıcının seçimi)
-- Veri işleme parçası (Python; video transkript, belge, OCR, dizinleme): **Veri Fırını**.
-- Veri sunumu parçası (WPF; video izleme, belge/dosya bulma): **Veri Dedektifi**.
-- Kullanıcıya görünen "Bulgu", "Bulgu İşleyici", "Bulgu Portalı" metinlerinin hepsi bu iki ada döner. Pencere başlıkları:
-  `Veri Dedektifi — Arama`, `Veri Dedektifi — Oynatıcı — {ad}`, `Veri Dedektifi — Belge — {ad}`. Menü başlığı: `Veri Fırını`.
-- Depo klasörü varsayılanı `<kök>\_bulgu` → `<kök>\_veridedektifi`. Yerel klasör `%LOCALAPPDATA%\Bulgu` → `%LOCALAPPDATA%\VeriDedektifi`.
-- Paket adları: `dist\VeriFirini-Paketi` (+`.7z`), `dist\VeriDedektifi` (+`.7z`). İç kod adları (videohat, Portal.*) DEĞİŞMEZ.
+- Ad kararı (2026-10-31): veri işleme parçası (Python) **Sarnıç Atölye**; veri sunumu parçası (WPF) **Sarnıç**. Önceki adlar: Veri Fırını, Veri Dedektifi, Bulgu.
+- Teknik adlar yalnız ASCII: exe `Sarnic.exe`, paketler `dist\SarnicAtolye-Paketi` (+`.7z`) ve `dist\Sarnic` (+`.7z`), GitHub deposu `Sarnic`. Sebep: PowerShell 5.1 Türkçe harfli yolu bozdu (ölçüldü).
+- Pencere başlıkları: `<başlık> — Arama`, `<başlık> — Oynatıcı — {ad}`, `<başlık> — Belge — {ad}`. `<başlık>` = paket `ayar.json` içindeki `kurum` doluysa `<kurum> Sarnıç`, boşsa `Sarnıç` (`Portal.Cekirdek.UrunAdi`). Menü başlığı: `Sarnıç Atölye`.
+- Depo klasörü: `_sarnic` varsa o; yoksa `_veridedektifi`; yoksa `_bulgu`; hiçbiri yoksa `_sarnic`. Python (`dizinle.varsayilan_depo`) ve C# (`DizinAyari.Coz`) aynı kuralı uygular. Tarama dışı listesi üçünü de içerir.
+- Yerel klasör `%LOCALAPPDATA%\Sarnic`. Kullanıcı ayarı yoksa eski `%LOCALAPPDATA%\VideoPortali\kullanici.json` okunur.
+- İç kod adları (videohat, Portal.*, VIDEOHAT_*) DEĞİŞMEZ.
 
 ### 11.2 Eski biçimler (2000 ve öncesi belgeler)
 Dönüştürücüler (bulunduğu sırayla denenir): paketteki `araclar\libreoffice\program\soffice.exe`, sistemdeki
@@ -437,21 +437,21 @@ Dönüştürücüler (bulunduğu sırayla denenir): paketteki `araclar\libreoffi
 | Eski düz metin | `.txt .asc .nfo .lst .prn .dos` | kodlama: BOM → UTF-8 → cp1254 / ISO-8859-9 / **cp857 (DOS Türkçe)** puanlaması (Türkçe harf sıklığı en yüksek olan; kutu çizme karakterleri cp857 lehine) |
 
 - Dönüştürülen modern kopya depoda `<sha>\duzenlenebilir.<docx|xlsx|pptx|pdf>` olarak SAKLANIR (`belge.json`'a
-  `"duzenlenebilir": "duzenlenebilir.docx"`). Veri Dedektifi bunu ArtCraft ile açma seçeneği olarak sunar.
+  `"duzenlenebilir": "duzenlenebilir.docx"`). Sarnıç bunu ArtCraft ile açma seçeneği olarak sunar.
 - Dönüştürücü yoksa: `durum='desteklenmiyor'`, `hata` hangi aracın eksik olduğunu söyler (ör. "Eski WordPerfect: LibreOffice bulunamadı").
 - Tür kuralı (5.7): bu tablodaki tüm uzantılar `belge` (görüntü satırı ve DjVu `goruntu`).
 
-### 11.3 ArtCraft ile açma (Veri Dedektifi)
+### 11.3 ArtCraft ile açma (Sarnıç)
 - ArtCraft (storytold/*, Apache-2.0) uygulamaları: WordCraft (`.docx .docm .dotx .dotm .doc .dot .rtf .odt .md .txt .html .tex`),
   GridCraft (`.xlsx .xlsm .xlsb .xls .ods .csv .tsv`), DeckCraft (`.pptx .potx .ppsx`), PdfCraft (`.pdf`),
   PhotoCraft (`.png .jpg .jpeg .tif .tiff .bmp .gif .webp .tga .psd .ico .avif`), FigCraft (`.svg`), CADCraft (`.dwg .dxf`).
   Açma komutu: `<uygulama>.exe "<dosya>"` (kayıt defterindeki `shell\open\command` ile aynı; ölçüldü).
-- Bulma sırası (Çekirdek `ArtCraftKatalogu`): (1) Veri Dedektifi klasörü altında `artcraft\<uygulama>\**\<uygulama>.exe`
+- Bulma sırası (Çekirdek `ArtCraftKatalogu`): (1) Sarnıç klasörü altında `artcraft\<uygulama>\**\<uygulama>.exe`
   (paketlenen taşınabilir sürüm), (2) `%ProgramFiles%\<Uygulama>\<uygulama>.exe`, (3) `%LOCALAPPDATA%\Programs\<Uygulama>\`.
   Aynı uygulamanın birden çok kopyası varsa **en yüksek sürüm** (FileVersionInfo.ProductVersion) seçilir.
 - Arayüz: Dosyalar ve Belgeler sonuçlarının sağ tık menüsüne `Düzenle ▸ <Uygulama sürüm>` (uzantıya uyanlar) ve
   `Birlikte aç ▸ Windows varsayılanı`; dosyanın düzenlenebilir kopyası varsa `Düzenlenebilir kopyayı aç (<Uygulama>)` →
-  kopya önce `%USERPROFILE%\Documents\Veri Dedektifi\<özgün ad>.<yeni uzantı>`'ya kopyalanır (arşivdeki özgün değişmez).
+  kopya önce `%USERPROFILE%\Documents\Sarnic\<özgün ad>.<yeni uzantı>`'ya kopyalanır (arşivdeki özgün değişmez).
   Belge görüntüleyicinin üst çubuğunda `Düzenle (<Uygulama>)` düğmesi.
 - Uygun uygulama yoksa menü maddesi gri ve ipucu: "ArtCraft uygulaması bulunamadı".
 
@@ -463,7 +463,7 @@ Dönüştürücüler (bulunduğu sırayla denenir): paketteki `araclar\libreoffi
   İndirme başarısızsa uyarı yazılır, paketleme sürer (ArtCraft isteğe bağlıdır).
 
 ### 11.5 Simgeler
-- Gemini her iki uygulama için adına göre SVG simge tasarlar: Veri Fırını (veri + fırın), Veri Dedektifi (büyüteç + belge/film).
+- Gemini her iki uygulama için adına göre SVG simge tasarlar: Sarnıç Atölye (veri + fırın), Sarnıç (büyüteç + belge/film).
   256×256 görünüm kutusu, 16 piksele küçülünce de okunur, düz renk + en çok 3 renk, metin yok.
-  SVG → PNG (PyMuPDF) → çok boyutlu `.ico` (16, 24, 32, 48, 64, 128, 256; Pillow). Dosyalar: `kaynak/varliklar/veri-firini.svg`,
-  `veri-dedektifi.svg`; portal `Varliklar\uygulama.ico` + `logo-256.png`, menü `baslat\logo-256.png` bunlarla değişir.
+  SVG → PNG (PyMuPDF) → çok boyutlu `.ico` (16, 24, 32, 48, 64, 128, 256; Pillow). Dosyalar: `kaynak/varliklar/sarnic-atolye.svg`,
+  `sarnic.svg` (simgelerin görseli henüz eski; yeni simge ayrı iş); portal `Varliklar\uygulama.ico` + `logo-256.png`, menü `baslat\logo-256.png` bunlarla değişir.

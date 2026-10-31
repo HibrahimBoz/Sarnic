@@ -1,4 +1,4 @@
-# Veri Fırını ve Veri Dedektifi
+# Sarnıç Atölye ve Sarnıç
 
 Kapalı ağda çalışan birleşik arama paketi üç temel yetenek sunar:
 
@@ -8,13 +8,14 @@ Kapalı ağda çalışan birleşik arama paketi üç temel yetenek sunar:
 
 Paket iki parçadan oluşur:
 
-1. **Veri Fırını** (`kaynak/app/videohat`, Python): Videolardan transkript çıkarır, belgelerden metin çıkarıp OCR uygular, eski belge biçimlerini dönüştürür ve arama dizini üretir. Elektronik harp terim sözlüğü (`kaynak/terimler.txt`) ve düzeltme katmanı içerir. Çok kameralı ve parçalı kayıtlar için `isle-grup` komutu ve ses tabanlı senkron (`senkron.py`, `parca_zinciri.py`, `ders_json.py`) vardır.
-2. **Veri Dedektifi** (`kaynak/portal`, .NET 8 + WPF + LibVLCSharp): Dosya adlarını, belge sayfalarını ve video transkriptlerini tek noktadan arar. Transkriptteki cümleye tıklayınca videoyu o dakikada açar, belge sonucuna tıklayınca ilgili sayfayı açar, çok açılı dersleri senkron oynatır. Sonuçları doğrudan ArtCraft taşınabilir uygulamalarıyla açıp düzenleme olanağı sunar. Düzenleme modu parola ister; her düzeltme ayrı dosyadır ve kimin yazdığı kaydedilir.
+1. **Sarnıç Atölye** (`kaynak/app/videohat`, Python): Videolardan transkript çıkarır, belgelerden metin çıkarıp OCR uygular, eski belge biçimlerini dönüştürür ve arama dizini üretir. Elektronik harp terim sözlüğü (`kaynak/terimler.txt`) ve düzeltme katmanı içerir. Çok kameralı ve parçalı kayıtlar için `isle-grup` komutu ve ses tabanlı senkron (`senkron.py`, `parca_zinciri.py`, `ders_json.py`) vardır.
+2. **Sarnıç** (`kaynak/portal`, .NET 8 + WPF + LibVLCSharp): Dosya adlarını, belge sayfalarını ve video transkriptlerini tek noktadan arar. Transkriptteki cümleye tıklayınca videoyu o dakikada açar, belge sonucuna tıklayınca ilgili sayfayı açar, çok açılı dersleri senkron oynatır. Sonuçları doğrudan ArtCraft taşınabilir uygulamalarıyla açıp düzenleme olanağı sunar. Düzenleme modu parola ister; her düzeltme ayrı dosyadır ve kimin yazdığı kaydedilir.
 
-Yeni çıktı klasörleri `<ad>_islenmis` ekiyle oluşturulur. Veri Dedektifi eski `<ad>_videoperisi` klasörlerini de tarar.
+Yeni çıktı klasörleri `<ad>_islenmis` ekiyle oluşturulur. Sarnıç eski `<ad>_videoperisi` klasörlerini de tarar.
+Portal paketindeki `ayar.json` dosyasının `kurum` alanı pencere başlığına ön ek olur: `<kurum> Sarnıç`.
 
 - **Eski belge biçimleri (2000 ve öncesi)**: LibreOffice, DjVuLibre ve 7-Zip entegrasyonuyla eski metin, hesap tablosu, sunum ve arşiv biçimleri modern biçimlere dönüştürülür ve düzenlenebilir kopyaları (`duzenlenebilir.docx` vb.) depoda saklanır.
-- **ArtCraft entegrasyonu**: WordCraft, GridCraft, DeckCraft, PdfCraft ve PhotoCraft taşınabilir uygulamaları pakette yerleşik gelir (`artcraft\` klasörü). Sonuçlara sağ tıklayarak veya belge görüntüleyiciden doğrudan düzenleme yapılır; düzenlenebilir kopyalar `%USERPROFILE%\Documents\Veri Dedektifi\` altına kopyalanır ve arşivdeki özgün dosya asla değişmez. Sistemde birden çok sürüm varsa en güncel sürüm kendiliğinden seçilir.
+- **ArtCraft entegrasyonu**: WordCraft, GridCraft, DeckCraft, PdfCraft ve PhotoCraft taşınabilir uygulamaları pakette yerleşik gelir (`artcraft\` klasörü). Sonuçlara sağ tıklayarak veya belge görüntüleyiciden doğrudan düzenleme yapılır; düzenlenebilir kopyalar `%USERPROFILE%\Documents\Sarnic\` altına kopyalanır ve arşivdeki özgün dosya asla değişmez. Sistemde birden çok sürüm varsa en güncel sürüm kendiliğinden seçilir.
 
 ## Belge ve dizin
 

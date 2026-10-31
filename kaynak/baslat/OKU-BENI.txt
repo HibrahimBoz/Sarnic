@@ -1,12 +1,12 @@
-Veri Fırını  —  KAPALI AĞ İÇİN HAZIR (Windows 10/11, 64 bit)
+Sarnıç Atölye  —  KAPALI AĞ İÇİN HAZIR (Windows 10/11, 64 bit)
 ================================================================
-KURULUM YOK. 7z dosyasını açın (örn. D:\VeriFirini-Paketi) ve BASLAT.bat çift tıklayın.
+KURULUM YOK. 7z dosyasını açın (örn. D:\SarnicAtolye-Paketi) ve BASLAT.bat çift tıklayın.
   - Python, ffmpeg, modeller, Kdenlive: hepsi pakette. İnternet, yönetici yetkisi, ek yazılım GEREKMEZ.
-  - Yol boşluk/Türkçe karakter içerebilir; yine de kısa bir yol (D:\VeriFirini-Paketi) önerilir.
+  - Yol boşluk/Türkçe karakter içerebilir; yine de kısa bir yol (D:\SarnicAtolye-Paketi) önerilir.
 
 İÇİNDEKİLER
   BASLAT.bat          menüyü açar: video seç / klasör seç / izleme / Kdenlive / test
-  VideoPerisi\        transkript + belge/OCR + dizinleme motoru (KULLANIM.txt içinde ayrıntı)
+  SarnicAtolye\        transkript + belge/OCR + dizinleme motoru (KULLANIM.txt içinde ayrıntı)
   Kdenlive\           Kdenlive 26.08.1 (taşınabilir; Kdenlive\...\bin\kdenlive.exe)
   Menü 8 ve 9         Menü 8 belge/görüntü işler (metin + aranabilir PDF); Menü 9 portal için dizinleme başlatır.
   artcraft\           ArtCraft taşınabilir ofis/belge araçları (WordCraft, GridCraft, DeckCraft, PdfCraft, PhotoCraft)
@@ -22,6 +22,6 @@ DONANIM
 
 NOTLAR
   - Windows Defender/AppLocker taşınabilir .exe ve .dll'leri engellerse klasörü "izin verilen" listesine ekletin.
-  - İşlenen videoların yanında "<ad>_islenmis" klasörü oluşur: .srt/.vtt/.txt transkript + TEK nihai video (<ad>_islenmis.mp4: ses temizlenmiş, istenirse görüntü de iyileştirilmiş). Veri Dedektifi (portal) eski "<ad>_videoperisi" klasörlerini de tarar.
+  - İşlenen videoların yanında "<ad>_islenmis" klasörü oluşur: .srt/.vtt/.txt transkript + TEK nihai video (<ad>_islenmis.mp4: ses temizlenmiş, istenirse görüntü de iyileştirilmiş). Sarnıç (portal) eski "<ad>_videoperisi" klasörlerini de tarar.
     SRT dosyasını Kdenlive'da Kdenlive altyazı özelliğiyle (altyazı dosyası içe aktarma) ekleyebilirsiniz.
   - Kdenlive ilk açılışta ayar sorabilir; ağ gerektirmez.

@@ -5,33 +5,43 @@ using System.Text.Json;
 using Portal.Cekirdek;
 
 /// <summary>
-/// Veri Dedektifi dizin klasör yolunu ayar.json veya varsayılan kurallara göre çözen sınıf.
+/// Sarnıç dizin klasör yolunu ayar.json veya varsayılan kurallara göre çözen sınıf.
 /// </summary>
 public static class DizinAyari
 {
     /// <summary>
     /// Kök klasör ve isteğe bağlı paket ayar yolu kullanarak etkin dizin klasör yolunu belirler.
-    /// paket ayar.json'da "dizin" alanı doluysa o döner, aksi halde Path.Combine(kok, "_veridedektifi") döner.
-    /// "_veridedektifi" yoksa ve "_bulgu" varsa eski kurulum klasörü kullanılır.
+    /// paket ayar.json'da "dizin" alanı doluysa o döner.
+    /// Aksi halde seçim sırası: "_sarnic" varsa o, yoksa "_veridedektifi" varsa o, yoksa "_bulgu" varsa o, hiçbiri yoksa "_sarnic".
     /// </summary>
     public static string Coz(string kok, string? paketAyarYolu = null)
     {
         string kokDizin = kok ?? string.Empty;
-        string yeniVarsayilan = Path.Combine(kokDizin, "_veridedektifi");
-        string eskiVarsayilan = Path.Combine(kokDizin, "_bulgu");
+        string sarnicYolu = Path.Combine(kokDizin, "_sarnic");
+        string veriDedektifiYolu = Path.Combine(kokDizin, "_veridedektifi");
+        string bulguYolu = Path.Combine(kokDizin, "_bulgu");
 
-        bool yeniVar = false;
-        bool eskiVar = false;
+        bool sarnicVar = false;
+        bool veriDedektifiVar = false;
+        bool bulguVar = false;
         try
         {
-            yeniVar = Directory.Exists(yeniVarsayilan);
-            eskiVar = Directory.Exists(eskiVarsayilan);
+            sarnicVar = Directory.Exists(sarnicYolu);
+            veriDedektifiVar = Directory.Exists(veriDedektifiYolu);
+            bulguVar = Directory.Exists(bulguYolu);
         }
         catch
         {
         }
 
-        string varsayilan = !yeniVar && eskiVar ? eskiVarsayilan : yeniVarsayilan;
+        string varsayilan = sarnicVar
+            ? sarnicYolu
+            : veriDedektifiVar
+                ? veriDedektifiYolu
+                : bulguVar
+                    ? bulguYolu
+                    : sarnicYolu;
+
         string ayarYolu = string.IsNullOrWhiteSpace(paketAyarYolu)
             ? KokYapilandirma.VarsayilanPaketAyarYolu
             : paketAyarYolu;

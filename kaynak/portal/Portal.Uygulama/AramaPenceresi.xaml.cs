@@ -19,7 +19,7 @@ using Portal.Cekirdek;
 using Portal.Cekirdek.Dizin;
 
 /// <summary>
-/// Veri Dedektifi Arama penceresi: Video, dosya ve belge aramalarını birleşik sunar.
+/// Sarnıç Arama penceresi: Video, dosya ve belge aramalarını birleşik sunar.
 /// </summary>
 public partial class AramaPenceresi : Window
 {
@@ -60,6 +60,7 @@ public partial class AramaPenceresi : Window
     public AramaPenceresi(string kokKlasor)
     {
         InitializeComponent();
+        Title = $"{UrunAdi.Etkin} — Arama";
         _kokKlasor = string.IsNullOrWhiteSpace(kokKlasor) ? Directory.GetCurrentDirectory() : kokKlasor;
         _aramaMotoru = new MetinAramaMotoru(new IndeksOnbellek(), new DuzeltmeDeposu(_kokKlasor));
 

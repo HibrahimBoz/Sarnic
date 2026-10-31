@@ -1,4 +1,4 @@
-# Veri Dedektifi'ni ayrı paketler: self-contained klasör (libvlc yanında) + 7z. ClickOnce kullanmaz.
+# Sarnıç'ı ayrı paketler: self-contained klasör (libvlc yanında) + 7z. ClickOnce kullanmaz.
 param(
     [string]$SevenZip = 'C:\Program Files\7-Zip\7z.exe',
     [string]$Kok = '',          # ayar.json "kok" değeri (örn. D:\Dersler); boşsa portal klasör sorar
@@ -9,7 +9,7 @@ $ProgressPreference = 'SilentlyContinue'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 $proje = $PSScriptRoot
 $csproj = Join-Path $proje 'kaynak\portal\Portal.Uygulama\Portal.Uygulama.csproj'
-$cikis = Join-Path $proje 'dist\VeriDedektifi'
+$cikis = Join-Path $proje 'dist\Sarnic'
 if (Test-Path $cikis) { Remove-Item $cikis -Recurse -Force }
 
 Write-Host '[1/5] Yayın...'
@@ -24,7 +24,7 @@ if (-not (Test-Path $dll) -or $eklenti -lt 100) { throw "libvlc eksik: libvlc.dl
 Write-Host "  libvlc.dll var, eklenti dll: $eklenti"
 
 # İlk açılışta tüm eklentileri taramaması için önbelleği yayının kendi LibVLC'siyle üret.
-$onbellekIslemi = Start-Process -FilePath (Join-Path $cikis 'Portal.Uygulama.exe') -ArgumentList '--vlc-onbellek' -WindowStyle Hidden -PassThru
+$onbellekIslemi = Start-Process -FilePath (Join-Path $cikis 'Sarnic.exe') -ArgumentList '--vlc-onbellek' -WindowStyle Hidden -PassThru
 # Yeni yayımlanan 321 DLL ilk yüklemede taranır (ölçüldü: betik içinde 60 sn yetmedi, ikinci koşu 5 sn)
 if (-not $onbellekIslemi.WaitForExit(300000)) {
     $onbellekIslemi.Kill()
@@ -65,7 +65,7 @@ foreach ($ad in $ArtCraft) {
     $zipGecerli = $false
 
     try {
-        $release = Invoke-RestMethod -Uri $apiUrl -Headers @{ 'User-Agent' = 'VeriFirini-Paketleyici' } -TimeoutSec 15
+        $release = Invoke-RestMethod -Uri $apiUrl -Headers @{ 'User-Agent' = 'SarnicAtolye-Paketleyici' } -TimeoutSec 15
         if ($release -and $release.tag_name) {
             $surum = $release.tag_name -replace '^v', ''
             $assetAdi = "$adKucuk-$surum-windows-x64-portable.zip"
@@ -162,11 +162,12 @@ foreach ($ad in $ArtCraft) {
 Write-Host '[4/5] ayar.json ve OKU-BENI...'
 if ($Kok) { Set-Content (Join-Path $cikis 'ayar.json') (@{ kok = $Kok } | ConvertTo-Json) -Encoding UTF8 }
 @"
-Veri Dedektifi (kapalı ağ)
-KURULUM YOK. Bu klasörü yerel diske açın (örn. D:\VeriDedektifi). Portal.Uygulama.exe dosyasını çalıştırın.
+Sarnıç (kapalı ağ)
+KURULUM YOK. Bu klasörü yerel diske açın (örn. D:\Sarnic). Sarnic.exe dosyasını çalıştırın.
 - .NET ve libvlc klasörün içindedir. İnternet, yönetici yetkisi gerekmez.
 - ayar.json: "kok" alanına işlenmiş derslerin klasörünü yazın (boşsa portal sorar).
-- ayar.json: "dizin" alanına arama dizini klasörünü yazın (boşsa <kok>\_veridedektifi kullanılır).
+- ayar.json: "dizin" alanına arama dizini klasörünü yazın (boşsa <kok>\_sarnic kullanılır).
+- ayar.json: "kurum" alanına kurum adını yazın; pencere başlıkları "<kurum> Sarnıç" olur.
 - Yeni çıktı klasörleri _islenmis ekiyle bulunur; eski _videoperisi klasörleri de okunur.
 - Ağ paylaşımından çalıştırmayın (Windows güvenlik uyarısı). Yerel diskten çalıştırın.
 - Video açılmazsa: libvlc\win-x64\libvlc.dll ve libvlc\win-x64\plugins\ klasörü yerinde mi bakın.
@@ -178,7 +179,7 @@ if ($artcraftSurumListesi.Count -gt 0) {
 }
 
 Write-Host '[5/5] 7z...'
-$arsiv = Join-Path $proje 'dist\VeriDedektifi.7z'
+$arsiv = Join-Path $proje 'dist\Sarnic.7z'
 if (Test-Path $arsiv) { Remove-Item $arsiv -Force }
 & $SevenZip a -t7z -mx=5 $arsiv $cikis | Select-Object -Last 3
 if ($LASTEXITCODE -ne 0) { throw "7z hata kodu $LASTEXITCODE" }

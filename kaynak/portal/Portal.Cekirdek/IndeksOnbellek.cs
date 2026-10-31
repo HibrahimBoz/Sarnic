@@ -188,7 +188,7 @@ public class IndeksOnbellek
 
         string anaKlasor = !string.IsNullOrEmpty(_ozelKlasorYolu)
             ? _ozelKlasorYolu
-            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "VideoPortali", "indeks");
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Sarnic", "indeks");
 
         return Path.Combine(anaKlasor, $"{hash}.json");
     }

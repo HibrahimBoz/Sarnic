@@ -1,4 +1,4 @@
-Veri Fırını — çevrimdışı video transkript, belge metni, OCR ve dizin
+Sarnıç Atölye — çevrimdışı video transkript, belge metni, OCR ve dizin
 ===========================================================================
 KURULUM YOK. Bu klasörü hedef makineye olduğu gibi kopyalayın (USB/robocopy). Python, ffmpeg,
 internet, yönetici yetkisi GEREKMEZ. Yol boşluk/Türkçe karakter içerebilir.
@@ -11,7 +11,7 @@ Tek paket her makinede çalışır: NVIDIA kart varsa (RTX 3060/3070...; sürüc
 2) TEK VİDEO / KLASÖR — calistir.bat dosyasının ÜSTÜNE video(lar)ı sürükleyin, ya da:
      calistir.bat "D:\dersler\ders1.mp4"
      calistir.bat "D:\dersler" --cikis "D:\cikti"
-   Çıktı (varsayılan: videonun yanında ders1_islenmis\; Veri Dedektifi eski _videoperisi klasörlerini de tarar):
+   Çıktı (varsayılan: videonun yanında ders1_islenmis\; Sarnıç eski _videoperisi klasörlerini de tarar):
      ders1.srt / .vtt / .txt / .json   transkript (zaman damgalı)
      ders1_islenmis.mp4                TEK nihai video: ses temizlenmiş (-16 LUFS); --goruntu seçildiyse
                                        görüntü de iyileştirilmiş (aksi halde görüntü aynen kopyalanır);
@@ -41,7 +41,7 @@ Tek paket her makinede çalışır: NVIDIA kart varsa (RTX 3060/3070...; sürüc
      - Alt klasörler (cam1\, cam2\...) veya
      - Düz klasörde parçalı/sayılı veya tekil dosyalar (kamera1_01.mp4, kamera2_01.mp4, ders.mp4, ses.wav).
    Ses tabanlı senkron (GCC-PHAT) ile ofset/drift hesaplanır, referans kanalın transkripti tam bantta
-   çıkarılır ve Veri Dedektifi ile uyumlu ders.json üretilir:
+   çıkarılır ve Sarnıç ile uyumlu ders.json üretilir:
      <ders_adi>_islenmis\ders.json, .srt, .vtt, .txt, .json
 
 5) BELGE İŞLEME — belge.bat dosyasının üstüne sürükleyin ya da komut satırından çalıştırın:
@@ -75,11 +75,11 @@ Tek paket her makinede çalışır: NVIDIA kart varsa (RTX 3060/3070...; sürüc
      Paket LibreOffice, DjVuLibre ve 7-Zip araçlarını içerir; ek kurulum gerekmez.
      LibreOffice klasörü silinirse .doc/.xls için ArtCraft yedeği denenir, diğerleri desteklenmiyor olur.
 
-6) DİZİNLEME (Veri Dedektifi için) — dizinle.bat çalıştırın:
+6) DİZİNLEME (Sarnıç için) — dizinle.bat çalıştırın:
      dizinle.bat --kok "\\sunucu\Arsiv"
    Kök klasörleri ayar.toml dosyasında [dizin] kokler alanına da yazabilirsiniz.
    Çalışma kuralları:
-     1. Depo klasörü olarak <kok>\_veridedektifi kullanılır.
+     1. Depo klasörü olarak <kok>\_sarnic kullanılır. Eski kurulumda <kok>\_veridedektifi ya da <kok>\_bulgu varsa ve _sarnic yoksa, o klasör kullanılır.
      2. İlk çalıştırmada önce dosya adı kataloğu taranır ve hemen yayınlanır.
      3. İçerik çıkarma ve OCR işlemi dosya boyutuna göre sırayla yürütülür.
      4. İşlem kesilirse sistem kaldığı sayfadan sürdürülür.
@@ -90,7 +90,7 @@ Tek paket her makinede çalışır: NVIDIA kart varsa (RTX 3060/3070...; sürüc
      2. Belge <ad>_belgeler klasöründe bulunuyorsa ve yanında <ad>_islenmis varsa derse bağlanır.
      3. Video dosyası <stem>.mp4 yanında <stem>_islenmis klasörü varsa derse bağlanır.
 
-7) ARAMA SÖZDİZİMİ (Veri Dedektifi) — arama kuralları:
+7) ARAMA SÖZDİZİMİ (Sarnıç) — arama kuralları:
      Sözdizimi         Açıklama                                Örnek
      terim             Sözcük veya alt dize arar               radar
      "ifade"           Tam sözcük öbeği arar                   "darbe tekrarlama"
@@ -111,7 +111,7 @@ Tek paket her makinede çalışır: NVIDIA kart varsa (RTX 3060/3070...; sürüc
 8) ESKİ BELGELER (2000 ve öncesi) — eski dosya biçimlerini dönüştürme ve işleme:
    Sistem eski biçimleri modern biçimlere çevirir ve metin/OCR çıkarır.
    Dönüştürülen modern kopya depoda <sha>\duzenlenebilir.<uzanti> olarak saklanır.
-   Veri Dedektifi bu kopyayı ArtCraft ile açma seçeneği olarak sunar.
+   Sarnıç bu kopyayı ArtCraft ile açma seçeneği olarak sunar.
    Paket LibreOffice, DjVuLibre ve 7-Zip araçlarını içerir; ek kurulum gerekmez.
    Gerekli dönüştürücü araç bulunamazsa durum 'desteklenmiyor' olarak işaretlenir.
 
@@ -130,11 +130,11 @@ Tek paket her makinede çalışır: NVIDIA kart varsa (RTX 3060/3070...; sürüc
    Web arşivi       .mht .mhtml                                            yok
    Eski düz metin   .txt .asc .nfo .lst .prn .dos                          yok
 
-9) BELGEYİ DÜZENLEME (Veri Dedektifi + ArtCraft) — STE-TR kuralları:
+9) BELGEYİ DÜZENLEME (Sarnıç + ArtCraft) — STE-TR kuralları:
    1. Arama sonuçlarında veya belge görünümünde dosyaya sağ tıklayın.
    2. Menüden "Düzenle ▸ <Uygulama Adı>" (WordCraft, GridCraft vb.) seçeneğini tıklayın.
    3. Eski belgeler için "Düzenlenebilir kopyayı aç (<Uygulama>)" komutunu seçin.
-   4. Düzenlenebilir kopya Belgeler\Veri Dedektifi ("%USERPROFILE%\Documents\Veri Dedektifi\") klasörüne kopyalanır.
+   4. Düzenlenebilir kopya Belgeler\Sarnic ("%USERPROFILE%\Documents\Sarnic\") klasörüne kopyalanır.
    5. Arşivdeki özgün dosyayı koruyun; özgün dosya asla değişmez.
    6. ArtCraft uygulamalarını kurmayın; tüm uygulamalar pakette hazır gelir.
    7. Sistemde birden çok sürüm varsa en güncel sürümü kullanın; sistem en yüksek sürümü kendisi seçer.

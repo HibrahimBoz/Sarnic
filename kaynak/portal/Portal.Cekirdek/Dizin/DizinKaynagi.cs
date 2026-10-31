@@ -9,7 +9,7 @@ using Microsoft.Data.Sqlite;
 public enum DizinDurumu { Yok, Hazir, Hata }
 
 /// <summary>
-/// Veri Dedektifi SQLite dizin veritabanı anlık görüntüsünü yerel diske eşleyen ve salt-okur bağlantı sağlayan kaynak.
+/// Sarnıç SQLite dizin veritabanı anlık görüntüsünü yerel diske eşleyen ve salt-okur bağlantı sağlayan kaynak.
 /// </summary>
 public sealed class DizinKaynagi : IDisposable
 {
@@ -35,7 +35,7 @@ public sealed class DizinKaynagi : IDisposable
         DizinKlasoru = dizinKlasoru;
         _yerelKlasor = yerelKlasor ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "VeriDedektifi",
+            "Sarnic",
             "dizin");
         _dosyadanAcildi = false;
         _durum = DizinDurumu.Yok;
@@ -141,7 +141,7 @@ public sealed class DizinKaynagi : IDisposable
                 else
                 {
                     _durum = DizinDurumu.Yok;
-                    _ileti = "Dizin bulunamadı. Veri Fırını'nda dizinle.bat'ı çalıştırın.";
+                    _ileti = "Dizin bulunamadı. Sarnıç Atölye'de dizinle.bat'ı çalıştırın.";
                 }
             }
 

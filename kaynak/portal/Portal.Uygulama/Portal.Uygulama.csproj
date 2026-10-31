@@ -4,12 +4,12 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
     <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
-    <Product>Veri Dedektifi</Product>
-    <AssemblyTitle>Veri Dedektifi</AssemblyTitle>
+    <Product>Sarnıç</Product>
+    <AssemblyTitle>Sarnıç</AssemblyTitle>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
-    <AssemblyName>Portal.Uygulama</AssemblyName>
+    <AssemblyName>Sarnic</AssemblyName>
     <RootNamespace>Portal.Uygulama</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Varliklar\uygulama.ico</ApplicationIcon>

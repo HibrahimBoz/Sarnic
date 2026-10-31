@@ -1,4 +1,4 @@
-﻿# Veri Fırını başlatıcı menüsü (Windows 10/11, yerleşik PowerShell 5.1; kurulum gerektirmez).
+﻿# Sarnıç Atölye başlatıcı menüsü (Windows 10/11, yerleşik PowerShell 5.1; kurulum gerektirmez).
 # Etkileşimli: BASLAT.bat çift tıklanır. Otomatik test: -Dosya <yol> [-Agir e|h] [-Goruntu e|h]
 param(
     [string]$Dosya = '',
@@ -7,15 +7,15 @@ param(
 )
 $ErrorActionPreference = 'Continue'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-$kok = Split-Path -Parent $PSScriptRoot          # ...\VideoPerisi  (bu dosya araclar\ altında)
-$paketKok = Split-Path -Parent $kok              # ...\VideoPerisi-Paketi
+$kok = Split-Path -Parent $PSScriptRoot          # ...\SarnicAtolye  (bu dosya araclar\ altında)
+$paketKok = Split-Path -Parent $kok              # ...\SarnicAtolye-Paketi
 $kdenlive = Get-ChildItem (Join-Path $paketKok 'Kdenlive') -Recurse -Filter kdenlive.exe -ErrorAction SilentlyContinue | Select-Object -First 1
 $env:VIDEOHAT_PAUSE = '0'
 
 function Baslik {
     Clear-Host
     Write-Host '=============================================' -ForegroundColor Cyan
-    Write-Host '  Veri Fırını  -  video transkript, belge, OCR, dizin' -ForegroundColor Cyan
+    Write-Host '  Sarnıç Atölye  -  video transkript, belge, OCR, dizin' -ForegroundColor Cyan
     Write-Host '=============================================' -ForegroundColor Cyan
     Write-Host ''
 }
@@ -148,7 +148,7 @@ while ($true) {
             & (Join-Path $kok 'izle.bat')
         }
         '4' {
-            if ($kdenlive) { Start-Process $kdenlive.FullName } else { Write-Host 'Kdenlive bulunamadı (VideoPerisi-Paketi\Kdenlive).' -ForegroundColor Red; Read-Host 'Enter' | Out-Null }
+            if ($kdenlive) { Start-Process $kdenlive.FullName } else { Write-Host 'Kdenlive bulunamadı (SarnicAtolye-Paketi\Kdenlive).' -ForegroundColor Red; Read-Host 'Enter' | Out-Null }
         }
         '5' { & (Join-Path $kok 'kontrol.bat'); Read-Host 'Devam için Enter' | Out-Null }
         '6' { Start-Process notepad.exe -ArgumentList ('"' + (Join-Path $kok 'KULLANIM.txt') + '"') }

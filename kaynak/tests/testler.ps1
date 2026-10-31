@@ -1,8 +1,8 @@
-# VideoHat kabul testleri a–h. Kullanım: pwsh -File testler.ps1 [-Paket dist\VideoHat-GPU]
+# Sarnıç Atölye kabul testleri a–h. Kullanım: pwsh -File testler.ps1 [-Paket dist\SarnicAtolye-GPU]
 # Çıktı: tablo + testler_sonuc.json. Çıkış kodu: başarısız test sayısı.
 param(
     [string[]]$Atla = @(),   # örn. -Atla cdeha,g  (c/d/e/h/a blokunu ve/veya g'yi atlar)
-    [string]$Paket = (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) 'dist\VideoHat-GPU')
+    [string]$Paket = (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) 'dist\SarnicAtolye-GPU')
 )
 $ErrorActionPreference = 'Continue'
 $proje = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)

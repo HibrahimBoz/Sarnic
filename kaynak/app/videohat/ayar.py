@@ -106,7 +106,7 @@ class DizinAyar:
     kokler: list[str] = field(default_factory=list)
     depo: str = ""
     haric: list[str] = field(default_factory=lambda: [
-        "_veridedektifi", "_bulgu", "$RECYCLE.BIN", "System Volume Information", "_ara", ".git", "node_modules"])
+        "_sarnic", "_veridedektifi", "_bulgu", "$RECYCLE.BIN", "System Volume Information", "_ara", ".git", "node_modules"])
     calisma_db: str = ""
     yayin_dk: float = 30
     tarama_dk: float = 15

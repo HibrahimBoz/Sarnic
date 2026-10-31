@@ -36,6 +36,7 @@ class TaramaTest(GeciciTest):
     def test_turler_haric_ve_ders_baglari(self):
         dosyalar = [self.yaz("a.txt"), self.yaz("b.png"), self.yaz("c.mp4"), self.yaz("d.bin")]
         self.yaz(".GIT/gizli.txt")
+        self.yaz("_sarnic/gizli.txt")
         self.yaz("_veridedektifi/gizli.txt")
         self.yaz("_bulgu/gizli.txt")
         bagli = [self.yaz("ders_islenmis/dosya.txt"), self.yaz("eski_videoperisi/dosya.txt"),
@@ -50,6 +51,7 @@ class TaramaTest(GeciciTest):
                          [str(self.agac / "ders_islenmis"), str(self.agac / "eski_videoperisi"),
                           str(self.agac / "ders_islenmis"), str(self.agac / "ders_islenmis")])
         self.assertIsNone(self.kayit(self.agac / ".GIT/gizli.txt"))
+        self.assertIsNone(self.kayit(self.agac / "_sarnic"))
         self.assertIsNone(self.kayit(self.agac / "_veridedektifi"))
         self.assertIsNone(self.kayit(self.agac / "_bulgu"))
 

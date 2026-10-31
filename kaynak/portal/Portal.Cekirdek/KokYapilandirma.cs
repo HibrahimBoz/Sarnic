@@ -27,11 +27,11 @@ public class KokYapilandirma
     private readonly string? _paketAyarYolu;
 
     /// <summary>
-    /// Varsayılan kullanıcı ayar dosyası yolu (%LOCALAPPDATA%\VideoPortali\kullanici.json).
+    /// Varsayılan kullanıcı ayar dosyası yolu (%LOCALAPPDATA%\Sarnic\kullanici.json).
     /// </summary>
     public static string VarsayilanKullaniciAyarYolu => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "VideoPortali",
+        "Sarnic",
         "kullanici.json"
     );
 
@@ -89,7 +89,7 @@ public class KokYapilandirma
     /// <summary>
     /// Kök dizinini öncelik sırasına göre çözer:
     /// 1. Komut satırı --kok &lt;yol&gt; (varsa)
-    /// 2. Kullanıcı ayarı (%LOCALAPPDATA%\VideoPortali\kullanici.json)
+    /// 2. Kullanıcı ayarı (%LOCALAPPDATA%\Sarnic\kullanici.json)
     /// 3. Paketlenen ayar.json (uygulama klasöründe, AppContext.BaseDirectory)
     /// 4. Hiçbiri yoksa null
     /// Not: Yolun diskte var olup olmadığı burada denetlenmez.
@@ -159,11 +159,21 @@ public class KokYapilandirma
     /// </summary>
     public static string? KullaniciKokuOku(string? kullaniciAyarYolu = null)
     {
-        string dosyaYolu = string.IsNullOrWhiteSpace(kullaniciAyarYolu)
-            ? VarsayilanKullaniciAyarYolu
-            : kullaniciAyarYolu;
+        if (!string.IsNullOrWhiteSpace(kullaniciAyarYolu))
+        {
+            return JsonDosyasindanKokOku(kullaniciAyarYolu);
+        }
 
-        return JsonDosyasindanKokOku(dosyaYolu);
+        if (File.Exists(VarsayilanKullaniciAyarYolu))
+        {
+            return JsonDosyasindanKokOku(VarsayilanKullaniciAyarYolu);
+        }
+
+        // Eski kurulumun ayarı: yeni dosya yoksa okunur, yazma her zaman yeni yola.
+        return JsonDosyasindanKokOku(Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "VideoPortali",
+            "kullanici.json"));
     }
 
     /// <summary>

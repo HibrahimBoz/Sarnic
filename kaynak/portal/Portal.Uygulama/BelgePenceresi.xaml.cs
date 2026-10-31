@@ -71,7 +71,7 @@ public partial class BelgePenceresi : Window
         _katalog = katalog ?? new ArtCraftKatalogu();
 
         string baslikAd = _dosya?.Ad ?? dosyaId.ToString();
-        Title = $"Veri Dedektifi — Belge — {baslikAd}";
+        Title = !string.IsNullOrWhiteSpace(baslikAd) ? $"{UrunAdi.Etkin} — Belge — {baslikAd}" : $"{UrunAdi.Etkin} — Belge";
 
         _toplamSayfa = Math.Max(1, _dosya?.SayfaSayisi ?? 1);
         _aktifSayfaNo = Math.Clamp(sayfaNo, 1, Math.Max(1, _toplamSayfa));
@@ -195,7 +195,7 @@ public partial class BelgePenceresi : Window
     {
         string yerelKlasor = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "VeriDedektifi",
+            "Sarnic",
             "gorunum");
         Directory.CreateDirectory(yerelKlasor);
 

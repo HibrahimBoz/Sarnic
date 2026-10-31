@@ -49,8 +49,8 @@ cpu_threads = 0
 
 [dizin]
 kokler = []                 # Boşsa --kok gerekli; birden fazla kök verilebilir.
-depo = ""                   # Boşsa ilk kökün altında _veridedektifi.
-haric = ["_veridedektifi", "_bulgu", "$RECYCLE.BIN", "System Volume Information", "_ara", ".git", "node_modules"]
+depo = ""                   # Boşsa ilk kökün altında _sarnic.
+haric = ["_sarnic", "_veridedektifi", "_bulgu", "$RECYCLE.BIN", "System Volume Information", "_ara", ".git", "node_modules"]
 calisma_db = ""             # YEREL yazar VT; boşsa paket/is/dizin/dizin.db.
 yayin_dk = 30               # Değişiklik varsa en geç bu aralıkta yayın.
 tarama_dk = 15              # İzleme kipinde taramalar arası dakika.

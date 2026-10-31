@@ -137,7 +137,7 @@ public sealed class ArtCraftKatalogu
                 string profil = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
                 belgelerim = Path.Combine(profil, "Documents");
             }
-            hedefKlasor = Path.Combine(belgelerim, "Veri Dedektifi");
+            hedefKlasor = Path.Combine(belgelerim, "Sarnic");
         }
 
         Directory.CreateDirectory(hedefKlasor);

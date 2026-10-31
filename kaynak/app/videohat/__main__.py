@@ -229,7 +229,7 @@ def _dizinle(args) -> int:
 
 
 def parser_olustur() -> argparse.ArgumentParser:
-    ap = argparse.ArgumentParser(prog="videohat", description="Veri Fırını — video, belge ve dizin işleme")
+    ap = argparse.ArgumentParser(prog="videohat", description="Sarnıç Atölye — video, belge ve dizin işleme")
     alt = ap.add_subparsers(dest="komut", required=True)
     i = alt.add_parser("isle", help="dosya veya klasör işle")
     i.add_argument("girdi", nargs="+")

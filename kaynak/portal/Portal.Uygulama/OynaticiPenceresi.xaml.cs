@@ -74,7 +74,7 @@ public partial class OynaticiPenceresi : Window
 
         InitializeComponent();
 
-        Title = !string.IsNullOrWhiteSpace(Kayit.Ad) ? $"Veri Dedektifi — Oynatıcı — {Kayit.Ad}" : "Veri Dedektifi — Oynatıcı";
+        Title = !string.IsNullOrWhiteSpace(Kayit.Ad) ? $"{UrunAdi.Etkin} — Oynatıcı — {Kayit.Ad}" : $"{UrunAdi.Etkin} — Oynatıcı";
         Loaded += (_, _) => BelgeleriYukleAsync();
 
         _oynatici = new LibVlcOynatici();

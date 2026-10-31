@@ -22,7 +22,7 @@ from videohat.belge.model import BelgeSonucu, OcrSatir
 from videohat.belge.ocr import OcrHavuzu
 from videohat.belge.ofis import eski_cevir
 from videohat.belge.surec import calistir
-from videohat.dizin.dizinle import calistir as dizinle
+from videohat.dizin.dizinle import calistir as dizinle, varsayilan_depo
 from videohat.dizin.tarayici import tur_bul
 from videohat.hatalar import IsHatasi, OrtamHatasi
 
@@ -369,14 +369,30 @@ class EskiBicimTest(GeciciTest):
                     p.unlink()
                 self.assertIsNone(bul())
 
-    def test_veri_firini_ve_varsayilan_depo(self):
-        self.assertIn("Veri Fırını", parser_olustur().format_help())
+    def test_sarnic_atolye_ve_varsayilan_depo(self):
+        self.assertIn("Sarnıç Atölye", parser_olustur().format_help())
+        self.assertIn("_sarnic", self.ayar.dizin.haric)
         self.assertIn("_veridedektifi", self.ayar.dizin.haric)
         self.assertIn("_bulgu", self.ayar.dizin.haric)
         with patch("videohat.dizin.dizinle.vt.yazar_kilidi", return_value=nullcontext()), \
                 patch("videohat.dizin.dizinle._dongu", return_value=0) as dongu:
             self.assertEqual(dizinle(self.ayar, kokler=[self.kok], bir_kez=True), 0)
-        self.assertEqual(dongu.call_args.args[2], self.kok / "_veridedektifi")
+        self.assertEqual(dongu.call_args.args[2], self.kok / "_sarnic")
+
+    def test_varsayilan_depo(self):
+        with tempfile.TemporaryDirectory() as td:
+            kok = Path(td)
+            # hiçbiri -> _sarnic
+            self.assertEqual(varsayilan_depo(kok), kok / "_sarnic")
+            # yalnız _bulgu -> _bulgu
+            (kok / "_bulgu").mkdir()
+            self.assertEqual(varsayilan_depo(kok), kok / "_bulgu")
+            # _bulgu+_veridedektifi -> _veridedektifi
+            (kok / "_veridedektifi").mkdir()
+            self.assertEqual(varsayilan_depo(kok), kok / "_veridedektifi")
+            # üçü -> _sarnic
+            (kok / "_sarnic").mkdir()
+            self.assertEqual(varsayilan_depo(kok), kok / "_sarnic")
 
     def test_cp1254_noktalama_sapka_cp857_cakismasi(self):
         metin1 = '“Radar kâr raporu: maliyet 150 € » onaylandı”'
