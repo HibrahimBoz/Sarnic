@@ -122,6 +122,14 @@ class CeviriTestleri(unittest.TestCase):
         self.assertEqual(ayar.batch, 16)
         self.assertTrue(str(yollar.ceviri_modeli()).endswith("nllb-200-distilled-1.3B-ct2-int8"))
 
+    def test_paragraflar_korunur(self):
+        sahte = Mock()
+        sahte.translate_batch.side_effect = lambda batch, **kw: [
+            Mock(hypotheses=[["tur_Latn", f"c{i}"]]) for i in range(len(batch))]
+        cevirmen = Cevirmen(model_yolu=Path("sahte"), cevirici=sahte)
+        sonuc = cevirmen.cevir(["Report title\n\nFirst one here. Second one here."], kaynak_dil="en")
+        self.assertEqual(sonuc, ["c0\n\nc1 c2"])
+
     def test_onbellek(self):
         sahte = Mock()
         sahte.translate_batch.return_value = [Mock(hypotheses=[["tur_Latn", "merhaba"]])]
