@@ -469,3 +469,12 @@ Dönüştürücüler (bulunduğu sırayla denenir): paketteki `araclar\libreoffi
 - SVG → PNG (PyMuPDF) → çok boyutlu `.ico` (16, 24, 32, 48, 64, 128, 256; Pillow). Her boyut SVG'den ayrı çizilir.
   Dosyalar: `kaynak/varliklar/sarnic.svg`, `sarnic-atolye.svg` ve `.ico` eşleri; karşılaştırma `onizleme.png`.
   Portal `Varliklar\uygulama.ico` + `logo-256.png` = `sarnic`; menü `baslat\logo-256.png` = `sarnic-atolye`.
+
+### 11.6 Çeviri
+- **Model**: NLLB-200 distilled 1.3B (CTranslate2 int8, CC-BY-NC 4.0).
+- **Diller**: Kaynak diller `en`, `az`, `ru`; hedef dil Türkçe (`tur_Latn`). Türkçe içerik çevrilmez.
+- **Konuşma dökümü**: Dil `tr` değilse her segment çevrilir. Çıktı JSON'unda segmente `ceviri` alanı eklenir. Kök nesne `ceviri_dil = "tr"` ve `ceviri_model` taşır.
+- **Belge**: Her sayfanın dili belirlenir. Dil `tr` değilse sayfa çevrilir. `belge.json` içindeki sayfalara `dil` ve `ceviri` alanları yazılır. Kök nesneye `"ceviri_surum": 1` eklenir.
+- **Dizin**: `sayfa` tablosuna `dil TEXT` ve `ceviri TEXT` sütunları eklenir. Tam metin araması için `sayfa_ceviri_fts` sanal tablosu kurulur. Arama sonuçlarında çeviriden eşleşen kayıtlar `çeviriden eşleşti` etiketi alır.
+- **Model yokken davranış**: Model yoksa veya yüklenemezse işleme durmaz. Günlüğe uyarı yazılır. Belge dili yazılmaz; `ceviri_surum` eklenmez. Model gelince dizin çeviri geçişi yeniden dener.
+- **Ölçüm** (ölçüldü 2026-10-31, `kaynak/tests/test_ceviri_olcum.py`, 24 cümle, referansları Claude yazdı): GPU 1,17 s, chrF++ en 81,9 / az 70,1 / ru 70,9. CPU (CUDA kapalı) 8,62 s, chrF++ en 82,4 / az 71,8 / ru 70,1. GPU model yükleme 2,0 s.

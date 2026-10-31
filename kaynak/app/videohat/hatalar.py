@@ -19,3 +19,7 @@ class IsHatasi(VideoHatHatasi):
 
 class UpscaleHatasi(VideoHatHatasi):
     """Real-ESRGAN çalışmadı (Vulkan yok vb.); iş devam eder."""
+
+
+class CeviriHatasi(VideoHatHatasi):
+    """Çeviri modeli yüklenemedi veya çeviri sırasında hata oluştu."""

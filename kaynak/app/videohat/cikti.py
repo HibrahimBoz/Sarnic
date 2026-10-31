@@ -113,6 +113,8 @@ def json_meta(
     sureler: dict[str, float],
     yol: Path,
     dil: str | None = None,
+    ceviriler: list[str] | None = None,
+    ceviri_model: str | None = None,
 ) -> None:
     """Transkripsiyon ve yürütme üstverilerini UTF-8 JSON dosyası olarak kaydeder."""
     yol = Path(yol)
@@ -128,6 +130,12 @@ def json_meta(
     ]
     segmentler_json = json.dumps(segmentler, ensure_ascii=False, separators=(",", ":"))
     kaynak_ozet = hashlib.sha256(segmentler_json.encode("utf-8")).hexdigest()
+
+    if ceviriler is not None:
+        for i, c in enumerate(ceviriler):
+            if i < len(segmentler) and c and c.strip():
+                segmentler[i]["ceviri"] = c.strip()
+
     veri = {
         "sema_surumu": 2,
         "cihaz": secim.device,
@@ -142,5 +150,12 @@ def json_meta(
     }
     if dil:
         veri["dil"] = dil
+    if ceviriler is not None:
+        veri["ceviri_dil"] = "tr"
+        if ceviri_model:
+            veri["ceviri_model"] = ceviri_model
+    elif ceviri_model:
+        veri["ceviri_model"] = ceviri_model
+
     icerik = json.dumps(veri, ensure_ascii=False, indent=2) + "\n"
     yol.write_text(icerik, encoding="utf-8")

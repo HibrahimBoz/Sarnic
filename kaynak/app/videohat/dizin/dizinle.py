@@ -1,11 +1,15 @@
 """Katalog önce yayımlanır, ardından bekleyen belgeler küçükten büyüğe işlenir."""
+import json
 import logging
 import sqlite3
 from pathlib import Path
 import time
 
+from ..belge.ceviri_ekle import ceviri_ekle
 from ..belge.hat import isle_belge
 from ..belge.ocr import OcrHavuzu
+from ..belge.onbellek import json_yaz
+from ..ceviri import cevirmen_olustur
 from ..hatalar import AyarHatasi, IsHatasi, OrtamHatasi
 from . import vt
 from .tarayici import tara
@@ -14,7 +18,7 @@ from .yayin import Yayinci
 log = logging.getLogger("videohat")
 
 
-def icerikleri_isle(db, depo, ayar, havuz, yayinci=None):
+def icerikleri_isle(db, depo, ayar, havuz, yayinci=None, cevirmen=None):
     hatali, son_yayin = 0, time.monotonic()
     try:  # tablo var ama boşsa her sorguya pahalı NOT EXISTS eklenmesin
         koruma_var = db.execute("SELECT 1 FROM korunan LIMIT 1").fetchone()
@@ -68,7 +72,46 @@ def icerikleri_isle(db, depo, ayar, havuz, yayinci=None):
             db.commit()
             ilerleme()
     havuz.ilerleme = None
+    ceviri_gecisi(db, depo, ayar, cevirmen=cevirmen, ilerleme=ilerleme)
     return hatali
+
+
+def ceviri_gecisi(db, depo, ayar, cevirmen=None, ilerleme=None):
+    if cevirmen is None:  # model yokken dil yazılmaz; model gelince belge yeniden denenir
+        return 0
+    kayitlar = db.execute(
+        "SELECT id, yol, sha FROM dosya "
+        "WHERE durum='tamam' AND sha IS NOT NULL AND sha != '' "
+        "AND EXISTS (SELECT 1 FROM sayfa WHERE sayfa.dosya_id=dosya.id AND sayfa.dil IS NULL) "
+        "ORDER BY id"
+    ).fetchall()
+    if not kayitlar:
+        return 0
+    islenen = 0
+    depo = Path(depo)
+    for r in kayitlar:
+        sha = r["sha"]
+        belge_json = depo / "belgeler" / sha[:2] / sha / "belge.json"
+        if not belge_json.is_file():
+            continue
+        try:
+            with belge_json.open("r", encoding="utf-8") as f:
+                veri = json.load(f)
+            degisti = ceviri_ekle(veri, cevirmen)
+            if degisti:
+                json_yaz(belge_json, veri)
+            vt.sayfalari_yaz(db, r["id"], veri.get("sayfalar", []))
+            db.commit()
+            islenen += 1
+            if ilerleme:
+                ilerleme()
+        except OrtamHatasi:
+            db.rollback()
+            raise
+        except Exception as e:
+            db.rollback()
+            log.warning("Çeviri geçişi hatası (%s): %s", r["yol"], e)
+    return islenen
 
 
 def varsayilan_depo(kok: Path) -> Path:
@@ -92,6 +135,7 @@ def calistir(ayar, kokler=None, depo=None, bir_kez=False, yalniz_ad=False, zorla
 def _dongu(ayar, kokler, depo, db_yol, bir_kez, yalniz_ad, zorla_sil):
     db = vt.ac(db_yol)
     hatali = 0
+    cevirmen = cevirmen_olustur(ayar) if not yalniz_ad else None
     try:
         with Yayinci(db, depo, ayar.dizin.sakla_yayin) as yayinci, OcrHavuzu(ayar) as havuz:
             while True:
@@ -103,7 +147,7 @@ def _dongu(ayar, kokler, depo, db_yol, bir_kez, yalniz_ad, zorla_sil):
                     except (OSError, sqlite3.Error, IsHatasi) as e:
                         log.warning("Tarama sonu yayın yapılamadı: %s", e)
                 if not yalniz_ad:
-                    hatali += icerikleri_isle(db, depo, ayar, havuz, etkin_yayinci)
+                    hatali += icerikleri_isle(db, depo, ayar, havuz, etkin_yayinci, cevirmen=cevirmen)
                 if etkin_yayinci:
                     try:
                         yayinci.yayinla()

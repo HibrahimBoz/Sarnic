@@ -161,7 +161,10 @@ public sealed class DosyaAramaMotoru
                 string ftsIcerik = string.Join(" ", kelimeler.Select(k => $"\"{k.Replace("\"", "\"\"")}\"*"));
                 string p = $"@icr{pIndex++}";
                 cmd.Parameters.AddWithValue(p, ftsIcerik);
-                whereListesi.Add($"id IN (SELECT DISTINCT dosya_id FROM sayfa WHERE id IN (SELECT rowid FROM sayfa_fts WHERE sayfa_fts MATCH {p}))");
+                string ceviriKosulu = IcerikAramaMotoru.CeviriAramasiVarMi(conn)
+                    ? $" UNION SELECT rowid FROM sayfa_ceviri_fts WHERE sayfa_ceviri_fts MATCH {p}"
+                    : string.Empty;
+                whereListesi.Add($"id IN (SELECT DISTINCT dosya_id FROM sayfa WHERE id IN (SELECT rowid FROM sayfa_fts WHERE sayfa_fts MATCH {p}{ceviriKosulu}))");
             }
         }
 

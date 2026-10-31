@@ -70,3 +70,10 @@ tesseract = true            # Paket içindeki araç varsa tur+eng ikinci görü�
 sozluk = 'sozluk\tr_kelime.txt' # Yoksa yalnız terimler.txt kullanılır.
 unlu_uyumu = true           # Sözlükte olmayan çekimli sözcükte ekteki ı/i'yi ünlü uyumuyla düzelt
                             # (ölçüldü: ı->i hatasının %79,9'unu düzeltir, doğru sözcüğün %3,6'sını bozar).
+
+
+[ceviri]
+etkin = true
+model = ""
+diller = ["en", "az", "ru"]
+batch = 16

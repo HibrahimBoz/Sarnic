@@ -185,7 +185,7 @@ try {
     $pipFreezeCpuCikti = ""
 
     if ($Paket -in @('GPU', 'Ikisi')) {
-        if (-not (Test-Path (Join-Path $ortakSitePackagesGPU "ctranslate2")) -or -not (Test-Path (Join-Path $ortakSitePackagesGPU "pymupdf")) -or -not (Test-Path (Join-Path $ortakSitePackagesGPU "rapidocr"))) {
+        if (-not (Test-Path (Join-Path $ortakSitePackagesGPU "ctranslate2")) -or -not (Test-Path (Join-Path $ortakSitePackagesGPU "pymupdf")) -or -not (Test-Path (Join-Path $ortakSitePackagesGPU "rapidocr")) -or -not (Test-Path (Join-Path $ortakSitePackagesGPU "sentencepiece"))) {
             Write-Host "  -> GPU paketleri indiriliyor ve kuruluyor..."
             New-Item -ItemType Directory -Path $ortakSitePackagesGPU -Force | Out-Null
             $gpuPipArgs = @(
@@ -198,6 +198,7 @@ try {
                 '--only-binary=:all:',
                 'faster-whisper==1.2.1',
                 'ctranslate2==4.8.2',
+                'sentencepiece==0.2.2',
                 'av<17',
                 'nvidia-cublas-cu12',
                 'nvidia-cudnn-cu12==9.*',
@@ -223,7 +224,7 @@ try {
     }
 
     if ($Paket -eq 'CPU') {
-        if (-not (Test-Path (Join-Path $ortakSitePackagesCPU "ctranslate2")) -or -not (Test-Path (Join-Path $ortakSitePackagesCPU "pymupdf")) -or -not (Test-Path (Join-Path $ortakSitePackagesCPU "rapidocr"))) {
+        if (-not (Test-Path (Join-Path $ortakSitePackagesCPU "ctranslate2")) -or -not (Test-Path (Join-Path $ortakSitePackagesCPU "pymupdf")) -or -not (Test-Path (Join-Path $ortakSitePackagesCPU "rapidocr")) -or -not (Test-Path (Join-Path $ortakSitePackagesCPU "sentencepiece"))) {
             Write-Host "  -> CPU paketleri indiriliyor ve kuruluyor (nvidia-* hariç)..."
             New-Item -ItemType Directory -Path $ortakSitePackagesCPU -Force | Out-Null
             $cpuPipArgs = @(
@@ -236,6 +237,7 @@ try {
                 '--only-binary=:all:',
                 'faster-whisper==1.2.1',
                 'ctranslate2==4.8.2',
+                'sentencepiece==0.2.2',
                 'av<17',
                 'pymupdf==2.0',
                 'rapidocr==3.10.0',
@@ -1363,6 +1365,15 @@ print(f"MODEL_TAMAMLANDI:{resolved_sha}")
             }
         }
 
+        # Ceviri modeli (NLLB-200)
+        $ceviriModelKaynak = if ($env:SARNIC_CEVIRI_MODELI) { $env:SARNIC_CEVIRI_MODELI } else { Join-Path (Split-Path $ProjeKoku -Parent) "VideoHat\_indir\modeller-ceviri\nllb-200-distilled-1.3B-ct2-int8" }
+        $gpuCeviriModel = Join-Path $GpuPaketYolu "modeller\nllb-200-distilled-1.3B-ct2-int8"
+        if (Test-Path $ceviriModelKaynak) {
+            Invoke-RobocopyMirror -Kaynak $ceviriModelKaynak -Hedef $gpuCeviriModel
+        } else {
+            Write-Warning "Ceviri modeli bulunamadi ($ceviriModelKaynak). Paket cevirisiz calisir."
+        }
+
         # GPU SURUMLER.txt
         $gpuBuyukler = Get-DosyaHashVeBoyutListesi -KokDizin $GpuPaketYolu
         $surumSb = [System.Text.StringBuilder]::new()
@@ -1439,6 +1450,19 @@ print(f"MODEL_TAMAMLANDI:{resolved_sha}")
                 if (Test-Path $kaynakMedium) {
                     Invoke-RobocopyMirror -Kaynak $kaynakMedium -Hedef $hedefMedium
                 }
+            }
+        }
+
+        # Ceviri modeli (NLLB-200)
+        $ceviriModelKaynak = if ($env:SARNIC_CEVIRI_MODELI) { $env:SARNIC_CEVIRI_MODELI } else { Join-Path (Split-Path $ProjeKoku -Parent) "VideoHat\_indir\modeller-ceviri\nllb-200-distilled-1.3B-ct2-int8" }
+        $cpuCeviriModel = Join-Path $CpuPaketYolu "modeller\nllb-200-distilled-1.3B-ct2-int8"
+        if (Test-Path $ceviriModelKaynak) {
+            if (-not (Test-Path $cpuCeviriModel)) {
+                Invoke-RobocopyMirror -Kaynak $ceviriModelKaynak -Hedef $cpuCeviriModel
+            }
+        } else {
+            if ($Paket -eq 'CPU') {
+                Write-Warning "Ceviri modeli bulunamadi ($ceviriModelKaynak). Paket cevirisiz calisir."
             }
         }
 

@@ -5,7 +5,7 @@ using Microsoft.Data.Sqlite;
 /// <summary>
 /// Belge sayfasına ait metin ve üst veri kaydı.
 /// </summary>
-public sealed record SayfaKaydi(long Id, long DosyaId, int No, string Etiket, string Kaynak, double? Guven, string Metin);
+public sealed record SayfaKaydi(long Id, long DosyaId, int No, string Etiket, string Kaynak, double? Guven, string Metin, string? Dil = null, string? Ceviri = null);
 
 /// <summary>
 /// Belge sayfalarını ve üst bilgilerini dizinden çeken depo.
@@ -31,7 +31,10 @@ public sealed class SayfaDeposu
 
         using var conn = _kaynak.BaglantiAc();
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = "SELECT id, dosya_id, no, etiket, kaynak, guven, metin FROM sayfa WHERE dosya_id = @dosyaId ORDER BY no ASC;";
+        bool sutunlarVar = DilCeviriSutunlariVarMi(conn);
+        cmd.CommandText = sutunlarVar
+            ? "SELECT id, dosya_id, no, etiket, kaynak, guven, metin, dil, ceviri FROM sayfa WHERE dosya_id = @dosyaId ORDER BY no ASC;"
+            : "SELECT id, dosya_id, no, etiket, kaynak, guven, metin FROM sayfa WHERE dosya_id = @dosyaId ORDER BY no ASC;";
         cmd.Parameters.AddWithValue("@dosyaId", dosyaId);
 
         var sonuclar = new List<SayfaKaydi>();
@@ -56,7 +59,10 @@ public sealed class SayfaDeposu
 
         using var conn = _kaynak.BaglantiAc();
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = "SELECT id, dosya_id, no, etiket, kaynak, guven, metin FROM sayfa WHERE dosya_id = @dosyaId AND no = @no LIMIT 1;";
+        bool sutunlarVar = DilCeviriSutunlariVarMi(conn);
+        cmd.CommandText = sutunlarVar
+            ? "SELECT id, dosya_id, no, etiket, kaynak, guven, metin, dil, ceviri FROM sayfa WHERE dosya_id = @dosyaId AND no = @no LIMIT 1;"
+            : "SELECT id, dosya_id, no, etiket, kaynak, guven, metin FROM sayfa WHERE dosya_id = @dosyaId AND no = @no LIMIT 1;";
         cmd.Parameters.AddWithValue("@dosyaId", dosyaId);
         cmd.Parameters.AddWithValue("@no", no);
 
@@ -150,6 +156,17 @@ LIMIT 1;";
         double? guven = reader.IsDBNull(5) ? null : (double?)reader.GetDouble(5);
         string metin = reader.GetString(6);
 
-        return new SayfaKaydi(id, dosyaId, no, etiket, kaynak, guven, metin);
+        string? dil = reader.FieldCount > 7 && !reader.IsDBNull(7) ? reader.GetString(7) : null;
+        string? ceviri = reader.FieldCount > 8 && !reader.IsDBNull(8) ? reader.GetString(8) : null;
+
+        return new SayfaKaydi(id, dosyaId, no, etiket, kaynak, guven, metin, dil, ceviri);
+    }
+
+    // Yayımlanan dizin aynı yolda yeni şemayla değişebilir; sonuç önbelleğe alınmaz (PRAGMA ucuzdur).
+    internal static bool DilCeviriSutunlariVarMi(SqliteConnection conn)
+    {
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT COUNT(*) FROM pragma_table_info('sayfa') WHERE name IN ('dil', 'ceviri');";
+        return Convert.ToInt64(cmd.ExecuteScalar()) == 2;
     }
 }

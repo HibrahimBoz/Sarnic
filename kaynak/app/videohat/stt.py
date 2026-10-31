@@ -42,6 +42,7 @@ class Segment:
     son: float
     metin: str
     guven: float | None = field(default=None, compare=False)
+    ceviri: str | None = field(default=None, compare=False)  # Türkçe çeviri (yalnız tr dışı kayıtta)
 
 
 _MAKS_ALTYAZI_SN = 7.0

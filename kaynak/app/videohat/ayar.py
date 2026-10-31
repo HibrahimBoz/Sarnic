@@ -161,6 +161,25 @@ class OcrAyar:
 
 
 @dataclass
+class CeviriAyar:
+    etkin: bool = True
+    model: str = ""
+    diller: tuple[str, ...] = ("en", "az", "ru")
+    batch: int = 16
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.etkin, bool):
+            raise AyarHatasi("Geçersiz ceviri.etkin: doğru/yanlış gerekli")
+        if not isinstance(self.model, str):
+            raise AyarHatasi("Geçersiz ceviri.model: metin gerekli")
+        if isinstance(self.diller, (list, tuple, set)):
+            self.diller = tuple(str(d).strip().lower() for d in self.diller if str(d).strip())
+        else:
+            raise AyarHatasi("Geçersiz ceviri.diller: liste ya da demet gerekli")
+        _sayi("batch", self.batch, 1, tam=True)
+
+
+@dataclass
 class Ayar:
     kok: Path
     stt: SttAyar = field(default_factory=SttAyar)
@@ -170,10 +189,12 @@ class Ayar:
     genel: GenelAyar = field(default_factory=GenelAyar)
     dizin: DizinAyar = field(default_factory=DizinAyar)
     ocr: OcrAyar = field(default_factory=OcrAyar)
+    ceviri: CeviriAyar = field(default_factory=CeviriAyar)
 
 
 _BOLUMLER = {"stt": SttAyar, "ses": SesAyar, "goruntu": GoruntuAyar,
-             "izle": IzleAyar, "genel": GenelAyar, "dizin": DizinAyar, "ocr": OcrAyar}
+             "izle": IzleAyar, "genel": GenelAyar, "dizin": DizinAyar, "ocr": OcrAyar,
+             "ceviri": CeviriAyar}
 
 
 def yukle(kok: Path) -> Ayar:

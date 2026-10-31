@@ -365,7 +365,7 @@ def _varsayilan_transkript(
             if meta_cikti is not None:
                 meta_cikti.update(veri)
             segmentler = [
-                Segment(s_item["bas"], s_item["son"], s_item["metin"])
+                Segment(s_item["bas"], s_item["son"], s_item["metin"], ceviri=s_item.get("ceviri"))
                 for s_item in veri.get("segmentler", [])
             ]
             return TranskriptSonucu(segmentler, meta=veri)
@@ -609,7 +609,14 @@ def isle_grup(
         model_ad=model_adi,
         neden=neden,
     )
-    cikti.json_meta(bolumler, secim, sureler, json_yolu)
+    # Tek kayıt hattının ürettiği dil ve çeviri çok açılı derste de korunur.
+    ceviriler = [getattr(s, "ceviri", None) for s in bolumler]
+    cikti.json_meta(
+        bolumler, secim, sureler, json_yolu,
+        dil=transkript_meta.get("dil"),
+        ceviriler=ceviriler if any(ceviriler) else None,
+        ceviri_model=transkript_meta.get("ceviri_model"),
+    )
     ders_json.yaz(ders_json_yolu, ders_tanimi)
 
     cikti_dosyalari.extend([srt_yolu, vtt_yolu, txt_yolu, json_yolu, ders_json_yolu])

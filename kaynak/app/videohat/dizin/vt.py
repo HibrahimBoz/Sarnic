@@ -55,6 +55,18 @@ def ac(yol) -> sqlite3.Connection:
         db.executescript(yollar.ortak("dizin_sema.sql").read_text(encoding="utf-8"))
         if db.execute("SELECT deger FROM meta WHERE anahtar=?", ("surum",)).fetchone()[0] != "1":
             raise OrtamHatasi("Desteklenmeyen dizin şema sürümü")
+        sutunlar = {r["name"] for r in db.execute("PRAGMA table_info(sayfa)").fetchall()}
+        if "dil" not in sutunlar:
+            db.execute("ALTER TABLE sayfa ADD COLUMN dil TEXT")
+        if "ceviri" not in sutunlar:
+            db.execute("ALTER TABLE sayfa ADD COLUMN ceviri TEXT")
+        # Çeviri geçişi her turda "dil IS NULL" sayfalı belgeyi arar; tam tablo taraması olmasın.
+        db.execute("CREATE INDEX IF NOT EXISTS ix_sayfa_dil_yok ON sayfa(dosya_id) WHERE dil IS NULL")
+        db.execute("DROP TRIGGER IF EXISTS sayfa_ad")
+        db.execute("""CREATE TRIGGER IF NOT EXISTS sayfa_ad AFTER DELETE ON sayfa BEGIN
+            DELETE FROM sayfa_fts WHERE rowid = old.id;
+            DELETE FROM sayfa_ceviri_fts WHERE rowid = old.id;
+        END;""")
         # Yazar ek dizini: büyük/küçük harfi değişmiş yolu tam tablo taraması olmadan bulur (okurlar kullanmaz)
         db.execute("CREATE INDEX IF NOT EXISTS ix_dosya_yol_nocase ON dosya(yol COLLATE NOCASE)")
     except BaseException:
@@ -67,6 +79,13 @@ def sayfalari_yaz(db, dosya_id, sayfalar):
     db.execute("DELETE FROM sayfa WHERE dosya_id=?", (dosya_id,))
     for s in sayfalar:
         metin = unicodedata.normalize("NFKC", s["metin"]).strip()
-        cur = db.execute("INSERT INTO sayfa(dosya_id,no,etiket,kaynak,guven,metin) VALUES (?,?,?,?,?,?)",
-                         (dosya_id, s["no"], s["etiket"], s["kaynak"], s.get("guven"), metin))
-        db.execute("INSERT INTO sayfa_fts(rowid,norm) VALUES (?,?)", (cur.lastrowid, icerik_normalle(metin)))
+        dil = s.get("dil")
+        ceviri = unicodedata.normalize("NFKC", s["ceviri"]).strip() if s.get("ceviri") else None
+        if not ceviri:
+            ceviri = None
+        cur = db.execute("INSERT INTO sayfa(dosya_id,no,etiket,kaynak,guven,metin,dil,ceviri) VALUES (?,?,?,?,?,?,?,?)",
+                         (dosya_id, s["no"], s["etiket"], s["kaynak"], s.get("guven"), metin, dil, ceviri))
+        rowid = cur.lastrowid
+        db.execute("INSERT INTO sayfa_fts(rowid,norm) VALUES (?,?)", (rowid, icerik_normalle(metin)))
+        if ceviri:
+            db.execute("INSERT INTO sayfa_ceviri_fts(rowid,norm) VALUES (?,?)", (rowid, icerik_normalle(ceviri)))

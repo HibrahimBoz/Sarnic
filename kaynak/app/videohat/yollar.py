@@ -193,3 +193,8 @@ def yedizip() -> Path | None:
 
 def ortak(ad: str) -> Path:
     return _gerekli(kok() / "ortak" / ad, f"Ortak dosya ({ad})")
+
+
+
+def ceviri_modeli() -> Path:
+    return kok() / "modeller" / "nllb-200-distilled-1.3B-ct2-int8"

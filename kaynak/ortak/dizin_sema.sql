@@ -63,7 +63,9 @@ CREATE TABLE IF NOT EXISTS sayfa(
     etiket   TEXT NOT NULL,              -- 'Sayfa 3', 'Slayt 2', 'Tablo1 (satır 1-200)', 'Ek: a.pdf / Sayfa 1'
     kaynak   TEXT NOT NULL,              -- 'metin' | 'ocr'
     guven    REAL,                       -- OCR ortalama güveni 0..1; metinde NULL
-    metin    TEXT NOT NULL               -- gösterilen özgün metin (NFKC uygulanmış)
+    metin    TEXT NOT NULL,              -- gösterilen özgün metin (NFKC uygulanmış)
+    dil      TEXT,                       -- 'tr' | 'en' | 'az' | 'ru' | ...
+    ceviri   TEXT                        -- Türkçe çeviri metni; Türkçe veya çevrilmemişse NULL
 );
 CREATE UNIQUE INDEX IF NOT EXISTS ix_sayfa_dosya_no ON sayfa(dosya_id, no);
 
@@ -75,8 +77,16 @@ CREATE VIRTUAL TABLE IF NOT EXISTS sayfa_fts USING fts5(
     tokenize='unicode61 remove_diacritics 0',
     prefix='2 3'
 );
+CREATE VIRTUAL TABLE IF NOT EXISTS sayfa_ceviri_fts USING fts5(
+    norm,
+    content='', contentless_delete=1,
+    tokenize='unicode61 remove_diacritics 0',
+    prefix='2 3'
+);
+
 CREATE TRIGGER IF NOT EXISTS sayfa_ad AFTER DELETE ON sayfa BEGIN
     DELETE FROM sayfa_fts WHERE rowid = old.id;
+    DELETE FROM sayfa_ceviri_fts WHERE rowid = old.id;
 END;
 
 INSERT OR IGNORE INTO meta(anahtar, deger) VALUES ('surum', '1');

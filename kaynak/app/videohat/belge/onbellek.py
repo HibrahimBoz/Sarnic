@@ -10,7 +10,7 @@ from .model import OcrSatir, Sayfa
 
 def json_yaz(yol: Path, veri):
     yol.parent.mkdir(parents=True, exist_ok=True)
-    gecici = yol.with_name(yol.name + ".tmp")
+    gecici = yol.with_name(f"{yol.name}.{os.getpid()}.tmp")
     with gecici.open("w", encoding="utf-8", newline="\n") as f:
         json.dump(veri, f, ensure_ascii=False)
         f.flush()

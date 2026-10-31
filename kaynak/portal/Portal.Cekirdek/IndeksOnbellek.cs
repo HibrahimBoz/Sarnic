@@ -115,7 +115,8 @@ public record OnbellekSegment(
     int No,
     double Bas,
     double Son,
-    string Metin
+    string Metin,
+    string? Ceviri = null
 );
 
 /// <summary>
@@ -144,7 +145,7 @@ public class OnbellekVerisi
 /// </summary>
 public class IndeksOnbellek
 {
-    public const int GuncelSurum = 2;
+    public const int GuncelSurum = 3;
 
     private static readonly JsonSerializerOptions JsonAyar = new()
     {

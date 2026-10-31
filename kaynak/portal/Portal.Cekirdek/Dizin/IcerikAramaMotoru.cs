@@ -18,7 +18,8 @@ public sealed record IcerikSonucu(
     (int Bas, int Uzunluk)[] Vurgular,
     double Puan,
     string? Ders,
-    string? Sha);
+    string? Sha,
+    bool CevirideEslesti = false);
 
 /// <summary>
 /// Belge içerikleri üzerinde FTS5 ve bm25 tabanlı sayfa arama motoru.
@@ -217,11 +218,27 @@ public sealed class IcerikAramaMotoru
 
         string whereSql = whereListesi.Count > 0 ? $"WHERE {string.Join(" AND ", whereListesi)}" : string.Empty;
 
+        // Eski dizinde çeviri sütunları ve sayfa_ceviri_fts yoktur; o zaman sorgu eskisiyle aynıdır.
+        bool ceviriVar = CeviriAramasiVarMi(conn);
+
         var sbSql = new StringBuilder();
         sbSql.AppendLine("WITH fts_sonuclari AS (");
-        sbSql.AppendLine("    SELECT rowid, bm25(sayfa_fts) AS bm");
-        sbSql.AppendLine("    FROM sayfa_fts");
-        sbSql.AppendLine("    WHERE sayfa_fts MATCH @ftsHepsi");
+        if (ceviriVar)
+        {
+            // Aynı sayfa iki tabloda da eşleşirse özgün eşleşme kazanır (cev = 0).
+            sbSql.AppendLine("    SELECT rowid, MIN(bm) AS bm, MIN(cev) AS cev FROM (");
+            sbSql.AppendLine("        SELECT rowid, bm25(sayfa_fts) AS bm, 0 AS cev FROM sayfa_fts WHERE sayfa_fts MATCH @ftsHepsi");
+            sbSql.AppendLine("        UNION ALL");
+            sbSql.AppendLine("        SELECT rowid, bm25(sayfa_ceviri_fts) AS bm, 1 AS cev FROM sayfa_ceviri_fts WHERE sayfa_ceviri_fts MATCH @ftsHepsi");
+            sbSql.AppendLine("    ) GROUP BY rowid");
+        }
+        else
+        {
+            sbSql.AppendLine("    SELECT rowid, bm25(sayfa_fts) AS bm, 0 AS cev");
+            sbSql.AppendLine("    FROM sayfa_fts");
+            sbSql.AppendLine("    WHERE sayfa_fts MATCH @ftsHepsi");
+        }
+
         sbSql.AppendLine(")");
 
         if (tamIfadeVar)
@@ -230,10 +247,17 @@ public sealed class IcerikAramaMotoru
             sbSql.AppendLine("    SELECT rowid");
             sbSql.AppendLine("    FROM sayfa_fts");
             sbSql.AppendLine("    WHERE sayfa_fts MATCH @ftsTam");
+            if (ceviriVar)
+            {
+                sbSql.AppendLine("    UNION");
+                sbSql.AppendLine("    SELECT rowid FROM sayfa_ceviri_fts WHERE sayfa_ceviri_fts MATCH @ftsTam");
+            }
+
             sbSql.AppendLine("),");
             sbSql.AppendLine("puanli AS (");
             sbSql.AppendLine("    SELECT");
             sbSql.AppendLine("        f.rowid AS sayfa_id,");
+            sbSql.AppendLine("        f.cev,");
             sbSql.AppendLine("        (CASE WHEN t.rowid IS NOT NULL THEN 1000.0 + (-f.bm) ELSE -f.bm END) AS puan");
             sbSql.AppendLine("    FROM fts_sonuclari f");
             sbSql.AppendLine("    LEFT JOIN tam_ifade t ON f.rowid = t.rowid");
@@ -244,6 +268,7 @@ public sealed class IcerikAramaMotoru
             sbSql.AppendLine(", puanli AS (");
             sbSql.AppendLine("    SELECT");
             sbSql.AppendLine("        f.rowid AS sayfa_id,");
+            sbSql.AppendLine("        f.cev,");
             sbSql.AppendLine("        -f.bm AS puan");
             sbSql.AppendLine("    FROM fts_sonuclari f");
             sbSql.AppendLine(")");
@@ -254,6 +279,7 @@ public sealed class IcerikAramaMotoru
         sbSql.AppendLine("    SELECT");
         sbSql.AppendLine("        s.id AS sayfa_id,");
         sbSql.AppendLine("        s.dosya_id,");
+        sbSql.AppendLine("        p.cev,");
         sbSql.AppendLine("        p.puan,");
         sbSql.AppendLine("        ROW_NUMBER() OVER (PARTITION BY s.dosya_id ORDER BY p.puan DESC, s.id ASC) AS sira");
         sbSql.AppendLine("    FROM puanli p");
@@ -266,13 +292,14 @@ public sealed class IcerikAramaMotoru
 
         sbSql.AppendLine("),");
         sbSql.AppendLine("secilenler AS (");
-        sbSql.AppendLine("    SELECT sayfa_id, dosya_id, puan");
+        sbSql.AppendLine("    SELECT sayfa_id, dosya_id, cev, puan");
         sbSql.AppendLine("    FROM sirali");
         sbSql.AppendLine("    WHERE sira <= @belgeBasinaEnFazla");
         sbSql.AppendLine("    ORDER BY puan DESC, sayfa_id ASC");
         sbSql.AppendLine("    LIMIT @enFazla");
         sbSql.AppendLine(")");
-        sbSql.AppendLine("SELECT sec.dosya_id, d.yol, d.ad, s.no AS sayfa_no, s.etiket, s.kaynak, s.guven, s.metin, sec.puan, d.ders, d.sha");
+        sbSql.AppendLine("SELECT sec.dosya_id, d.yol, d.ad, s.no AS sayfa_no, s.etiket, s.kaynak, s.guven, s.metin, sec.puan, d.ders, d.sha, sec.cev, "
+            + (ceviriVar ? "s.ceviri" : "NULL"));
         sbSql.AppendLine("FROM secilenler sec");
         sbSql.AppendLine("JOIN sayfa s ON sec.sayfa_id = s.id");
         sbSql.AppendLine("JOIN dosya d ON sec.dosya_id = d.id");
@@ -301,8 +328,11 @@ public sealed class IcerikAramaMotoru
                 double puan = reader.GetDouble(8);
                 string? ders = reader.IsDBNull(9) ? null : reader.GetString(9);
                 string? sha = reader.IsDBNull(10) ? null : reader.GetString(10);
+                string? ceviri = reader.IsDBNull(12) ? null : reader.GetString(12);
+                bool cevirideEslesti = reader.GetInt64(11) == 1 && ceviri != null;
 
-                var (alinti, vurgular) = MetinEsleme.AlintiUret(metin, kelimeler, 240);
+                // Yalnız çeviride eşleşen sayfanın alıntısı çeviriden üretilir; özgün metinde sorgu sözcüğü yoktur.
+                var (alinti, vurgular) = MetinEsleme.AlintiUret(cevirideEslesti ? ceviri! : metin, kelimeler, 240);
 
                 sonuclar.Add(new IcerikSonucu(
                     dosyaId,
@@ -316,7 +346,8 @@ public sealed class IcerikAramaMotoru
                     vurgular,
                     puan,
                     ders,
-                    sha));
+                    sha,
+                    cevirideEslesti));
             }
         }
         catch (SqliteException ex) when (ex.SqliteErrorCode == 9 || iptal.IsCancellationRequested)
@@ -325,6 +356,16 @@ public sealed class IcerikAramaMotoru
         }
 
         return sonuclar;
+    }
+
+    /// <summary>
+    /// Dizinde çeviri araması için gereken tablo ve sütunlar var mı (Sarnıç Atölye çeviri sürümüyle gelir).
+    /// </summary>
+    internal static bool CeviriAramasiVarMi(SqliteConnection conn)
+    {
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'sayfa_ceviri_fts';";
+        return Convert.ToInt64(cmd.ExecuteScalar()) == 1 && SayfaDeposu.DilCeviriSutunlariVarMi(conn);
     }
 
     private static string EscapeLike(string input)

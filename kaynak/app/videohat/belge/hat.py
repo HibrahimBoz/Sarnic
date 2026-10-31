@@ -7,10 +7,12 @@ import os
 from pathlib import Path
 import shutil
 import time
+from typing import Any
 
 from .. import yollar
 from ..hatalar import IsHatasi
 from . import ESKI_OFIS_HEDEFLERI
+from .ceviri_ekle import ceviri_ekle
 from .cikar import cikar
 from .model import BelgeKaydi
 from .ocr import OcrHavuzu
@@ -19,6 +21,7 @@ from .pdf_katman import olustur
 
 SURUM = 1
 log = logging.getLogger("videohat")
+_YOK = object()
 
 
 def sha256(yol):
@@ -29,9 +32,18 @@ def sha256(yol):
     return h.hexdigest()
 
 
-def isle_belge(yol: Path, depo: Path, ayar, havuz: OcrHavuzu | None = None) -> BelgeKaydi:
+def isle_belge(
+    yol: Path,
+    depo: Path,
+    ayar,
+    havuz: OcrHavuzu | None = None,
+    cevirmen: Any = _YOK,
+) -> BelgeKaydi:
     bas = time.monotonic()
     yol, depo = Path(yol), Path(depo)
+    if cevirmen is _YOK:
+        from ..ceviri import cevirmen_olustur
+        cevirmen = cevirmen_olustur(ayar)
     sha = sha256(yol)
     hedef = depo / "belgeler" / sha[:2] / sha
     belge_json = hedef / "belge.json"
@@ -45,6 +57,9 @@ def isle_belge(yol: Path, depo: Path, ayar, havuz: OcrHavuzu | None = None) -> B
                          or (veri.get("duzenlenebilir")
                              and (hedef / veri["duzenlenebilir"]).is_file()))):
                 veri.setdefault("duzenlenebilir", None)
+                if not veri.get("ceviri_surum"):
+                    if ceviri_ekle(veri, cevirmen):
+                        json_yaz(belge_json, veri)
                 return BelgeKaydi(sha, hedef, veri)
         except (OSError, ValueError):
             pass
@@ -86,6 +101,7 @@ def isle_belge(yol: Path, depo: Path, ayar, havuz: OcrHavuzu | None = None) -> B
                          for s in sonuc.sayfalar], "uyarilar": sonuc.uyarilar,
             "durum": sonuc.durum, "hata": sonuc.hata}
     if sonuc.durum == "tamam":
+        ceviri_ekle(veri, cevirmen)
         json_yaz(belge_json, veri)  # Tamam işareti en son.
     if not ayar.genel.ara_dosya_sakla:
         shutil.rmtree(ara, ignore_errors=True)
@@ -93,14 +109,14 @@ def isle_belge(yol: Path, depo: Path, ayar, havuz: OcrHavuzu | None = None) -> B
     return BelgeKaydi(sha, hedef, veri)
 
 
-def disa_yaz(yol, cikis, ayar, havuz=None):
+def disa_yaz(yol, cikis, ayar, havuz=None, cevirmen=_YOK):
     """Bağımsız komut/izleyici için aynı hattı düz çıktı klasörüne aktarır."""
     cikis = Path(cikis)
     cikis.mkdir(parents=True, exist_ok=True)
     depo = cikis / "_ara" / "depo"
     bitti = False
     try:
-        kayit = isle_belge(yol, depo, ayar, havuz)
+        kayit = isle_belge(yol, depo, ayar, havuz, cevirmen=cevirmen)
         kopya = kayit.veri.get("duzenlenebilir")
         for eski in cikis.glob("duzenlenebilir.*"):
             if not kopya or eski.name != kopya:

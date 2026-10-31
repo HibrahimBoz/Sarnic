@@ -5,6 +5,7 @@ import subprocess
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 from . import cihaz, cikti, goruntu, ses, terimler as terimler_mod, yollar
 from .ayar import Ayar
@@ -92,7 +93,13 @@ def _ffmpeg_calistir(komut: list[str]) -> None:
         raise RuntimeError(f"ffmpeg işlemi başarısız oldu.\n{ayrinti}".rstrip()) from hata
 
 
-def isle_tek(video: Path, cikis_dir: Path, ayar: Ayar, bayraklar: Bayraklar) -> Sonuc:
+def isle_tek(
+    video: Path,
+    cikis_dir: Path,
+    ayar: Ayar,
+    bayraklar: Bayraklar,
+    cevirmen: Any = None,
+) -> Sonuc:
     video = Path(video)
     cikis_dir = Path(cikis_dir)
     ad = video.stem
@@ -102,6 +109,10 @@ def isle_tek(video: Path, cikis_dir: Path, ayar: Ayar, bayraklar: Bayraklar) -> 
     if not _ses_akisi_var(video):
         sonuc.hata = "ses akışı yok"
         return sonuc
+
+    if cevirmen is None:
+        from .ceviri import cevirmen_olustur
+        cevirmen = cevirmen_olustur(ayar)
 
     ara = cikis_dir / "_ara"
     cikti_dosyalari: list[Path] = []
@@ -210,7 +221,36 @@ def isle_tek(video: Path, cikis_dir: Path, ayar: Ayar, bayraklar: Bayraklar) -> 
             shutil.move(str(son_video), str(nihai))
             cikti_dosyalari.append(nihai)
 
-        cikti.json_meta(bolumler, secim, sonuc.sureler, json_yolu, dil=stt_mod.SON_DIL)
+        # Çeviri adımı
+        ceviriler = None
+        ceviri_model_ad = None
+        dil = stt_mod.SON_DIL
+        if cevirmen is not None and dil and dil != "tr" and bolumler:
+            try:
+                metinler = [s.metin for s in bolumler]
+                def _cevir_islem():
+                    return cevirmen.cevir(metinler, kaynak_dil=dil)
+                ceviriler = olc("ceviri", _cevir_islem)
+                ceviri_model_ad = getattr(cevirmen, "model_ad", None)
+                if ceviriler:
+                    for s, c in zip(bolumler, ceviriler):
+                        if c and c.strip():
+                            s.ceviri = c.strip()
+            except Exception as hata:
+                sonuc.sureler.setdefault("ceviri", 0.0)
+                gunluk.warning("Çeviri yapılamadı: %s", hata)
+                ceviriler = None
+                ceviri_model_ad = None
+
+        cikti.json_meta(
+            bolumler,
+            secim,
+            sonuc.sureler,
+            json_yolu,
+            dil=dil,
+            ceviriler=ceviriler,
+            ceviri_model=ceviri_model_ad,
+        )
         sonuc.basarili = True
         sonuc.cikti_dosyalari = cikti_dosyalari
         sonuc.hata = None

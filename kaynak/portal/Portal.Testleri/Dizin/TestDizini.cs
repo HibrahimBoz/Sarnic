@@ -180,6 +180,43 @@ public sealed class TestDizini : IDisposable
         return sayfaId;
     }
 
+    /// <summary>
+    /// Sayfaya dil ve Türkçe çeviri yazar, çeviriyi sayfa_ceviri_fts'ye ekler (Sarnıç Atölye sayfalari_yaz ile aynı).
+    /// </summary>
+    public void SayfaCevirisiEkle(long sayfaId, string dil, string ceviri)
+    {
+        using var conn = new SqliteConnection($"Data Source={DbYolu}");
+        conn.Open();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            UPDATE sayfa SET dil = @dil, ceviri = @ceviri WHERE id = @id;
+            INSERT INTO sayfa_ceviri_fts(rowid, norm) VALUES (@id, @norm);";
+        cmd.Parameters.AddWithValue("@id", sayfaId);
+        cmd.Parameters.AddWithValue("@dil", dil);
+        cmd.Parameters.AddWithValue("@ceviri", ceviri);
+        cmd.Parameters.AddWithValue("@norm", TrNormalizasyon.Normalle(ceviri));
+        cmd.ExecuteNonQuery();
+    }
+
+    /// <summary>
+    /// Dizini çeviri öncesi şemaya indirir: sayfa.dil/sayfa.ceviri sütunları ve sayfa_ceviri_fts yok.
+    /// </summary>
+    public void EskiSemayaIndir()
+    {
+        using var conn = new SqliteConnection($"Data Source={DbYolu}");
+        conn.Open();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            DROP TRIGGER IF EXISTS sayfa_ad;
+            DROP TABLE IF EXISTS sayfa_ceviri_fts;
+            ALTER TABLE sayfa DROP COLUMN ceviri;
+            ALTER TABLE sayfa DROP COLUMN dil;
+            CREATE TRIGGER sayfa_ad AFTER DELETE ON sayfa BEGIN
+                DELETE FROM sayfa_fts WHERE rowid = old.id;
+            END;";
+        cmd.ExecuteNonQuery();
+    }
+
     private static void SemaKur(string dbYolu, string? surum)
     {
         string semaYolu = Path.Combine(AppContext.BaseDirectory, "ortak", "dizin_sema.sql");

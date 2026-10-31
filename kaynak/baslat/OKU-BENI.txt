@@ -25,3 +25,6 @@ NOTLAR
   - İşlenen videoların yanında "<ad>_islenmis" klasörü oluşur: .srt/.vtt/.txt transkript + TEK nihai video (<ad>_islenmis.mp4: ses temizlenmiş, istenirse görüntü de iyileştirilmiş). Sarnıç (portal) eski "<ad>_videoperisi" klasörlerini de tarar.
     SRT dosyasını Kdenlive'da Kdenlive altyazı özelliğiyle (altyazı dosyası içe aktarma) ekleyebilirsiniz.
   - Kdenlive ilk açılışta ayar sorabilir; ağ gerektirmez.
+
+LİSANSLAR
+  NLLB-200 çeviri modeli (Meta), CC-BY-NC 4.0 — yalnız ticari olmayan kullanım.

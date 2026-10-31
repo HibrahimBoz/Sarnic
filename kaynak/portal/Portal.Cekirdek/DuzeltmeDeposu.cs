@@ -15,10 +15,11 @@ public record EfektifSegment(
     double Son,
     string Metin,
     IReadOnlyList<Duzeltme> Gecmis,
-    bool Cakisma
-) : Segment(No, Bas, Son, Metin)
+    bool Cakisma,
+    string? Ceviri = null
+) : Segment(No, Bas, Son, Metin, Ceviri)
 {
-    public Segment AsilSegment => new(No, Bas, Son, Metin);
+    public Segment AsilSegment => new(No, Bas, Son, Metin, Ceviri);
 }
 
 /// <summary>
@@ -411,7 +412,7 @@ public class DuzeltmeDeposu
 
             if (sirali.Count == 0)
             {
-                efektifSegmentler.Add(new EfektifSegment(s.No, s.Bas, s.Son, s.Metin, Array.Empty<Duzeltme>(), false));
+                efektifSegmentler.Add(new EfektifSegment(s.No, s.Bas, s.Son, s.Metin, Array.Empty<Duzeltme>(), false, s.Ceviri));
                 continue;
             }
 
@@ -430,7 +431,7 @@ public class DuzeltmeDeposu
                 guncelMetin = MetniUygula(d, sirali, tumDuzeltmeler, guncelMetin);
             }
 
-            efektifSegmentler.Add(new EfektifSegment(s.No, s.Bas, s.Son, guncelMetin, sirali, cakisma));
+            efektifSegmentler.Add(new EfektifSegment(s.No, s.Bas, s.Son, guncelMetin, sirali, cakisma, s.Ceviri));
         }
 
         return new BirlestirmeSonucu(efektifSegmentler, yetimler, AtlananDosyaSayisi);
