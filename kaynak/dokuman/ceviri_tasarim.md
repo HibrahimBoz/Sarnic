@@ -24,11 +24,11 @@ Tarih: 2026-10-31. Durum: kullanıcı onayladı (2026-10-31).
 
 ## 4. Sarnıç Atölye tarafı (Python)
 1. Yeni modül `videohat/ceviri.py`. Model bir kez yüklenir. Cihaz `cihaz.py` kuralıyla seçilir (GPU yoksa CPU).
-2. Girdi metni cümlelere bölünür. Bölücü sıra sayısında ve kısaltmada ("I.", "12.", "Dr.") bölmez. Cümleler toplu (batch) çevrilir.
+2. Girdi metni cümlelere bölünür. Bölücü sıra sayısında ve kısaltmada ("I.", "12.", "Dr.") bölmez. Cümleler toplu (batch) çevrilir. Çıktı cümle sayısına kesilmez (NLLB ölçümü kesmesizdi).
 3. Kaynak dil kodları: `en` → `eng_Latn`, `az` → `azj_Latn`, `ru` → `rus_Cyrl`. Hedef `tur_Latn`.
 4. Ayar: `ayar.toml` içinde yeni `[ceviri]` bölümü: `etkin = true`, `model = "<yol>"`, `diller = ["en", "az", "ru"]`.
-5. Konuşma dökümü: `stt` dili `tr` değilse her segment çevrilir. Çıktı JSON'unda her segmente `ceviri` alanı eklenir. Kök alanlar: `ceviri_dil = "tr"`, `ceviri_model = "<model adı>"`. Ayrıca `<ad>.tr.srt` yazılır.
-6. Belge: her sayfanın dili belirlenir. Kural (ölçülecek): Kiril harfi çoğunluktaysa `ru`; `ə` varsa `az`; Türkçe harf sıklığı yüksekse `tr`; değilse `en`. Dil `tr` değilse sayfa çevrilir. `belge.json` sayfalarına `dil` ve `ceviri` alanları eklenir.
+5. Konuşma dökümü: `stt` dili `tr` değilse her segment çevrilir. Çıktı JSON'unda her segmente `ceviri` alanı eklenir. Kök alanlar: `ceviri_dil = "tr"`, `ceviri_model = "<model adı>"`.
+6. Belge: her sayfanın dili belirlenir. Kural: Kiril harf oranı, Azerice harfler (`ə`, `q`, `x`) ve durak sözcüğü sayımı (ayrıntı `ceviri_plan.md` Görev 1). Dil `tr` değilse sayfa çevrilir. `belge.json` sayfalarına `dil` ve `ceviri` alanları eklenir.
 7. Önbellek: çeviri metnin SHA256 özetine bağlanır. Aynı metin yeniden çevrilmez.
 8. Hata: model yoksa ya da yüklenemezse işleme durmaz. `uyarilar` listesine "Çeviri yapılamadı: <sebep>" yazılır.
 
@@ -40,7 +40,7 @@ Tarih: 2026-10-31. Durum: kullanıcı onayladı (2026-10-31).
 1. Oynatıcı penceresi: döküm panelinde "Özgün / Türkçe" düğmesi. Düğme yalnız `ceviri` alanı olan dökümde görünür.
 2. Belge penceresi: sayfa metninde aynı düğme. Düğme yalnız `ceviri` alanı olan sayfada görünür.
 3. Türkçe görünümde metnin üstünde sabit uyarı: "Makine çevirisi. Hata içerebilir. Kesin bilgi için özgün metne bakın."
-4. Altyazı: Türkçe görünüm seçiliyse oynatıcı `<ad>.tr.srt` dosyasını kullanır.
+4. Altyazı: tam ekran altyazısı geçerli görünümün metninden üretilir (Türkçe görünümde çeviri).
 5. Düğmenin son durumu `kullanici.json` dosyasında saklanır.
 
 ## 7. Paketleme
@@ -51,7 +51,7 @@ Tarih: 2026-10-31. Durum: kullanıcı onayladı (2026-10-31).
 
 ## 8. Kabul ölçütü
 1. 24 cümlelik ölçüm seti `kaynak/tests` altına girer. chrF++ en ≥ 80, az ≥ 65, ru ≥ 65 (GPU). Eşik ölçülen değerin ~5 puan altındadır.
-2. Çeviri cümle sayısı kaynak cümle sayısını geçmez (uydurma koruması).
+2. Çeviri uzunluğu sınırlıdır: `max_decoding_length = min(512, 2 × kaynak belirteç + 16)`.
 3. Türkçe döküm çevrilmez. Türkçe sayfa çevrilmez.
 4. Model yokken işleme hatasız biter ve uyarı yazar.
 5. CPU süresi ölçülür ve belgeye yazılır (henüz ölçülmedi).
