@@ -255,7 +255,8 @@ class Cevirmen:
             raise CeviriHatasi(f"Desteklenmeyen çeviri dili: {kaynak_dil}")
 
         sonuclar: list[str | None] = [None] * len(metinler)
-        bekleyen: list[tuple[int, tuple[str, str], int, int]] = []  # (sıra, anahtar, ilk parça, parça sayısı)
+        # (sıra, anahtar, ilk parça, paragraf başına parça sayıları)
+        bekleyen: list[tuple[int, tuple[str, str], int, list[int]]] = []
         parcalar: list[str] = []
         for i, metin in enumerate(metinler):
             if not metin or not metin.strip():
@@ -265,13 +266,23 @@ class Cevirmen:
             if anahtar in self._onbellek:
                 sonuclar[i] = self._onbellek[anahtar]
                 continue
-            metin_parcalari = cumlelere_bol(metin)
-            bekleyen.append((i, anahtar, len(parcalar), len(metin_parcalari)))
-            parcalar.extend(metin_parcalari)
+            # Paragraflar ayrı izlenir: çeviride başlık ilk cümleyle birleşmesin.
+            bas = len(parcalar)
+            adetler = []
+            for paragraf in re.split(r"\n\s*\n+", metin.strip()):
+                paragraf_parcalari = cumlelere_bol(paragraf)
+                if paragraf_parcalari:
+                    adetler.append(len(paragraf_parcalari))
+                    parcalar.extend(paragraf_parcalari)
+            bekleyen.append((i, anahtar, bas, adetler))
 
         cevrilen = self._parcalari_cevir(parcalar, kaynak_kod)
-        for i, anahtar, bas, adet in bekleyen:
-            tam = " ".join(p for p in cevrilen[bas:bas + adet] if p)
+        for i, anahtar, bas, adetler in bekleyen:
+            paragraflar = []
+            for adet in adetler:
+                paragraflar.append(" ".join(p for p in cevrilen[bas:bas + adet] if p))
+                bas += adet
+            tam = "\n\n".join(p for p in paragraflar if p)
             if len(self._onbellek) >= _ONBELLEK_SINIRI:  # uzun dizinle/izle süreci belleği doldurmasın
                 self._onbellek.clear()
             self._onbellek[anahtar] = tam
