@@ -7,19 +7,33 @@ using Portal.Cekirdek;
 namespace Portal.Uygulama;
 
 /// <summary>
-/// Video Portalı WPF uygulaması ana giriş sınıfı.
+/// Sarnıç WPF uygulaması ana giriş sınıfı.
 /// </summary>
 public partial class App : Application
 {
     private static readonly string HataLogYolu = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "VideoPortali",
+        "Sarnic",
         "hata.log"
     );
 
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        if (e.Args.Contains("--vlc-onbellek", StringComparer.Ordinal))
+        {
+            try
+            {
+                LibVlcAyarlari.EklentiOnbellegiOlustur();
+                Shutdown(0);
+            }
+            catch
+            {
+                Shutdown(1);
+            }
+            return;
+        }
 
         // Yakalanmamış istisnalar için genel dinleyiciler
         SetupHataYakali();
@@ -149,7 +163,7 @@ public partial class App : Application
         {
             MessageBox.Show(
                 $"Bir hata oluştu:\n{ex.Message}\n\nDetaylar hata günlüğüne kaydedildi:\n{HataLogYolu}",
-                "Hata - Video Portalı",
+                $"Hata - {UrunAdi.Etkin}",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error
             );

@@ -137,7 +137,12 @@ public static class TranskriptOkuyucu
                 throw new InvalidDataException("Segment 'metin' alanı null olamaz.");
             }
 
-            segmentler.Add(new Segment(no, bas, son, metin));
+            // Çeviri isteğe bağlıdır; metin değilse yok sayılır (döküm yine okunur).
+            string? ceviri = TryGetProp(item, "ceviri", out var ceviriElem) && ceviriElem.ValueKind == JsonValueKind.String
+                ? ceviriElem.GetString()
+                : null;
+
+            segmentler.Add(new Segment(no, bas, son, metin, ceviri));
         }
 
         string? kaynakOzet = null;
@@ -174,7 +179,9 @@ public static class TranskriptOkuyucu
             EskiBicim = false,
             KaynakOzet = kaynakOzet,
             SureSn = sureSn,
-            JsonYolu = jsonYolu
+            JsonYolu = jsonYolu,
+            CeviriDil = TryGetProp(kok, "ceviri_dil", out var dilElem) && dilElem.ValueKind == JsonValueKind.String ? dilElem.GetString() : null,
+            CeviriModel = TryGetProp(kok, "ceviri_model", out var modelElem) && modelElem.ValueKind == JsonValueKind.String ? modelElem.GetString() : null
         };
     }
 
@@ -237,7 +244,9 @@ public static class TranskriptOkuyucu
             EskiBicim = true,
             KaynakOzet = kaynakOzet,
             SureSn = sureSn,
-            JsonYolu = jsonYolu
+            JsonYolu = jsonYolu,
+            CeviriDil = TryGetProp(kok, "ceviri_dil", out var dilElem) && dilElem.ValueKind == JsonValueKind.String ? dilElem.GetString() : null,
+            CeviriModel = TryGetProp(kok, "ceviri_model", out var modelElem) && modelElem.ValueKind == JsonValueKind.String ? modelElem.GetString() : null
         };
     }
 

@@ -11,4 +11,8 @@ public class Transkript
     public string? KaynakOzet { get; init; }
     public double SureSn { get; init; }
     public string JsonYolu { get; init; } = string.Empty;
+    public string? CeviriDil { get; init; }
+    public string? CeviriModel { get; init; }
+
+    public bool CeviriVar => Segmentler.Any(s => !string.IsNullOrWhiteSpace(s.Ceviri));
 }

@@ -1,11 +1,13 @@
-"""Yerel faster-whisper modeliyle Türkçe konuşma tanıma.
+"""Yerel faster-whisper modeliyle konuşma tanıma (Türkçe, İngilizce, Azerbaycanca, Rusça; dil otomatik seçilir).
 
 Uzun kayıtlar (> TEK_PARCA_SINIRI_SN) ~PARCA_SN'lik parçalara bölünür: faster-whisper tüm sesin
 özniteliklerini tek seferde bellekte tuttuğundan bellek kayıt süresiyle orantılı büyür (ölçüldü:
 49 dk 3,1 GB, 3 saat 10,5 GB). Parçalı işlemde bellek kayıt süresinden bağımsızdır.
 """
+import contextvars
 import gc
 import logging
+import math
 import os
 import re
 import unicodedata
@@ -21,6 +23,13 @@ from .ayar import Ayar
 from .cihaz import CihazSecimi
 from .hatalar import IsHatasi
 
+# Kaydın konuşma dili (yaz() belirler). Türkçeye özgü süzgeçler yalnız "tr" iken çalışır.
+_ETKIN_DIL: contextvars.ContextVar[str] = contextvars.ContextVar("etkin_dil", default="tr")
+DIL_PENCERE_SN = 30.0        # Whisper dil tespiti pencere boyu
+DIL_PENCERE_SAYISI = 5       # kayda yayılmış en çok bu kadar pencere oylanır
+DIL_SESSIZ_DBFS = -45.0      # bu RMS düzeyinin altındaki pencere dil oylamasına girmez
+SON_DIL: str | None = None   # son yaz() çağrısında seçilen dil (çıktı JSON'una yazılır)
+
 PARCA_SN = 1200.0            # parça hedef uzunluğu (20 dk)
 TEK_PARCA_SINIRI_SN = 1800.0  # bundan kısa kayıtlar tek parça (dosya yoluyla) işlenir
 ARAMA_SN = 20.0              # kesim noktası için hedefin ±bu kadar saniyesinde en sessiz yer aranır
@@ -33,6 +42,7 @@ class Segment:
     son: float
     metin: str
     guven: float | None = field(default=None, compare=False)
+    ceviri: str | None = field(default=None, compare=False)  # Türkçe çeviri (yalnız tr dışı kayıtta)
 
 
 _MAKS_ALTYAZI_SN = 7.0
@@ -312,6 +322,9 @@ def _adaylari_sec(
 
 
 def _ingilizce_halusinasyonu(metin: str) -> bool:
+    # Yalnız Türkçe kayıtta anlamlıdır: İngilizce kayıtta her gerçek cümleyi atar (ölçüldü).
+    if _ETKIN_DIL.get() != "tr":
+        return False
     if any(c in metin for c in "çğıöşüİÇĞÖŞÜ"):
         return False
     kelimeler = re.findall(r"\b[\w']+\b", metin.lower())
@@ -491,6 +504,38 @@ def _istem_yap(onceki_metin: str, terimler: str) -> str | None:
         baglam = baglam[cumle_siniri:].strip()
     kisimlar = [k for k in (baglam, terimler.strip()) if k]
     return " ".join(kisimlar) or None
+
+
+def dil_sec(model, wav16: Path, ayar: Ayar, sr: int, toplam: float) -> tuple[str, dict[str, float]]:
+    """Kaydın dilini `ayar.stt.diller` içinden seçer; sabit dil verildiyse onu döndürür.
+
+    Kayda eşit aralıkla yayılmış en çok DIL_PENCERE_SAYISI pencerede Whisper dil olasılıkları
+    toplanır; yalnız izinli diller yarışır (Azerbaycanca/Türkçe gibi yakın dillerde dışarıdaki
+    bir dilin kazanmasını önler).
+    """
+    if ayar.stt.dil != "otomatik":
+        return ayar.stt.dil, {}
+    izinli = ayar.stt.diller
+    if len(izinli) == 1:
+        return izinli[0], {}
+    adet = max(1, min(DIL_PENCERE_SAYISI, math.ceil(toplam / DIL_PENCERE_SN)))
+    adim = max(0.0, toplam - DIL_PENCERE_SN) / max(1, adet - 1) if adet > 1 else 0.0
+    toplamlar = {d: 0.0 for d in izinli}
+    for i in range(adet):
+        bas = i * adim
+        parca = _wav_parca(wav16, bas, min(toplam, bas + DIL_PENCERE_SN), sr)
+        if parca.size < sr:  # 1 sn'den kısa pencere oylanmaz
+            continue
+        # Sessiz/çok kısık pencere (giriş, bitiş müziği arası) oylanmaz: Whisper sessizlikte rastgele dil verir.
+        if 20 * np.log10(float(np.sqrt(np.mean(parca ** 2))) + 1e-9) < DIL_SESSIZ_DBFS:
+            continue
+        _, _, olasiliklar = model.detect_language(audio=parca, language_detection_segments=1)
+        olasilik = dict(olasiliklar)
+        for d in izinli:
+            toplamlar[d] += olasilik.get(d, 0.0)
+    if not any(toplamlar.values()):
+        return izinli[0], toplamlar
+    return max(izinli, key=lambda d: toplamlar[d]), toplamlar
 
 
 def _wav_parca(wav16: Path, bas: float, son: float, sr: int):
@@ -707,8 +752,11 @@ def yaz(
     sonuc: list[Segment] = []
     sonraki_yuzde = 10
 
+    global SON_DIL
+    SON_DIL = None  # hata olursa önceki kaydın dili JSON'a taşınmasın
     model = None
     coz = None
+    dil_jetonu = None
     sinirlar: list[float] = []
     ikinci_gecis = ayar.stt.ikinci_gecis
     try:
@@ -719,10 +767,18 @@ def yaz(
             cpu_threads=cpu_threads,
             num_workers=1,
         )
+        dil, dil_puanlari = dil_sec(model, wav16, ayar, sr, toplam)
+        log.info("Konuşma dili: %s%s", dil, "".join(
+            f" {d}={p:.2f}" for d, p in sorted(dil_puanlari.items(), key=lambda x: -x[1])))
+        dil_jetonu = _ETKIN_DIL.set(dil)
+        SON_DIL = dil
+        # Terim listesi ve önceki metin bağlamı Türkçedir: başka dilde istem, Whisper'ı Türkçeye çevirmeye iter.
+        if dil != "tr":
+            terimler = ""
 
         def coz(girdi, initial_prompt=None, ikinci=False):
             ayarlar = {
-                "language": "tr",
+                "language": dil,
                 "beam_size": 10 if ikinci else ayar.stt.beam_size,
                 "vad_filter": False if ikinci else ayar.stt.vad,
                 "hallucination_silence_threshold": ayar.stt.halusinasyon_esik_sn,
@@ -819,7 +875,7 @@ def yaz(
                     dilim_ses = _wav_parca(wav16, cur, nxt, sr)
                     dilim_bolumler, _ = model.transcribe(
                         dilim_ses,
-                        language="tr",
+                        language=dil,
                         beam_size=ayar.stt.beam_size,
                         vad_filter=False,
                         word_timestamps=True,
@@ -930,6 +986,8 @@ def yaz(
             if ayar.stt.kisa_altyazi_uzat else cakismasiz
         )
     finally:
+        if dil_jetonu is not None:
+            _ETKIN_DIL.reset(dil_jetonu)
         if coz is not None:
             del coz
         if model is not None:

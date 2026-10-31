@@ -1,0 +1,126 @@
+<Window x:Class="Portal.Uygulama.BelgePenceresi"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Style="{StaticResource PortalPencere}"
+        Title="Sarnıç — Belge" Width="1100" Height="750"
+        MinWidth="800" MinHeight="500"
+        KeyDown="Pencere_KeyDown"
+        Loaded="Pencere_Loaded"
+        Closing="Pencere_Closing">
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Üst Araç Çubuğu -->
+        <Border Grid.Row="0" Background="{DynamicResource YuzeyFircasi}" CornerRadius="6"
+                BorderBrush="{DynamicResource KenarlikFircasi}" BorderThickness="1"
+                Padding="10,6" Margin="0,0,0,8">
+            <DockPanel LastChildFill="False">
+                <!-- Sol Kısım: Sayfa Gezinme ve Yakınlaştırma -->
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
+                    <Button x:Name="OncekiSayfaDugmesi" Content="◀" ToolTip="Önceki sayfa (PageUp)"
+                            Padding="8,4" Margin="0,0,4,0" Click="OncekiSayfaDugmesi_Click"/>
+                    <TextBox x:Name="SayfaNoKutusu" Width="44" TextAlignment="Center"
+                             VerticalContentAlignment="Center" Margin="0,0,4,0"
+                             KeyDown="SayfaNoKutusu_KeyDown"/>
+                    <TextBlock x:Name="ToplamSayfaMetni" Text="/ 1" VerticalAlignment="Center"
+                               Foreground="{DynamicResource SolukMetinFircasi}" Margin="0,0,4,0"/>
+                    <Button x:Name="SonrakiSayfaDugmesi" Content="▶" ToolTip="Sonraki sayfa (PageDown)"
+                            Padding="8,4" Margin="0,0,12,0" Click="SonrakiSayfaDugmesi_Click"/>
+
+                    <Separator Style="{x:Null}" Width="1" Height="20" Background="{DynamicResource KenarlikFircasi}" Margin="0,0,12,0"/>
+
+                    <TextBlock Text="Yakınlaştır:" VerticalAlignment="Center" Foreground="{DynamicResource SolukMetinFircasi}" Margin="0,0,6,0"/>
+                    <Slider x:Name="YakinlastirmaKaydiraci" Width="100" Minimum="50" Maximum="300" Value="100"
+                            SmallChange="10" LargeChange="25" VerticalAlignment="Center"
+                            ValueChanged="YakinlastirmaKaydiraci_ValueChanged"/>
+                    <TextBlock x:Name="YakinlastirmaMetni" Text="%100" Width="42" VerticalAlignment="Center"
+                               Foreground="{DynamicResource MetinFircasi}" Margin="6,0,12,0"/>
+                </StackPanel>
+
+                <!-- Sağ Kısım: Belge İçi Arama ve Dosya İşlemleri -->
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center">
+                    <TextBlock Text="Metinde ara:" VerticalAlignment="Center" Foreground="{DynamicResource SolukMetinFircasi}" Margin="0,0,6,0"/>
+                    <TextBox x:Name="BelgeAramaKutusu" Width="140" Padding="6,4" VerticalContentAlignment="Center"
+                             TextChanged="BelgeAramaKutusu_TextChanged"
+                             KeyDown="BelgeAramaKutusu_KeyDown"/>
+                    <Button x:Name="OncekiEslesmeDugmesi" Content="▲" ToolTip="Önceki eşleşme (Shift+F3)"
+                            Padding="6,4" Margin="4,0,2,0" Click="OncekiEslesmeDugmesi_Click"/>
+                    <Button x:Name="SonrakiEslesmeDugmesi" Content="▼" ToolTip="Sonraki eşleşme (F3)"
+                            Padding="6,4" Margin="0,0,6,0" Click="SonrakiEslesmeDugmesi_Click"/>
+                    <TextBlock x:Name="EslesmeDurumMetni" Text="" VerticalAlignment="Center"
+                               Foreground="{DynamicResource SolukMetinFircasi}" Margin="0,0,12,0"/>
+
+                    <Separator Style="{x:Null}" Width="1" Height="20" Background="{DynamicResource KenarlikFircasi}" Margin="0,0,12,0"/>
+
+                    <Button x:Name="DuzenleDugmesi" Content="Düzenle" Padding="10,4" Margin="0,0,6,0"
+                            Visibility="Collapsed" Click="DuzenleDugmesi_Click"/>
+                    <Button x:Name="AsliniAcDugmesi" Content="Aslını aç" Padding="10,4" Margin="0,0,6,0"
+                            Click="AsliniAcDugmesi_Click"/>
+                    <Button x:Name="KlasorunuAcDugmesi" Content="Klasörünü aç" Padding="10,4"
+                            Click="KlasorunuAcDugmesi_Click"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- Gövde: Sol Bölme (Görüntü) + GridSplitter + Sağ Bölme (Metin) -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition x:Name="SolKolon" Width="*" MinWidth="150"/>
+                <ColumnDefinition x:Name="BolucuKolon" Width="6"/>
+                <ColumnDefinition x:Name="SagKolon" Width="*" MinWidth="200"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Sol Bölme: Sayfa Görüntüsü -->
+            <Border Grid.Column="0" Background="#101114" CornerRadius="4" ClipToBounds="True">
+                <Grid>
+                    <ScrollViewer x:Name="GoruntuKaydirici" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                        <Image x:Name="SayfaGoruntusu" Stretch="None" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </ScrollViewer>
+
+                    <Border x:Name="SolHataKutusu" Background="{DynamicResource YuzeyFircasi}" Padding="16"
+                            CornerRadius="4" HorizontalAlignment="Center" VerticalAlignment="Center"
+                            Visibility="Collapsed" MaxWidth="360">
+                        <StackPanel>
+                            <TextBlock Text="⚠" FontSize="32" Foreground="{DynamicResource SolukMetinFircasi}" HorizontalAlignment="Center" Margin="0,0,0,8"/>
+                            <TextBlock x:Name="SolHataMetni" Text="" Foreground="{DynamicResource MetinFircasi}"
+                                       TextAlignment="Center" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!-- GridSplitter -->
+            <GridSplitter x:Name="Bolucu" Grid.Column="1" Width="6" HorizontalAlignment="Stretch" Background="Transparent"/>
+
+            <!-- Sağ Bölme: Sayfa Metni -->
+            <Border Grid.Column="2" Background="{DynamicResource YuzeyFircasi}" CornerRadius="4" Padding="12"
+                    BorderBrush="{DynamicResource KenarlikFircasi}" BorderThickness="1">
+                <DockPanel>
+                    <Border x:Name="OcrBilgiKutusu" DockPanel.Dock="Top" Background="{DynamicResource Yuzey2Fircasi}"
+                            BorderBrush="{DynamicResource KenarlikFircasi}" BorderThickness="1"
+                            CornerRadius="3" Padding="8,4" Margin="0,0,0,8" Visibility="Collapsed">
+                        <TextBlock x:Name="OcrBilgiMetni" Text="OCR · güven %--"
+                                   Foreground="{DynamicResource VurguFircasi}" FontWeight="Medium" FontSize="12"/>
+                    </Border>
+
+                    <StackPanel x:Name="CeviriPaneli" DockPanel.Dock="Top" Margin="0,0,0,8" Visibility="Collapsed">
+                        <ToggleButton x:Name="CeviriGecisDugmesi" Content="Özgün / Türkçe" Padding="8,3"
+                                      HorizontalAlignment="Left" Click="CeviriGecisDugmesi_Click"/>
+                        <TextBlock x:Name="CeviriUyariMetni" Margin="0,6,0,0"
+                                   Text="Makine çevirisi. Hata içerebilir. Kesin bilgi için özgün metne bakın."
+                                   FontSize="11" Foreground="{DynamicResource SolukMetinFircasi}" TextWrapping="Wrap"
+                                   Visibility="Collapsed"/>
+                    </StackPanel>
+
+                    <ScrollViewer x:Name="MetinKaydirici" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <TextBlock x:Name="SayfaMetniBlok" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource MetinFircasi}" FontSize="13" LineHeight="20"/>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>

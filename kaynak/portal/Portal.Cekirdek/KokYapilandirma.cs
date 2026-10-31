@@ -14,7 +14,11 @@ public class KokYapilandirma
     private static readonly JsonSerializerOptions JsonAyar = new()
     {
         Encoder = JavaScriptEncoder.Create(UnicodeRanges.All),
-        WriteIndented = true
+        WriteIndented = true,
+        // Okuma kökü okuyan JsonDosyasindanKokOku ile aynı hoşgörüde ("KOK", yorum, sondaki virgül).
+        PropertyNameCaseInsensitive = true,
+        AllowTrailingCommas = true,
+        ReadCommentHandling = JsonCommentHandling.Skip
     };
 
     private static readonly JsonDocumentOptions DokumanAyar = new()
@@ -27,11 +31,11 @@ public class KokYapilandirma
     private readonly string? _paketAyarYolu;
 
     /// <summary>
-    /// Varsayılan kullanıcı ayar dosyası yolu (%LOCALAPPDATA%\VideoPortali\kullanici.json).
+    /// Varsayılan kullanıcı ayar dosyası yolu (%LOCALAPPDATA%\Sarnic\kullanici.json).
     /// </summary>
     public static string VarsayilanKullaniciAyarYolu => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "VideoPortali",
+        "Sarnic",
         "kullanici.json"
     );
 
@@ -89,7 +93,7 @@ public class KokYapilandirma
     /// <summary>
     /// Kök dizinini öncelik sırasına göre çözer:
     /// 1. Komut satırı --kok &lt;yol&gt; (varsa)
-    /// 2. Kullanıcı ayarı (%LOCALAPPDATA%\VideoPortali\kullanici.json)
+    /// 2. Kullanıcı ayarı (%LOCALAPPDATA%\Sarnic\kullanici.json)
     /// 3. Paketlenen ayar.json (uygulama klasöründe, AppContext.BaseDirectory)
     /// 4. Hiçbiri yoksa null
     /// Not: Yolun diskte var olup olmadığı burada denetlenmez.
@@ -159,11 +163,21 @@ public class KokYapilandirma
     /// </summary>
     public static string? KullaniciKokuOku(string? kullaniciAyarYolu = null)
     {
-        string dosyaYolu = string.IsNullOrWhiteSpace(kullaniciAyarYolu)
-            ? VarsayilanKullaniciAyarYolu
-            : kullaniciAyarYolu;
+        if (!string.IsNullOrWhiteSpace(kullaniciAyarYolu))
+        {
+            return JsonDosyasindanKokOku(kullaniciAyarYolu);
+        }
 
-        return JsonDosyasindanKokOku(dosyaYolu);
+        if (File.Exists(VarsayilanKullaniciAyarYolu))
+        {
+            return JsonDosyasindanKokOku(VarsayilanKullaniciAyarYolu);
+        }
+
+        // Eski kurulumun ayarı: yeni dosya yoksa okunur, yazma her zaman yeni yola.
+        return JsonDosyasindanKokOku(Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "VideoPortali",
+            "kullanici.json"));
     }
 
     /// <summary>
@@ -236,7 +250,32 @@ public class KokYapilandirma
     }
 
     /// <summary>
+    /// Kullanıcı ayar dosyasından çeviri gösterim tercihini okur.
+    /// </summary>
+    public static bool CeviriGosterOku(string? kullaniciAyarYolu = null)
+    {
+        var ayar = KullaniciAyarVerisiOku(kullaniciAyarYolu);
+        return ayar.CeviriGoster;
+    }
+
+    /// <summary>
+    /// Kullanıcı ayar dosyasına çeviri gösterim tercihini atomik olarak kaydeder.
+    /// Diğer ayar alanlarını korur.
+    /// </summary>
+    public static void CeviriGosterKaydet(bool deger, string? kullaniciAyarYolu = null)
+    {
+        string hedefYol = string.IsNullOrWhiteSpace(kullaniciAyarYolu)
+            ? VarsayilanKullaniciAyarYolu
+            : kullaniciAyarYolu;
+
+        var ayar = KullaniciAyarVerisiOku(kullaniciAyarYolu);
+        ayar.CeviriGoster = deger;
+        AyarVerisiYaz(ayar, hedefYol);
+    }
+
+    /// <summary>
     /// Kök yolunu belirtilen ayar dosyasına atomik olarak kaydeder (.tmp + Move).
+    /// Diğer ayar alanlarını korur.
     /// </summary>
     public static void Kaydet(string kok, string? kullaniciAyarYolu = null)
     {
@@ -249,13 +288,67 @@ public class KokYapilandirma
             ? VarsayilanKullaniciAyarYolu
             : kullaniciAyarYolu;
 
+        var ayarVerisi = KullaniciAyarVerisiOku(kullaniciAyarYolu);
+        ayarVerisi.Kok = kok;
+        AyarVerisiYaz(ayarVerisi, hedefYol);
+    }
+
+    private static AyarVerisi KullaniciAyarVerisiOku(string? kullaniciAyarYolu = null)
+    {
+        if (!string.IsNullOrWhiteSpace(kullaniciAyarYolu))
+        {
+            return DosyadanAyarVerisiOku(kullaniciAyarYolu);
+        }
+
+        if (File.Exists(VarsayilanKullaniciAyarYolu))
+        {
+            return DosyadanAyarVerisiOku(VarsayilanKullaniciAyarYolu);
+        }
+
+        string eskiYol = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "VideoPortali",
+            "kullanici.json");
+
+        if (File.Exists(eskiYol))
+        {
+            return DosyadanAyarVerisiOku(eskiYol);
+        }
+
+        return new AyarVerisi();
+    }
+
+    private static AyarVerisi DosyadanAyarVerisiOku(string dosyaYolu)
+    {
+        if (string.IsNullOrWhiteSpace(dosyaYolu) || !File.Exists(dosyaYolu))
+        {
+            return new AyarVerisi();
+        }
+
+        try
+        {
+            string metin = File.ReadAllText(dosyaYolu, Encoding.UTF8);
+            if (string.IsNullOrWhiteSpace(metin))
+            {
+                return new AyarVerisi();
+            }
+
+            return JsonSerializer.Deserialize<AyarVerisi>(metin, JsonAyar) ?? new AyarVerisi();
+        }
+        catch
+        {
+            return new AyarVerisi();
+        }
+    }
+
+    private static void AyarVerisiYaz(AyarVerisi ayarVerisi, string hedefYol)
+    {
         string? klasor = Path.GetDirectoryName(hedefYol);
         if (!string.IsNullOrEmpty(klasor))
         {
             Directory.CreateDirectory(klasor);
         }
 
-        var ayarVerisi = new AyarVerisi { Kok = kok };
         string jsonMetni = JsonSerializer.Serialize(ayarVerisi, JsonAyar);
 
         string geciciYol = Path.Combine(klasor ?? ".", $"{Path.GetFileName(hedefYol)}.{Guid.NewGuid():N}.tmp");
@@ -370,5 +463,11 @@ public class KokYapilandirma
     {
         [JsonPropertyName("kok")]
         public string Kok { get; set; } = string.Empty;
+
+        [JsonPropertyName("ceviri_goster")]
+        public bool CeviriGoster { get; set; }
+
+        [JsonExtensionData]
+        public Dictionary<string, JsonElement>? EkVeriler { get; set; }
     }
 }

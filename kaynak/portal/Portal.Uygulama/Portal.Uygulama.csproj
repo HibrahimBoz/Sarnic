@@ -2,12 +2,17 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <Product>Sarnıç</Product>
+    <AssemblyTitle>Sarnıç</AssemblyTitle>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
-    <AssemblyName>Portal.Uygulama</AssemblyName>
+    <AssemblyName>Sarnic</AssemblyName>
     <RootNamespace>Portal.Uygulama</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Varliklar\uygulama.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -21,6 +26,12 @@
 
   <ItemGroup>
     <Content Include="ayar.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="Varliklar\logo-256.png;Varliklar\uygulama.ico" />
+    <Resource Include="Varliklar\logo-256.png" />
+    <Resource Include="Varliklar\uygulama.ico" />
   </ItemGroup>
 
   <!-- Yayında yalnız win-x64 libvlc kalır (ölçüldü: x86 105 MB + arm64 91 MB gereksiz). -->

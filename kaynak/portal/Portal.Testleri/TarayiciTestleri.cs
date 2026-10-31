@@ -34,34 +34,34 @@ public class TarayiciTestleri : IDisposable
     {
         // 1. Ders: Normal, işlenmiş videolu
         string ders1Ust = Path.Combine(_geciciKokKlasor, "ders1");
-        string ders1Klasor = Path.Combine(ders1Ust, "ders1_videoperisi");
+        string ders1Klasor = Path.Combine(ders1Ust, "ders1_islenmis");
         Directory.CreateDirectory(ders1Klasor);
         File.WriteAllText(Path.Combine(ders1Klasor, "ders1.json"), "{}", Encoding.UTF8);
         File.WriteAllBytes(Path.Combine(ders1Klasor, "ders1_islenmis.mp4"), new byte[] { 1, 2, 3 });
 
         // 2. Ders: Sadece orijinal video var (üst klasörde ders2.mp4)
         string ders2Ust = Path.Combine(_geciciKokKlasor, "ders2");
-        string ders2Klasor = Path.Combine(ders2Ust, "ders2_videoperisi");
+        string ders2Klasor = Path.Combine(ders2Ust, "ders2_islenmis");
         Directory.CreateDirectory(ders2Klasor);
         File.WriteAllText(Path.Combine(ders2Klasor, "ders2.json"), "{}", Encoding.UTF8);
         File.WriteAllBytes(Path.Combine(ders2Ust, "ders2.mp4"), new byte[] { 1, 2, 3 });
 
         // 3. Ders: Videosuz ders (hiçbir video yok)
         string ders3Ust = Path.Combine(_geciciKokKlasor, "ders3");
-        string ders3Klasor = Path.Combine(ders3Ust, "ders3_videoperisi");
+        string ders3Klasor = Path.Combine(ders3Ust, "ders3_islenmis");
         Directory.CreateDirectory(ders3Klasor);
         File.WriteAllText(Path.Combine(ders3Klasor, "ders3.json"), "{}", Encoding.UTF8);
 
         // 4. Ders: İç içe klasörler altında
         string ders4Ust = Path.Combine(_geciciKokKlasor, "donem2026", "matematik", "analiz");
-        string ders4Klasor = Path.Combine(ders4Ust, "analiz_videoperisi");
+        string ders4Klasor = Path.Combine(ders4Ust, "analiz_islenmis");
         Directory.CreateDirectory(ders4Klasor);
         File.WriteAllText(Path.Combine(ders4Klasor, "analiz.json"), "{}", Encoding.UTF8);
         File.WriteAllBytes(Path.Combine(ders4Klasor, "analiz_islenmis.mp4"), new byte[] { 1, 2, 3 });
 
-        // 5. Ders: Bozuk / geçersiz ders (json dosyası bulunmayan *_videoperisi klasörü)
+        // 5. Ders: Bozuk / geçersiz ders (json dosyası bulunmayan *_islenmis klasörü)
         string ders5Ust = Path.Combine(_geciciKokKlasor, "ders5_bozuk");
-        string ders5Klasor = Path.Combine(ders5Ust, "ders5_videoperisi");
+        string ders5Klasor = Path.Combine(ders5Ust, "ders5_islenmis");
         Directory.CreateDirectory(ders5Klasor);
         // JSON dosyası yazmıyoruz -> bu klasör atlanmalı
 
@@ -93,10 +93,29 @@ public class TarayiciTestleri : IDisposable
     }
 
     [Fact]
+    public void Tara_YeniVeEskiEkleriAyniKokteBirlikteListeler()
+    {
+        string dersUst = Path.Combine(_geciciKokKlasor, "dersler");
+        string yeniKlasor = Path.Combine(dersUst, "x_IsLeNmIs");
+        string eskiKlasor = Path.Combine(dersUst, "x_videoperisi");
+        Directory.CreateDirectory(yeniKlasor);
+        Directory.CreateDirectory(eskiKlasor);
+        File.WriteAllText(Path.Combine(yeniKlasor, "x.json"), "{}", Encoding.UTF8);
+        File.WriteAllText(Path.Combine(eskiKlasor, "x.json"), "{}", Encoding.UTF8);
+
+        var sonuclar = Tarayici.Tara(dersUst);
+
+        Assert.Equal(2, sonuclar.Count);
+        Assert.All(sonuclar, kayit => Assert.Equal("x", kayit.Ad));
+        Assert.Contains(sonuclar, kayit => kayit.JsonYolu == Path.Combine(yeniKlasor, "x.json"));
+        Assert.Contains(sonuclar, kayit => kayit.JsonYolu == Path.Combine(eskiKlasor, "x.json"));
+    }
+
+    [Fact]
     public void Tara_IslenmisMp4OrijinalVideoyaGoreOnceliklidir()
     {
         string ustKlasor = Path.Combine(_geciciKokKlasor, "oncelik_test");
-        string vpKlasor = Path.Combine(ustKlasor, "ders_videoperisi");
+        string vpKlasor = Path.Combine(ustKlasor, "ders_islenmis");
         Directory.CreateDirectory(vpKlasor);
 
         File.WriteAllText(Path.Combine(vpKlasor, "ders.json"), "{}", Encoding.UTF8);
@@ -117,7 +136,7 @@ public class TarayiciTestleri : IDisposable
     public void Tara_OrijinalVideoUzantilariSirasi_Mp4VeMkvArasindaMp4Secilir()
     {
         string ustKlasor = Path.Combine(_geciciKokKlasor, "uzanti_test");
-        string vpKlasor = Path.Combine(ustKlasor, "ders_videoperisi");
+        string vpKlasor = Path.Combine(ustKlasor, "ders_islenmis");
         Directory.CreateDirectory(vpKlasor);
 
         File.WriteAllText(Path.Combine(vpKlasor, "ders.json"), "{}", Encoding.UTF8);
@@ -137,7 +156,7 @@ public class TarayiciTestleri : IDisposable
     public void Tara_OrijinalVideoUzantilari_MkvMovVeAviFormatlariniDestekler()
     {
         string ustKlasor = Path.Combine(_geciciKokKlasor, "avi_test");
-        string vpKlasor = Path.Combine(ustKlasor, "video_videoperisi");
+        string vpKlasor = Path.Combine(ustKlasor, "video_islenmis");
         Directory.CreateDirectory(vpKlasor);
 
         File.WriteAllText(Path.Combine(vpKlasor, "video.json"), "{}", Encoding.UTF8);

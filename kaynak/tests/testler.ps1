@@ -1,8 +1,8 @@
-# VideoHat kabul testleri a–h. Kullanım: pwsh -File testler.ps1 [-Paket dist\VideoHat-GPU]
+# Sarnıç Atölye kabul testleri a–h. Kullanım: pwsh -File testler.ps1 [-Paket dist\SarnicAtolye-GPU]
 # Çıktı: tablo + testler_sonuc.json. Çıkış kodu: başarısız test sayısı.
 param(
     [string[]]$Atla = @(),   # örn. -Atla cdeha,g  (c/d/e/h/a blokunu ve/veya g'yi atlar)
-    [string]$Paket = (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) 'dist\VideoHat-GPU')
+    [string]$Paket = (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) 'dist\SarnicAtolye-GPU')
 )
 $ErrorActionPreference = 'Continue'
 $proje = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
@@ -137,8 +137,10 @@ Get-Process python -ErrorAction SilentlyContinue | Where-Object { $_.Path -like 
 $bittiAd = @(Get-ChildItem (Join-Path $Paket 'is\bitti') | Select-Object -ExpandProperty Name)
 $hataSay = @(Get-ChildItem (Join-Path $Paket 'is\hata') -ErrorAction SilentlyContinue).Count
 $yinelenen = @($bittiAd | Where-Object { $_ -like '*yinelenen*' }).Count
-$isDizin = @(Get-ChildItem (Join-Path $Paket 'is\bitti') -Directory).Count
-Kaydet 'f izleme (3 iş, 1 yinelenen, 0 hata)' ($isDizin -eq 3 -and $yinelenen -eq 1 -and $hataSay -eq 0) "bitti=[$($bittiAd -join ', ')] hata=$hataSay"
+$isDizinler = @(Get-ChildItem (Join-Path $Paket 'is\bitti') -Directory)
+$isDizin = $isDizinler.Count
+$islenmisEki = @($isDizinler | Where-Object { $_.Name -match '_islenmis(?:_\d+)?$' }).Count
+Kaydet 'f izleme (3 iş, 1 yinelenen, 0 hata)' ($isDizin -eq 3 -and $islenmisEki -eq 3 -and $yinelenen -eq 1 -and $hataSay -eq 0) "bitti=[$($bittiAd -join ', ')] _islenmis_dizin=$islenmisEki hata=$hataSay"
 
 if ($Atla -notcontains 'g') {
 # g: taşınabilirlik

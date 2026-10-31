@@ -32,6 +32,8 @@
                       SelectionChanged="SesKanaliSecici_SelectionChanged"/>
             <Button Content="Elle hizala" Click="ElleHizala_Click" Margin="0,0,6,4" Padding="10,5"/>
             <Button Content="Ofsetleri dışa aktar" Click="OfsetDisaAktar_Click" Margin="0,0,6,4" Padding="10,5"/>
+            <Button x:Name="TamEkranDugmesi" Content="Tam ekran" ToolTip="Tam ekran (F11)"
+                    Click="TamEkran_Click" Margin="0,0,6,4" Padding="10,5"/>
         </WrapPanel>
 
         <Grid Grid.Row="1">
@@ -47,7 +49,14 @@
                     <TextBlock Text="Transkript" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{DynamicResource MetinFircasi}"/>
                     <Button x:Name="DuzenleDugmesi" DockPanel.Dock="Right" Content="Düzenle"
                             Padding="10,4" Click="Duzenle_Click" HorizontalAlignment="Right"/>
+                    <ToggleButton x:Name="CeviriGecisDugmesi" Content="Özgün / Türkçe" DockPanel.Dock="Right"
+                                  Padding="8,3" Margin="0,0,8,0" Click="CeviriGecisDugmesi_Click"
+                                  Visibility="Collapsed" HorizontalAlignment="Right"/>
                 </DockPanel>
+                <TextBlock x:Name="CeviriUyariMetni" DockPanel.Dock="Top" Margin="0,0,0,6"
+                           Text="Makine çevirisi. Hata içerebilir. Kesin bilgi için özgün metne bakın."
+                           FontSize="11" Foreground="{DynamicResource SolukMetinFircasi}" TextWrapping="Wrap"
+                           Visibility="Collapsed"/>
                 <TextBlock x:Name="TranskriptDurumu" DockPanel.Dock="Bottom" Foreground="{DynamicResource SolukMetinFircasi}"
                            TextWrapping="Wrap" Margin="0,8,0,0"/>
                 <!-- Düzenleme Paneli -->
@@ -72,9 +81,7 @@
                        VerticalAlignment="Center" Margin="10,0,0,0" Foreground="{DynamicResource SolukMetinFircasi}"
                        FontFamily="Consolas, monospace"/>
             <Slider x:Name="ZamanKaydiraci" Style="{StaticResource VlcSlider}" Minimum="0" Maximum="1" Value="0"
-                    ValueChanged="ZamanKaydiraci_ValueChanged"
-                    PreviewMouseLeftButtonUp="ZamanKaydiraci_MouseLeftButtonUp"
-                    KeyUp="ZamanKaydiraci_KeyUp"/>
+                    SmallChange="1" LargeChange="10"/>
         </DockPanel>
     </Grid>
 </Window>

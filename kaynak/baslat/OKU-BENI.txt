@@ -1,26 +1,30 @@
-Video Perisi  —  KAPALI AĞ İÇİN HAZIR (Windows 10/11, 64 bit)
+Sarnıç Atölye  —  KAPALI AĞ İÇİN HAZIR (Windows 10/11, 64 bit)
 ================================================================
-KURULUM YOK. 7z dosyasını açın (örn. D:\VideoPerisi-Paketi) ve BASLAT.bat çift tıklayın.
+KURULUM YOK. 7z dosyasını açın (örn. D:\SarnicAtolye-Paketi) ve BASLAT.bat çift tıklayın.
   - Python, ffmpeg, modeller, Kdenlive: hepsi pakette. İnternet, yönetici yetkisi, ek yazılım GEREKMEZ.
-  - Yol boşluk/Türkçe karakter içerebilir; yine de kısa bir yol (D:\VideoPerisi-Paketi) önerilir.
+  - Yol boşluk/Türkçe karakter içerebilir; yine de kısa bir yol (D:\SarnicAtolye-Paketi) önerilir.
 
 İÇİNDEKİLER
   BASLAT.bat          menüyü açar: video seç / klasör seç / izleme / Kdenlive / test
-  VideoPerisi\        transkript + ses/görüntü iyileştirme motoru (KULLANIM.txt içinde ayrıntı)
+  SarnicAtolye\        transkript + belge/OCR + dizinleme motoru (KULLANIM.txt içinde ayrıntı)
   Kdenlive\           Kdenlive 26.08.1 (taşınabilir; Kdenlive\...\bin\kdenlive.exe)
-  Surucu\             NVIDIA 616.92 sürücüsü (yalnız eski/yoksa; BASLAT.bat -> 7). Ayrıntı: Surucu\SURUCU-OKU-BENI.txt
+  Menü 8 ve 9         Menü 8 belge/görüntü işler (metin + aranabilir PDF); Menü 9 portal için dizinleme başlatır.
+  artcraft\           ArtCraft taşınabilir ofis/belge araçları (WordCraft, GridCraft, DeckCraft, PdfCraft, PhotoCraft)
 
 İLK ÇALIŞTIRMA
   BASLAT.bat → 5 (kendi kendine test) → "SONUÇ: GEÇTİ" görmelisiniz.
 
 DONANIM
   NVIDIA kart (tercihen RTX 3060, 6 GB+ boş bellek): large-v3 modeli, GPU hızlandırma.
-    Kart sürücüsü en az 528.33 olmalı (CUDA 12). Eskiyse veya kart yoksa/yetersizse otomatik CPU'ya düşer.
+    Kart sürücüsü en az 528.33 olmalı (CUDA 12); pakette sürücü YOKTUR, gerekirse BT ile kurdurun. Eskiyse veya kart yoksa/yetersizse otomatik CPU'ya düşer.
   Kartsız/zayıf kart: medium modeli ile CPU'da çalışır (bu makinede gerçek süreye yakın hız, 8 çekirdekli i7'de ~0,75x).
   RAM: en az 8 GB (GPU modunda 16 GB önerilir).  Disk: paket ~8-9 GB açıldığında + işlenen videolar.
 
 NOTLAR
   - Windows Defender/AppLocker taşınabilir .exe ve .dll'leri engellerse klasörü "izin verilen" listesine ekletin.
-  - İşlenen videoların yanında "<ad>_videoperisi" klasörü oluşur: .srt/.vtt/.txt transkript + TEK nihai video (<ad>_islenmis.mp4: ses temizlenmiş, istenirse görüntü de iyileştirilmiş).
+  - İşlenen videoların yanında "<ad>_islenmis" klasörü oluşur: .srt/.vtt/.txt transkript + TEK nihai video (<ad>_islenmis.mp4: ses temizlenmiş, istenirse görüntü de iyileştirilmiş). Sarnıç (portal) eski "<ad>_videoperisi" klasörlerini de tarar.
     SRT dosyasını Kdenlive'da Kdenlive altyazı özelliğiyle (altyazı dosyası içe aktarma) ekleyebilirsiniz.
   - Kdenlive ilk açılışta ayar sorabilir; ağ gerektirmez.
+
+LİSANSLAR
+  NLLB-200 çeviri modeli (Meta), CC-BY-NC 4.0 — yalnız ticari olmayan kullanım.

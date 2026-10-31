@@ -1,5 +1,6 @@
 @echo off
 chcp 65001 >nul
+title Sarnic Atolye
 set "ROOT=%~dp0"
 set "HF_HUB_OFFLINE=1"
 set "TRANSFORMERS_OFFLINE=1"

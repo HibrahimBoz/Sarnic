@@ -81,7 +81,7 @@ public sealed class LibVlcOynatici : IOynatici, IDisposable
         }
 
         var eskiMedya = Medya;
-        MediaPlayer.Stop();
+        if (eskiMedya != null) MediaPlayer.Stop();
         _aZamaniMs = null;
         _bZamaniMs = null;
         _oncekiZamanMs = null;

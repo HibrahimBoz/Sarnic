@@ -15,6 +15,9 @@ internal sealed class IndeksliSegment
     public string Metin { get; }
     public string NormMetin { get; }
     public (string Kelime, int Bas, int Uzunluk)[] KelimelerVeKonumlar { get; }
+    public string? Ceviri { get; }
+    public string? NormCeviri { get; }
+    public (string Kelime, int Bas, int Uzunluk)[]? CeviriKelimelerVeKonumlar { get; }
 
     public IndeksliSegment(
         string dersAd,
@@ -22,7 +25,8 @@ internal sealed class IndeksliSegment
         int segmentNo,
         double basSn,
         double sonSn,
-        string metin)
+        string metin,
+        string? ceviri = null)
     {
         DersAd = dersAd;
         JsonYolu = jsonYolu;
@@ -32,6 +36,12 @@ internal sealed class IndeksliSegment
         Metin = metin;
         NormMetin = TrNormalizasyon.Normalle(metin);
         KelimelerVeKonumlar = KonumlariBul(NormMetin);
+        Ceviri = ceviri;
+        if (!string.IsNullOrWhiteSpace(ceviri))
+        {
+            NormCeviri = TrNormalizasyon.Normalle(ceviri);
+            CeviriKelimelerVeKonumlar = KonumlariBul(NormCeviri);
+        }
     }
 
     private static (string Kelime, int Bas, int Uzunluk)[] KonumlariBul(string norm)
@@ -209,7 +219,8 @@ public class MetinAramaMotoru : IAramaMotoru, IDisposable
                                 seg.No,
                                 seg.Bas,
                                 seg.Son,
-                                seg.Metin));
+                                seg.Metin,
+                                seg.Ceviri));
                         }
 
                         geciciDersler[anahtar] = yuklenenSegmentler;
@@ -228,7 +239,7 @@ public class MetinAramaMotoru : IAramaMotoru, IDisposable
                             DersAd = ders.Ad,
                             JsonYolu = string.IsNullOrEmpty(anahtar) ? ders.JsonYolu : anahtar,
                             Anahtar = guncelAnahtar,
-                            Segmentler = tazeSegmentler.Select(s => new OnbellekSegment(s.SegmentNo, s.BasSn, s.SonSn, s.Metin)).ToList()
+                            Segmentler = tazeSegmentler.Select(s => new OnbellekSegment(s.SegmentNo, s.BasSn, s.SonSn, s.Metin, s.Ceviri)).ToList()
                         };
                         yeniOnbellek.Dersler[anahtar] = yeniOnbellekDers;
                     }
@@ -388,57 +399,28 @@ public class MetinAramaMotoru : IAramaMotoru, IDisposable
             return Array.Empty<AramaSonucu>();
         }
 
-        var adaylar = new List<(IndeksliSegment Seg, double Puan, int Tier)>();
+        var adaylar = new List<(IndeksliSegment Seg, double Puan, int Tier, bool CevirideEslesti)>();
 
         for (int i = 0; i < segmentler.Length; i++)
         {
             var seg = segmentler[i];
-            double puan = 0;
-            int tier = 0;
+            var (puan, tier) = Puanla(seg.NormMetin, seg.KelimelerVeKonumlar, normSorgu, benzersizKelimeler);
+            bool cevirideEslesti = false;
 
-            if (TamIfadeEslesmesiVarMi(seg.NormMetin, normSorgu))
+            // Özgün metin kısmi eşleşse de çeviri daha iyi eşleşebilir (ortak sayı/özel ad); eşitlikte özgün kalır.
+            if (puan < 100.0 && !string.IsNullOrWhiteSpace(seg.NormCeviri) && seg.CeviriKelimelerVeKonumlar != null)
             {
-                tier = 1;
-                puan = 100.0;
-            }
-            else
-            {
-                int eslesenSayisi = 0;
-                for (int k = 0; k < benzersizKelimeler.Length; k++)
+                var (ceviriPuan, ceviriTier) = Puanla(seg.NormCeviri, seg.CeviriKelimelerVeKonumlar, normSorgu, benzersizKelimeler);
+                if (ceviriPuan > puan)
                 {
-                    string qw = benzersizKelimeler[k];
-                    if (seg.NormMetin.Contains(qw, StringComparison.Ordinal))
-                    {
-                        for (int w = 0; w < seg.KelimelerVeKonumlar.Length; w++)
-                        {
-                            if (seg.KelimelerVeKonumlar[w].Kelime.StartsWith(qw, StringComparison.Ordinal))
-                            {
-                                eslesenSayisi++;
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                if (eslesenSayisi == benzersizKelimeler.Length)
-                {
-                    tier = 2;
-                    puan = 50.0;
-                }
-                else if (benzersizKelimeler.Length >= 2)
-                {
-                    double oran = (double)eslesenSayisi / benzersizKelimeler.Length;
-                    if (oran >= 0.60)
-                    {
-                        tier = 3;
-                        puan = 10.0 * oran;
-                    }
+                    (puan, tier) = (ceviriPuan, ceviriTier);
+                    cevirideEslesti = true;
                 }
             }
 
             if (puan > 0)
             {
-                adaylar.Add((seg, puan, tier));
+                adaylar.Add((seg, puan, tier, cevirideEslesti));
             }
         }
 
@@ -458,15 +440,18 @@ public class MetinAramaMotoru : IAramaMotoru, IDisposable
 
         foreach (var item in siraliAdaylar)
         {
-            var vurgular = VurgulariHesapla(item.Seg, item.Tier, normSorgu, benzersizKelimeler);
+            string metin = item.CevirideEslesti ? (item.Seg.Ceviri ?? item.Seg.Metin) : item.Seg.Metin;
+            var kk = item.CevirideEslesti ? (item.Seg.CeviriKelimelerVeKonumlar ?? item.Seg.KelimelerVeKonumlar) : item.Seg.KelimelerVeKonumlar;
+            var vurgular = VurgulariHesapla(metin, kk, item.Tier, normSorgu, benzersizKelimeler);
             sonuclar.Add(new AramaSonucu(
                 item.Seg.DersAd,
                 item.Seg.JsonYolu,
                 item.Seg.SegmentNo,
                 item.Seg.BasSn,
-                item.Seg.Metin,
+                metin,
                 item.Puan,
-                vurgular));
+                vurgular,
+                item.CevirideEslesti));
         }
 
         return sonuclar;
@@ -494,7 +479,7 @@ public class MetinAramaMotoru : IAramaMotoru, IDisposable
                 DersAd = ders.Ad,
                 JsonYolu = string.IsNullOrEmpty(anahtar) ? ders.JsonYolu : anahtar,
                 Anahtar = guncelAnahtar,
-                Segmentler = tazeSegmentler.Select(s => new OnbellekSegment(s.SegmentNo, s.BasSn, s.SonSn, s.Metin)).ToList()
+                Segmentler = tazeSegmentler.Select(s => new OnbellekSegment(s.SegmentNo, s.BasSn, s.SonSn, s.Metin, s.Ceviri)).ToList()
             };
         }
 
@@ -591,10 +576,55 @@ public class MetinAramaMotoru : IAramaMotoru, IDisposable
                 ef.No,
                 ef.Bas,
                 ef.Son,
-                ef.Metin));
+                ef.Metin,
+                ef.Ceviri));
         }
 
         return segmentler;
+    }
+
+    private static (double Puan, int Tier) Puanla(
+        string normMetin,
+        (string Kelime, int Bas, int Uzunluk)[] kelimelerVeKonumlar,
+        string normSorgu,
+        string[] benzersizKelimeler)
+    {
+        if (TamIfadeEslesmesiVarMi(normMetin, normSorgu))
+        {
+            return (100.0, 1);
+        }
+
+        int eslesenSayisi = 0;
+        for (int k = 0; k < benzersizKelimeler.Length; k++)
+        {
+            string qw = benzersizKelimeler[k];
+            if (normMetin.Contains(qw, StringComparison.Ordinal))
+            {
+                for (int w = 0; w < kelimelerVeKonumlar.Length; w++)
+                {
+                    if (kelimelerVeKonumlar[w].Kelime.StartsWith(qw, StringComparison.Ordinal))
+                    {
+                        eslesenSayisi++;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (eslesenSayisi == benzersizKelimeler.Length)
+        {
+            return (50.0, 2);
+        }
+        else if (benzersizKelimeler.Length >= 2)
+        {
+            double oran = (double)eslesenSayisi / benzersizKelimeler.Length;
+            if (oran >= 0.60)
+            {
+                return (10.0 * oran, 3);
+            }
+        }
+
+        return (0.0, 0);
     }
 
     private static bool TamIfadeEslesmesiVarMi(string normMetin, string normSorgu)
@@ -622,12 +652,13 @@ public class MetinAramaMotoru : IAramaMotoru, IDisposable
     }
 
     private static (int Bas, int Uzunluk)[] VurgulariHesapla(
-        IndeksliSegment seg,
+        string metin,
+        (string Kelime, int Bas, int Uzunluk)[] kelimelerVeKonumlar,
         int tier,
         string normSorgu,
         string[] sorguKelimeleri)
     {
-        var (norm, normToOrig) = NormalleVeHarita(seg.Metin);
+        var (norm, normToOrig) = NormalleVeHarita(metin);
         if (normToOrig.Length == 0)
         {
             return Array.Empty<(int, int)>();
@@ -665,7 +696,7 @@ public class MetinAramaMotoru : IAramaMotoru, IDisposable
         {
             foreach (var qw in sorguKelimeleri)
             {
-                foreach (var kk in seg.KelimelerVeKonumlar)
+                foreach (var kk in kelimelerVeKonumlar)
                 {
                     if (kk.Kelime.StartsWith(qw, StringComparison.Ordinal))
                     {

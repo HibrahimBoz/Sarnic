@@ -1,0 +1,22 @@
+<!-- Tasarım fikri: Yerebatan tipi taş kemerlerin altında su; kemer boşluklarında video (oynat) ve belge simgesi: depoda toplanan kayıtlar burada bulunur. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <rect width="256" height="256" rx="48" fill="#0E2A3A"/>
+  <g transform="translate(128 132) scale(1.14) translate(-128 -132)">
+  <!-- Taş kemer sırası: üç sütun, iki kemer -->
+  <rect x="34" y="50" width="188" height="122" rx="6" fill="#E8D5AE"/>
+  <path d="M58 172 V112 A29 29 0 0 1 116 112 V172 Z" fill="#0E2A3A"/>
+  <path d="M140 172 V112 A29 29 0 0 1 198 112 V172 Z" fill="#0E2A3A"/>
+  <rect x="34" y="50" width="188" height="14" rx="6" fill="#F4E7C9"/>
+  <!-- Su yüzeyi ve sütun yansımaları -->
+  <path d="M34 172 Q60 162 86 172 T138 172 T190 172 T222 170 V206 Q222 214 214 214 H42 Q34 214 34 206 Z" fill="#26A9B8"/>
+  <rect x="38" y="182" width="16" height="10" rx="5" fill="#7FDCE3"/>
+  <rect x="120" y="182" width="16" height="10" rx="5" fill="#7FDCE3"/>
+  <rect x="202" y="182" width="16" height="10" rx="5" fill="#7FDCE3"/>
+  <!-- Sol kemer: video -->
+  <path d="M77 120 L101 136 L77 152 Z" fill="#FFFFFF"/>
+  <!-- Sağ kemer: belge -->
+  <rect x="155" y="114" width="28" height="40" rx="4" fill="#FFFFFF"/>
+  <rect x="161" y="124" width="16" height="5" rx="2.5" fill="#26A9B8"/>
+  <rect x="161" y="135" width="16" height="5" rx="2.5" fill="#26A9B8"/>
+  </g>
+</svg>

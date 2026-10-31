@@ -1,4 +1,4 @@
-Video Perisi — çevrimdışı Türkçe video transkript + ses/görüntü iyileştirme
+Sarnıç Atölye — çevrimdışı video transkript, belge metni, OCR ve dizin
 ===========================================================================
 KURULUM YOK. Bu klasörü hedef makineye olduğu gibi kopyalayın (USB/robocopy). Python, ffmpeg,
 internet, yönetici yetkisi GEREKMEZ. Yol boşluk/Türkçe karakter içerebilir.
@@ -11,32 +11,133 @@ Tek paket her makinede çalışır: NVIDIA kart varsa (RTX 3060/3070...; sürüc
 2) TEK VİDEO / KLASÖR — calistir.bat dosyasının ÜSTÜNE video(lar)ı sürükleyin, ya da:
      calistir.bat "D:\dersler\ders1.mp4"
      calistir.bat "D:\dersler" --cikis "D:\cikti"
-   Çıktı (varsayılan: videonun yanında ders1_videoperisi\):
+   Çıktı (varsayılan: videonun yanında ders1_islenmis\; Sarnıç eski _videoperisi klasörlerini de tarar):
      ders1.srt / .vtt / .txt / .json   transkript (zaman damgalı)
      ders1_islenmis.mp4                TEK nihai video: ses temizlenmiş (-16 LUFS); --goruntu seçildiyse
                                        görüntü de iyileştirilmiş (aksi halde görüntü aynen kopyalanır);
-                                       --upscale seçildiyse 2 kat büyütülmüş
+                                       --upscale seçildiyse 1080p'ye büyütülmüş (ayar.toml: hedef_yukseklik)
    Seçenekler:
      --agir-ses     DeepFilterNet ile güçlü gürültü giderme (çok gürültülü kayıtlarda)
      --goruntu      hqdn3d + eq + unsharp (hafif); tahta/ekran kaydında yazıyı bozmaz
-     --upscale      Real-ESRGAN x2 (isteğe bağlı, Vulkan ister; yazıyı bozabilir, önce küçük deneyin)
+     --upscale      Real-ESRGAN ile büyütme (isteğe bağlı, Vulkan ister). Video 120 sn'lik parçalarla işlenir:
+                    uzun videoda disk dolmaz, iş yarıda kalırsa tamamlanan parçalar yeniden işlenmez.
+                    Model seçimi: ayar.toml [goruntu] upscale_model = "hizli" | "genel" | "agir"
+                      hizli  realesr-animevideov3: en hızlı (ölçüldü: 480p->1080p ~24 kare/sn, RTX 3070 Laptop), 132 MB bellek
+                      genel  realesr-general-x4v3: daha keskin ve koyu yazı, ~17 kare/sn, 140 MB bellek
+                      agir   realesrgan-x4plus: ~1,4 kare/sn (hızlının ~17 katı yavaş), 1,3 GB bellek; harfleri bozabilir
+                    Kaynak yükseklik >= hedef_yukseklik ise büyütme atlanır.
      --model large-v3|medium|turbo     --cihaz cpu|cuda
 
 3) KLASÖR İZLEME — izle.bat çalıştırın, pencere açık kalsın. Videoları is\gelen\ klasörüne atın.
    Dosya kopyalanması bitince otomatik işlenir (tek seferde bir iş).
-     is\bitti\<ad>\   sonuçlar (+ orijinal)        is\hata\<ad>\  hata.txt ile başarısızlar
+     is\bitti\<ad>_islenmis\   sonuçlar (+ orijinal)        is\hata\<ad>\  hata.txt ile başarısızlar
      is\gunluk\       günlük                        Aynı içerik ikinci kez atılırsa "_yinelenen" olarak atlanır.
    Durdurmak: Ctrl+C.
 
-4) ÇOK KAMERALI / GRUP DERS — grup.bat veya baslat.ps1 menüsü (8):
+4) ÇOK KAMERALI / GRUP DERS — grup.bat veya baslat.ps1 menüsü (7):
      grup.bat "D:\dersler\cok_kamerali_ders"
      grup.bat "D:\dersler\ders1" --model large-v3 --cihaz cuda --referans cam1
    Klasör düzeni:
      - Alt klasörler (cam1\, cam2\...) veya
      - Düz klasörde parçalı/sayılı veya tekil dosyalar (kamera1_01.mp4, kamera2_01.mp4, ders.mp4, ses.wav).
    Ses tabanlı senkron (GCC-PHAT) ile ofset/drift hesaplanır, referans kanalın transkripti tam bantta
-   çıkarılır ve portal ile uyumlu ders.json üretilir:
-     <ders_adi>_videoperisi\ders.json, .srt, .vtt, .txt, .json
+   çıkarılır ve Sarnıç ile uyumlu ders.json üretilir:
+     <ders_adi>_islenmis\ders.json, .srt, .vtt, .txt, .json
+
+5) BELGE İŞLEME — belge.bat dosyasının üstüne sürükleyin ya da komut satırından çalıştırın:
+     belge.bat "D:\belgeler\rapor.pdf"
+     belge.bat "D:\belgeler" --profil uyarlamali
+   Çıktı belgenin yanındaki <ad>_belge\ klasörüne yazılır:
+     belge.json        sayfa dökümü ve üst veriler
+     metin.txt         sayfaları form feed (\f) ile ayrılmış düz metin
+     aranabilir.pdf    görünmez metin katmanlı PDF (yalnız PDF ve görüntülerde üretilir)
+
+   Desteklenen biçimler:
+     Biçim             Uzantılar
+     PDF               .pdf
+     Word              .docx, .docm
+     PowerPoint        .pptx, .pptm
+     Excel             .xlsx, .xlsm
+     OpenDocument      .odt, .ods, .odp
+     Zengin Metin      .rtf
+     Düz Metin         .txt, .csv, .tsv, .md, .log, .xml, .json, .ini, .cfg, .srt, .vtt
+     Web               .html, .htm
+     E-posta           .eml, .msg
+     Eski Office       .doc, .xls, .ppt
+     Görüntü           .png, .jpg, .jpeg, .tif, .tiff, .bmp, .gif, .webp
+
+   OCR profilleri (ayar.toml [ocr] profil):
+     hizli             det small + rec small; CPU üzerinde 0,67 sn/sayfa hızında çalışır (ölçüm yarım A4).
+     uyarlamali        varsayılan profil; düşük güvenli satırları rec medium ile yeniden tanır.
+     kalite            det medium + rec medium (6,85 sn/sayfa, yarım A4, CPU) ve Tesseract desteği.
+
+   Eski Office, DjVu ve yardım biçimleri (.doc, .xls, .ppt, .djvu, .chm):
+     Paket LibreOffice, DjVuLibre ve 7-Zip araçlarını içerir; ek kurulum gerekmez.
+     LibreOffice klasörü silinirse .doc/.xls için ArtCraft yedeği denenir, diğerleri desteklenmiyor olur.
+
+6) DİZİNLEME (Sarnıç için) — dizinle.bat çalıştırın:
+     dizinle.bat --kok "\\sunucu\Arsiv"
+   Kök klasörleri ayar.toml dosyasında [dizin] kokler alanına da yazabilirsiniz.
+   Çalışma kuralları:
+     1. Depo klasörü olarak <kok>\_sarnic kullanılır. Eski kurulumda <kok>\_veridedektifi ya da <kok>\_bulgu varsa ve _sarnic yoksa, o klasör kullanılır.
+     2. İlk çalıştırmada önce dosya adı kataloğu taranır ve hemen yayınlanır.
+     3. İçerik çıkarma ve OCR işlemi dosya boyutuna göre sırayla yürütülür.
+     4. İşlem kesilirse sistem kaldığı sayfadan sürdürülür.
+     5. Ağ kopması durumunda mevcut kayıtlar silinmez.
+     6. Değişiklikler ayar.toml içindeki yayin_dk aralığında yayınlanır.
+   Derse bağlı belge kuralları:
+     1. Belge *_islenmis klasörünün içindeyse derse bağlanır.
+     2. Belge <ad>_belgeler klasöründe bulunuyorsa ve yanında <ad>_islenmis varsa derse bağlanır.
+     3. Video dosyası <stem>.mp4 yanında <stem>_islenmis klasörü varsa derse bağlanır.
+
+7) ARAMA SÖZDİZİMİ (Sarnıç) — arama kuralları:
+     Sözdizimi         Açıklama                                Örnek
+     terim             Sözcük veya alt dize arar               radar
+     "ifade"           Tam sözcük öbeği arar                   "darbe tekrarlama"
+     a|b               VEYA araması yapar                      radar|sonar
+     !a                Belirtilen terimi dışlar                radar !tehdit
+     *.pdf             Joker karakter ile uzantı arar          *.pdf
+     uz:pdf;docx       Uzantıya göre süzer                     uz:pdf;docx
+     tur:belge         Dosya türüne göre süzer                 tur:belge
+     boyut:>10mb       Dosya boyutuna göre süzer               boyut:>10mb
+     tarih:2026-10     Değişiklik tarihine göre süzer          tarih:2026-10
+     yol:EH            Tam dosya yolunda arar                  yol:EH
+     icerik:jammer     Belge içeriğinde arar                   icerik:jammer
+     ders:             Yalnız derse bağlı dosyaları arar       ders:
+     !ders:            Yalnız derse bağlı olmayanları arar     !ders:
+
+
+
+8) ESKİ BELGELER (2000 ve öncesi) — eski dosya biçimlerini dönüştürme ve işleme:
+   Sistem eski biçimleri modern biçimlere çevirir ve metin/OCR çıkarır.
+   Dönüştürülen modern kopya depoda <sha>\duzenlenebilir.<uzanti> olarak saklanır.
+   Sarnıç bu kopyayı ArtCraft ile açma seçeneği olarak sunar.
+   Paket LibreOffice, DjVuLibre ve 7-Zip araçlarını içerir; ek kurulum gerekmez.
+   Gerekli dönüştürücü araç bulunamazsa durum 'desteklenmiyor' olarak işaretlenir.
+
+   Grup             Uzantılar                                              Gereken Araç
+   Metin işlemci    .doc .dot .wpd .wps .wri .lwp .sam .sxw .stw .sdw     LibreOffice
+                    .mcw .602 .hwp .abw .zabw .cwk
+   Hesap tablosu    .xls .xlt .xlw .xlsb .wk1 .wk3 .wk4 .123 .wq1 .wb2    LibreOffice
+                    .sxc .stc .sdc .dbf .dif .slk
+   Sunum            .ppt .pps .pot .sxi .sti .sdd .key                     LibreOffice
+   Çizim/yayın      .vsd .vdx .pub .sxd .std .sda .cdr .wpg .cgm           LibreOffice
+   DjVu             .djvu .djv                                             DjVuLibre
+   Yardım           .chm                                                   7-Zip
+   PyMuPDF yerel    .xps .oxps .epub .mobi .fb2 .cbz .svg                  yok
+   Eski görüntü     .pcx .tga .dib .jpe .jfif .jp2 .j2k .jpx .psd          yok
+                    .pnm .pbm .pgm .ppm
+   Web arşivi       .mht .mhtml                                            yok
+   Eski düz metin   .txt .asc .nfo .lst .prn .dos                          yok
+
+9) BELGEYİ DÜZENLEME (Sarnıç + ArtCraft) — STE-TR kuralları:
+   1. Arama sonuçlarında veya belge görünümünde dosyaya sağ tıklayın.
+   2. Menüden "Düzenle ▸ <Uygulama Adı>" (WordCraft, GridCraft vb.) seçeneğini tıklayın.
+   3. Eski belgeler için "Düzenlenebilir kopyayı aç (<Uygulama>)" komutunu seçin.
+   4. Düzenlenebilir kopya Belgeler\Sarnic ("%USERPROFILE%\Documents\Sarnic\") klasörüne kopyalanır.
+   5. Arşivdeki özgün dosyayı koruyun; özgün dosya asla değişmez.
+   6. ArtCraft uygulamalarını kurmayın; tüm uygulamalar pakette hazır gelir.
+   7. Sistemde birden çok sürüm varsa en güncel sürümü kullanın; sistem en yüksek sürümü kendisi seçer.
 
 
 

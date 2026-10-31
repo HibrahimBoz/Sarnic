@@ -1,4 +1,4 @@
-"""Video Perisi - Çok kameralı grup işleme ve orkestrasyon modülü."""
+"""Video Transkriptör - Çok kameralı grup işleme ve orkestrasyon modülü."""
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -25,6 +25,11 @@ gunluk = logging.getLogger("videohat")
 VIDEO_UZANTILARI = {".mp4", ".mkv", ".mov", ".avi", ".m4a", ".wav", ".mp3"}
 _UZANTI_DESENI = "|".join(sorted(re.escape(u.lstrip(".")) for u in VIDEO_UZANTILARI))
 KALIP_REGEX = re.compile(rf"^(.*?)[_-]?(\d+)\.({_UZANTI_DESENI})$", re.IGNORECASE)
+CIKTI_KLASOR_EKLERI = ("_islenmis", "_videoperisi")
+
+
+def _cikti_klasoru_mu(ad: str) -> bool:
+    return ad.lower().endswith(CIKTI_KLASOR_EKLERI)
 
 
 @dataclass
@@ -53,7 +58,7 @@ def kanallari_bul(klasor: str | Path) -> Dict[str, List[Path]]:
     # 1. Alt klasör düzeni kontrolü
     alt_klasorler = [
         d for d in klasor.iterdir()
-        if d.is_dir() and not d.name.startswith(".") and not d.name.endswith("_videoperisi")
+        if d.is_dir() and not d.name.startswith(".") and not _cikti_klasoru_mu(d.name)
     ]
     alt_harita: Dict[str, List[Path]] = {}
     video_bulundu = False
@@ -360,7 +365,7 @@ def _varsayilan_transkript(
             if meta_cikti is not None:
                 meta_cikti.update(veri)
             segmentler = [
-                Segment(s_item["bas"], s_item["son"], s_item["metin"])
+                Segment(s_item["bas"], s_item["son"], s_item["metin"], ceviri=s_item.get("ceviri"))
                 for s_item in veri.get("segmentler", [])
             ]
             return TranskriptSonucu(segmentler, meta=veri)
@@ -380,12 +385,12 @@ def isle_grup(
 ) -> GrupSonucu:
     """
     3-4 kameralı çok parçalı ders klasörünü orkestre ederek tek ders olarak işler.
-    Çıktıları <klasor>/<ders_adi>_videoperisi/ altına ve ders.json'u kaydeder.
+    Çıktıları <klasor>/<ders_adi>_islenmis/ altına ve ders.json'u kaydeder.
     Eksik/boş kanal durumunda çökmez, uyarı listesi döndürür.
     """
     klasor = Path(klasor)
     ders_adi = klasor.name
-    cikis_dir = klasor / f"{ders_adi}_videoperisi"
+    cikis_dir = klasor / f"{ders_adi}_islenmis"
     uyarilar: List[str] = []
 
     if not klasor.exists() or not klasor.is_dir():
@@ -604,7 +609,14 @@ def isle_grup(
         model_ad=model_adi,
         neden=neden,
     )
-    cikti.json_meta(bolumler, secim, sureler, json_yolu)
+    # Tek kayıt hattının ürettiği dil ve çeviri çok açılı derste de korunur.
+    ceviriler = [getattr(s, "ceviri", None) for s in bolumler]
+    cikti.json_meta(
+        bolumler, secim, sureler, json_yolu,
+        dil=transkript_meta.get("dil"),
+        ceviriler=ceviriler if any(ceviriler) else None,
+        ceviri_model=transkript_meta.get("ceviri_model"),
+    )
     ders_json.yaz(ders_json_yolu, ders_tanimi)
 
     cikti_dosyalari.extend([srt_yolu, vtt_yolu, txt_yolu, json_yolu, ders_json_yolu])

@@ -12,6 +12,7 @@ using System.Windows.Input;
 using System.Windows.Threading;
 using LibVLCSharp.Shared;
 using Portal.Cekirdek;
+using Portal.Uygulama.Temalar;
 
 /// <summary>
 /// Tek video oynatıcı penceresi ve transkript paneli (T11B).
@@ -36,10 +37,6 @@ public partial class OynaticiPenceresi : Window
     private double _toplamSureSn;
     private bool _kapatildi;
 
-    private WindowState _oncekiWindowState = WindowState.Normal;
-    private WindowStyle _oncekiWindowStyle = WindowStyle.SingleBorderWindow;
-    private ResizeMode _oncekiResizeMode = ResizeMode.CanResize;
-
     private readonly DispatcherTimer _yoklamaZamanlayici;
     private readonly ParolaGecikmeSayaci _parolaSayaci = ParolaGecikmeSayaci.Paylasilan;
     private bool _duzenlemeAcik;
@@ -50,10 +47,12 @@ public partial class OynaticiPenceresi : Window
     private MetinAramaMotoru? _aramaMotoru;
     private string? _kokKlasor;
     private Transkript? _hamTranskript;
+    private bool _ceviriGoster;
 
     public DersKaydi Kayit { get; }
     public double BaslangicSn { get; }
     public IOynatici Oynatici => _oynatici;
+    public Portal.Cekirdek.Dizin.DizinKaynagi? Dizin { get; init; }
 
     public OynaticiPenceresi()
         : this(new DersKaydi(string.Empty, string.Empty, string.Empty, null), 0, null)
@@ -65,7 +64,7 @@ public partial class OynaticiPenceresi : Window
     {
     }
 
-    public OynaticiPenceresi(DersKaydi kayit, double baslangicSn, MetinAramaMotoru? aramaMotoru)
+    public OynaticiPenceresi(DersKaydi kayit, double baslangicSn, MetinAramaMotoru? aramaMotoru, bool baslangictaCeviri = false)
     {
         Kayit = kayit ?? new DersKaydi(string.Empty, string.Empty, string.Empty, null);
         BaslangicSn = baslangicSn;
@@ -74,9 +73,11 @@ public partial class OynaticiPenceresi : Window
             ? Kayit.KlasorYolu
             : Directory.GetCurrentDirectory();
 
+        _ceviriGoster = baslangictaCeviri || KokYapilandirma.CeviriGosterOku();
         InitializeComponent();
 
-        Title = !string.IsNullOrWhiteSpace(Kayit.Ad) ? $"Oynatıcı - {Kayit.Ad}" : "Oynatıcı";
+        Title = !string.IsNullOrWhiteSpace(Kayit.Ad) ? $"{UrunAdi.Etkin} — Oynatıcı — {Kayit.Ad}" : $"{UrunAdi.Etkin} — Oynatıcı";
+        Loaded += (_, _) => BelgeleriYukleAsync();
 
         _oynatici = new LibVlcOynatici();
         _oynatici.MediaPlayer.EncounteredError += OnMediaPlayerEncounteredError;
@@ -110,7 +111,7 @@ public partial class OynaticiPenceresi : Window
         _tamEkranKontrolZamanlayici.Tick += (_, _) =>
         {
             _tamEkranKontrolZamanlayici.Stop();
-            if (_tamEkran) Kontrol.Visibility = Visibility.Collapsed;
+            if (_tamEkran && !Kontrol.AramaSurukleniyor) Kontrol.Visibility = Visibility.Collapsed;
         };
 
         // Transkript ve videoyu yükle
@@ -139,6 +140,7 @@ public partial class OynaticiPenceresi : Window
         try
         {
             _hamTranskript = TranskriptOkuyucu.Oku(transkriptYolu);
+            CeviriArayuzunuGuncelle();
             if (string.IsNullOrEmpty(Kayit.JsonYolu))
             {
                 var guncelKayit = new DersKaydi(Kayit.Ad, Kayit.KlasorYolu, transkriptYolu, Kayit.VideoYolu);
@@ -378,15 +380,57 @@ public partial class OynaticiPenceresi : Window
         FiltreyiUygula();
     }
 
+    private void CeviriArayuzunuGuncelle()
+    {
+        bool ceviriVar = _hamTranskript?.CeviriVar == true;
+        CeviriGecisDugmesi.Visibility = ceviriVar ? Visibility.Visible : Visibility.Collapsed;
+        CeviriGecisDugmesi.IsChecked = _ceviriGoster;
+        CeviriUyariMetni.Visibility = (ceviriVar && _ceviriGoster) ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void CeviriGecisDugmesi_Click(object sender, RoutedEventArgs e)
+    {
+        _ceviriGoster = CeviriGecisDugmesi.IsChecked == true;
+        KokYapilandirma.CeviriGosterKaydet(_ceviriGoster);
+        CeviriArayuzunuGuncelle();
+        GeciciSrtYolunuSifirla();
+        if (_tamEkran)
+        {
+            AltyaziyiTamEkranaYukle();
+        }
+        FiltreyiUygula();
+    }
+
+    /// <summary>
+    /// Türkçe görünümde çevirisi olan segmentin metni çeviriyle değiştirilmiş kopyası; aksi hâlde segmentin kendisi.
+    /// </summary>
+    private EfektifSegment GorunumSegmenti(EfektifSegment s)
+    {
+        return _ceviriGoster && _hamTranskript?.CeviriVar == true && !string.IsNullOrWhiteSpace(s.Ceviri)
+            ? s with { Metin = s.Ceviri }
+            : s;
+    }
+
     private void FiltreyiUygula()
     {
         string arama = TranskriptAramaKutusu.Text?.Trim() ?? string.Empty;
-        var filtrelenmis = OynaticiYardimcisi.SegmentFiltrele(_efektifSegmentler, arama);
+        // Süzme ve gösterim geçerli görünümün metniyle yapılır; satır yine özgün segmenti taşır
+        // (düzeltme paneli çeviriyi özgün metin sanmasın).
+        var asilSegment = new Dictionary<EfektifSegment, EfektifSegment>(ReferenceEqualityComparer.Instance);
+        var gorunenler = new List<EfektifSegment>();
+        foreach (var s in _efektifSegmentler)
+        {
+            var gorunen = GorunumSegmenti(s);
+            asilSegment[gorunen] = s;
+            gorunenler.Add(gorunen);
+        }
+
+        var filtrelenmis = OynaticiYardimcisi.SegmentFiltrele(gorunenler, arama);
 
         _goruntulenenSegmentler.Clear();
         foreach (var seg in filtrelenmis)
         {
-            var vm = new TranskriptSatirGorunumu(seg)
+            var vm = new TranskriptSatirGorunumu(asilSegment[seg], seg.Metin)
             {
                 Vurgulu = _oncekiAktifSegment != null && seg.No == _oncekiAktifSegment.No
             };
@@ -488,21 +532,11 @@ public partial class OynaticiPenceresi : Window
     private void TamEkranModunaGec()
     {
         if (_tamEkran) return;
-        _tamEkran = true;
+        PencereYerlesimi.TamEkraniAyarla(this, true);
+        _tamEkran = PencereYerlesimi.GetTamEkran(this);
+        if (!_tamEkran) return;
         _tamEkranOncekiSpu = _oynatici.MediaPlayer.Spu;
         _tamEkranSrtParcasiSecildi = false;
-
-        _oncekiWindowState = WindowState;
-        _oncekiWindowStyle = WindowStyle;
-        _oncekiResizeMode = ResizeMode;
-
-        WindowStyle = WindowStyle.None;
-        WindowState = WindowState.Maximized;
-        ResizeMode = ResizeMode.NoResize;
-
-        // Transkript paneli ve bölücüyü gizle
-        GridSplitterBolucu.Visibility = Visibility.Collapsed;
-        TranskriptPaneli.Visibility = Visibility.Collapsed;
 
         Kontrol.Visibility = Visibility.Visible;
         Kontrol.TamEkranDurumunuGuncelle(true);
@@ -517,12 +551,7 @@ public partial class OynaticiPenceresi : Window
         if (!_tamEkran) return;
         _tamEkran = false;
 
-        WindowStyle = _oncekiWindowStyle;
-        WindowState = _oncekiWindowState == WindowState.Maximized ? WindowState.Normal : _oncekiWindowState;
-        ResizeMode = _oncekiResizeMode;
-
-        GridSplitterBolucu.Visibility = Visibility.Visible;
-        TranskriptPaneli.Visibility = Visibility.Visible;
+        PencereYerlesimi.TamEkraniAyarla(this, false);
 
         _tamEkranKontrolZamanlayici.Stop();
         Kontrol.Visibility = Visibility.Visible;
@@ -550,7 +579,7 @@ public partial class OynaticiPenceresi : Window
             {
                 if (string.IsNullOrEmpty(_geciciSrtYolu) || !File.Exists(_geciciSrtYolu))
                 {
-                    _geciciSrtYolu = SrtUretici.GeciciSrtDosyasiOlustur(_efektifSegmentler);
+                    _geciciSrtYolu = SrtUretici.GeciciSrtDosyasiOlustur(_efektifSegmentler.Select(GorunumSegmenti));
                 }
 
                 if (string.Equals(_geciciSrtYolu, _ekliGeciciSrtYolu, StringComparison.OrdinalIgnoreCase))
@@ -693,7 +722,8 @@ public partial class OynaticiPenceresi : Window
 
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (Keyboard.FocusedElement is System.Windows.Controls.Primitives.TextBoxBase)
+        if (Keyboard.FocusedElement is System.Windows.Controls.Primitives.TextBoxBase ||
+            Keyboard.FocusedElement is Slider && e.Key is Key.Left or Key.Right or Key.Up or Key.Down)
         {
             return;
         }
@@ -921,6 +951,63 @@ public partial class OynaticiPenceresi : Window
             TranskriptDurumMetni.Text = "Arama indeksi yenilenemedi: " + ex.Message;
         }
     }
+
+    private List<Portal.Cekirdek.Dizin.DosyaSonucu> _dersBelgeleri = [];
+
+    private async void BelgeleriYukleAsync()
+    {
+        if (Dizin == null || Dizin.Durum != Portal.Cekirdek.Dizin.DizinDurumu.Hazir || string.IsNullOrWhiteSpace(Kayit.KlasorYolu))
+        {
+            BelgelerDugmesi.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        try
+        {
+            var motor = new Portal.Cekirdek.Dizin.DosyaAramaMotoru(Dizin);
+            var belgeler = await Task.Run(() => motor.DersBelgeleri(Kayit.KlasorYolu));
+            _dersBelgeleri = belgeler.ToList();
+            if (_dersBelgeleri.Count > 0)
+            {
+                BelgelerDugmesi.Content = $"Belgeler ({_dersBelgeleri.Count})";
+                BelgelerDugmesi.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                BelgelerDugmesi.Visibility = Visibility.Collapsed;
+            }
+        }
+        catch
+        {
+            BelgelerDugmesi.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    private void BelgelerDugmesi_Click(object sender, RoutedEventArgs e)
+    {
+        if (_dersBelgeleri.Count == 0 || Dizin == null) return;
+
+        var menu = new ContextMenu();
+        foreach (var belge in _dersBelgeleri)
+        {
+            var item = new MenuItem { Header = belge.Ad, Tag = belge };
+            item.Click += (s, ev) =>
+            {
+                if (item.Tag is Portal.Cekirdek.Dizin.DosyaSonucu d && Dizin != null)
+                {
+                    var pencere = new BelgePenceresi(Dizin, d.Id, 1, null)
+                    {
+                        Owner = this
+                    };
+                    pencere.Show();
+                }
+            };
+            menu.Items.Add(item);
+        }
+        menu.PlacementTarget = BelgelerDugmesi;
+        menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+        menu.IsOpen = true;
+    }
 }
 
 /// <summary>
@@ -932,7 +1019,7 @@ public sealed class TranskriptSatirGorunumu : INotifyPropertyChanged
 
     public EfektifSegment Segment { get; }
     public string ZamanMetni => ZamanBicim.Bicimle(Segment.Bas);
-    public string Metin => Segment.Metin;
+    public string Metin { get; }
     public bool Cakisma => Segment.Cakisma;
 
     public bool Vurgulu
@@ -948,9 +1035,10 @@ public sealed class TranskriptSatirGorunumu : INotifyPropertyChanged
         }
     }
 
-    public TranskriptSatirGorunumu(EfektifSegment segment)
+    public TranskriptSatirGorunumu(EfektifSegment segment, string? gosterilenMetin = null)
     {
         Segment = segment;
+        Metin = gosterilenMetin ?? segment.Metin;
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;

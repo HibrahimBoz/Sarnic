@@ -1,4 +1,4 @@
-"""Video Perisi - 8 Kusur Regresyon Testleri.
+"""Video Transkriptör - 8 Kusur Regresyon Testleri.
 
 Hafif, GPU/model/ffmpeg gerektirmeyen birim testleri.
 """
@@ -53,6 +53,19 @@ class TestKusur1KanalBulma(unittest.TestCase):
         kanallar = grup.kanallari_bul(self.tmp)
         self.assertIn("cam", kanallar)
         self.assertEqual(len(kanallar["cam"]), 2)
+
+    def test_kanal_bulma_yeni_ve_eski_cikti_klasorlerini_atlar(self):
+        """_islenmis ve eski _videoperisi alt klasörleri kamera kanalı sayılmaz."""
+        (self.tmp / "cam1").mkdir()
+        (self.tmp / "cam1" / "001.mp4").touch()
+        for ad in ("ders_islenmis", "ders_videoperisi"):
+            cikti = self.tmp / ad
+            cikti.mkdir()
+            (cikti / "ders_islenmis.mp4").touch()
+
+        kanallar = grup.kanallari_bul(self.tmp)
+
+        self.assertEqual(list(kanallar), ["cam1"])
 
     def test_kalip_regex_video_ve_ses_uzantilarini_icerir(self):
         """KALIP_REGEX, VIDEO_UZANTILARI içindeki tüm uzantıları tanımalıdır."""
@@ -139,12 +152,29 @@ class TestKusur4CikisKlasoruCakisma(unittest.TestCase):
         cikis = main_mod._cikis_belirle(video, girdi_koku, "/hedef/cikti", tek_dosya_mi=True)
         self.assertEqual(cikis, Path("/hedef/cikti"))
 
-    def test_klasor_girdisinde_bagil_alt_klasor_ve_stem_videoperisi(self):
+    def test_klasor_girdisinde_bagil_alt_klasor_ve_islenmis_eki(self):
         """Klasör girdisinde girdi köküne göre bağıl klasör yapısı korunur."""
         girdi_koku = Path("/girdi/dersler")
         video = Path("/girdi/dersler/bolum1/ders.mp4")
         cikis = main_mod._cikis_belirle(video, girdi_koku, "/hedef/cikti", tek_dosya_mi=False)
-        self.assertEqual(cikis, Path("/hedef/cikti/bolum1/ders_videoperisi"))
+        self.assertEqual(cikis, Path("/hedef/cikti/bolum1/ders_islenmis"))
+
+    def test_topla_eski_ve_yeni_cikti_klasorlerini_girdiden_atlar(self):
+        kok = Path(tempfile.mkdtemp())
+        try:
+            orijinal = kok / "orijinal.mp4"
+            orijinal.touch()
+            yeni = kok / "cikti_islenmis"
+            eski = kok / "cikti_videoperisi"
+            yeni.mkdir()
+            eski.mkdir()
+            (yeni / "ic_video.mp4").touch()
+            (eski / "eski_video.mp4").touch()
+
+            self.assertEqual(main_mod._topla(kok), [orijinal])
+            self.assertEqual(main_mod._topla(eski), [])
+        finally:
+            shutil.rmtree(kok, ignore_errors=True)
 
     def test_ayni_stem_cakismasi_benzersiz_ad(self):
         """Aynı klasörde a.mp4 ve a.mkv gibi çakışan dosyalara benzersiz çıktı klasörü verilir."""
@@ -157,8 +187,8 @@ class TestKusur4CikisKlasoruCakisma(unittest.TestCase):
         c2 = main_mod._cikis_belirle(v2, girdi_koku, "/hedef/cikti", tek_dosya_mi=False, kullanilan=kullanilan)
 
         self.assertNotEqual(c1, c2)
-        self.assertEqual(c1, Path("/hedef/cikti/a_videoperisi"))
-        self.assertEqual(c2, Path("/hedef/cikti/a_mkv_videoperisi"))
+        self.assertEqual(c1, Path("/hedef/cikti/a_islenmis"))
+        self.assertEqual(c2, Path("/hedef/cikti/a_mkv_islenmis"))
 
     def test_ayri_calistirmalarda_mevcut_dolu_klasor_cakisma_korumasi(self):
         """Ayrı çalıştırmalarda (kullanilan sıfırlandığında) mevcut dolu klasör ezilmez, benzersiz ad seçilir."""
@@ -169,21 +199,21 @@ class TestKusur4CikisKlasoruCakisma(unittest.TestCase):
             v2 = Path("/girdi/dersler/a.mkv")
 
             c1 = main_mod._cikis_belirle(v1, girdi_koku, tmp, tek_dosya_mi=False, kullanilan=set())
-            self.assertEqual(c1, tmp / "a_videoperisi")
+            self.assertEqual(c1, tmp / "a_islenmis")
             c1.mkdir(parents=True, exist_ok=True)
             (c1 / "a.json").write_text("{}", encoding="utf-8")
 
             # İkinci dosya ayrı bir çalıştırmada (sıfırlanmış kullanilan kümesi) çağrıldığında
             c2 = main_mod._cikis_belirle(v2, girdi_koku, tmp, tek_dosya_mi=False, kullanilan=set())
             self.assertNotEqual(c1, c2)
-            self.assertEqual(c2, tmp / "a_mkv_videoperisi")
+            self.assertEqual(c2, tmp / "a_mkv_islenmis")
 
-            # a_mkv_videoperisi de doluysa bir sonraki çalıştırma sayacı artırır
+            # a_mkv_islenmis de doluysa bir sonraki çalıştırma sayacı artırır
             c2.mkdir(parents=True, exist_ok=True)
             (c2 / "a.json").write_text("{}", encoding="utf-8")
             v3 = Path("/girdi/dersler/a.avi")
             c3 = main_mod._cikis_belirle(v3, girdi_koku, tmp, tek_dosya_mi=False, kullanilan=set())
-            self.assertEqual(c3, tmp / "a_avi_videoperisi")
+            self.assertEqual(c3, tmp / "a_avi_islenmis")
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
 
@@ -352,6 +382,19 @@ class TestKusur8GeriAlYetimKlasor(unittest.TestCase):
         self.assertTrue((bitmis_bitti / "ders.srt").exists())
         self.assertTrue((bitmis_bitti / "ders.json").exists())
 
+    def test_geri_al_yeni_ekli_bitmis_klasoru_korur(self):
+        """Yeni <ad>_islenmis bitti klasörü, iş geri alındığında korunmalıdır."""
+        bitmis_bitti = self.bitti / "ders_islenmis"
+        bitmis_bitti.mkdir()
+        (bitmis_bitti / "ders.srt").write_text("transkript", encoding="utf-8")
+        yarim_video = self.isleniyor / "ders.mp4"
+        yarim_video.write_text("sahte video")
+
+        izle._geri_al(self.isleniyor, self.gelen, self.bitti)
+
+        self.assertTrue(bitmis_bitti.exists())
+
+
     def test_geri_al_bos_veya_isaretli_yarim_klasoru_siler(self):
         """İçinde çıktı olmayan boş klasör veya yarım işaret dosyası taşıyan klasör silinir."""
         yarim_video = self.isleniyor / "ders.mp4"
@@ -371,6 +414,37 @@ class TestKusur8GeriAlYetimKlasor(unittest.TestCase):
 
         izle._geri_al(self.isleniyor, self.gelen, self.bitti)
         self.assertFalse(isaretli_bitti.exists())
+
+
+class TestIzleCikisKlasoru(unittest.TestCase):
+    def test_tek_tur_yeni_eki_ve_video_adini_korur(self):
+        kok = Path(tempfile.mkdtemp())
+        try:
+            dizinler = {ad: kok / "is" / ad for ad in ("gelen", "isleniyor", "bitti", "hata")}
+            for dizin in dizinler.values():
+                dizin.mkdir(parents=True, exist_ok=True)
+            (kok / "is").mkdir(exist_ok=True)
+            video = dizinler["gelen"] / "ders.mp4"
+            video.write_bytes(b"video")
+            durum = video.stat()
+            gorulen = {video: (durum.st_size, durum.st_mtime, 0)}
+            ayar = type("AyarSahte", (), {"izle": type("IzleSahte", (), {"sabit_tur": 1})()})()
+
+            def sahte_isle(video_yolu, cikis, _ayar, _bayraklar):
+                (cikis / f"{video_yolu.stem}_islenmis.mp4").write_bytes(b"son video")
+                return Sonuc(ad=video_yolu.stem, basarili=True, hata=None)
+
+            with patch.object(izle.yollar, "is_dizini", side_effect=lambda ad: dizinler[ad]), \
+                 patch.object(izle.yollar, "kok", return_value=kok), \
+                 patch.object(izle, "isle_tek", side_effect=sahte_isle):
+                islenen = izle.tek_tur(ayar, gorulen, Bayraklar())
+
+            cikis = dizinler["bitti"] / "ders_islenmis"
+            self.assertEqual(islenen, 1)
+            self.assertTrue((cikis / "ders_islenmis.mp4").exists())
+            self.assertTrue((cikis / "ders.mp4").exists())
+        finally:
+            shutil.rmtree(kok, ignore_errors=True)
 
 
 if __name__ == "__main__":

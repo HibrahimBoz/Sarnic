@@ -9,6 +9,13 @@ from . import yollar
 from .hatalar import AyarHatasi, OrtamHatasi
 
 VIDEO_UZANTILARI = {".mp4", ".mkv", ".mov", ".avi", ".m4a", ".wav", ".mp3"}
+CIKTI_KLASOR_EKLERI = ("_islenmis", "_videoperisi")
+
+
+def _cikti_klasoru_mu(ad: str) -> bool:
+    """Yeni ve eski çıktı klasörlerinin girdiler gibi taranmasını önler."""
+    kucuk = ad.lower()
+    return any(kucuk.endswith(ek) for ek in CIKTI_KLASOR_EKLERI)
 
 
 def _gunluk_kur(kok: Path) -> None:
@@ -28,10 +35,12 @@ def _gunluk_kur(kok: Path) -> None:
 
 def _topla(girdi: Path) -> list[Path]:
     if girdi.is_dir():
+        if _cikti_klasoru_mu(girdi.name):
+            return []
         return sorted(p for p in girdi.rglob("*")
                       if p.is_file() and p.suffix.lower() in VIDEO_UZANTILARI
                       and not p.stem.lower().endswith("_islenmis")
-                      and not any(a.endswith("_videoperisi") or a == "_ara"
+                      and not any(_cikti_klasoru_mu(a) or a == "_ara"
                                   for a in p.relative_to(girdi).parent.parts))
     return [girdi]
 
@@ -46,19 +55,19 @@ def _cikis_belirle(
     """
     Çıktı klasörünü belirler.
     Tek dosya girdisinde --cikis aynen korunur.
-    Klasör girdisinde <cikis>/<bagil>/<stem>_videoperisi düzeni ve çakışma koruması uygulanır.
+    Klasör girdisinde <cikis>/<bagil>/<stem>_islenmis düzeni ve çakışma koruması uygulanır.
     """
     if tek_dosya_mi:
-        return Path(cikis_arg) if cikis_arg else video.parent / f"{video.stem}_videoperisi"
+        return Path(cikis_arg) if cikis_arg else video.parent / f"{video.stem}_islenmis"
 
     if cikis_arg:
         try:
             bagil = video.relative_to(girdi_koku).parent
         except ValueError:
             bagil = Path()
-        hedef = Path(cikis_arg) / bagil / f"{video.stem}_videoperisi"
+        hedef = Path(cikis_arg) / bagil / f"{video.stem}_islenmis"
     else:
-        hedef = video.parent / f"{video.stem}_videoperisi"
+        hedef = video.parent / f"{video.stem}_islenmis"
 
     def _cakisiyor(p: Path) -> bool:
         if kullanilan is not None and p in kullanilan:
@@ -71,12 +80,12 @@ def _cikis_belirle(
         return False
 
     if _cakisiyor(hedef):
-        aday = hedef.parent / f"{video.stem}_{video.suffix.lstrip('.')}_videoperisi"
+        aday = hedef.parent / f"{video.stem}_{video.suffix.lstrip('.')}_islenmis"
         sayac = 1
         while _cakisiyor(aday):
             aday = (
                 hedef.parent
-                / f"{video.stem}_{video.suffix.lstrip('.')}_{sayac}_videoperisi"
+                / f"{video.stem}_{video.suffix.lstrip('.')}_{sayac}_islenmis"
             )
             sayac += 1
         hedef = aday
@@ -153,12 +162,78 @@ def _isle_grup(args) -> int:
     return 0
 
 
+def _belge(args) -> int:
+    from . import ayar as ayar_mod
+    from .belge import UZANTILAR
+    from .belge.hat import disa_yaz
+    from .belge.ocr import OcrHavuzu
+    ayar = ayar_mod.yukle(yollar.kok())
+    if args.profil:
+        ayar.ocr.profil = args.profil
+    log = logging.getLogger("videohat")
+    hatali = 0
+    tek = len(args.girdi) == 1 and Path(args.girdi[0]).is_file()
+    kullanilan = set()
+
+    def belgeler(p):
+        if not p.is_dir():
+            yield p
+            return
+        for kok, dizinler, dosyalar in os.walk(p):
+            dizinler[:] = [d for d in dizinler if not d.lower().endswith("_belge")
+                          and d.casefold() not in {h.casefold() for h in ayar.dizin.haric}]
+            for ad in sorted(dosyalar):
+                if Path(ad).suffix.lower() in UZANTILAR:
+                    yield Path(kok) / ad
+
+    with OcrHavuzu(ayar) as havuz:
+        for ham in args.girdi:
+            girdi = Path(ham)
+            for p in belgeler(girdi):
+                if tek and args.cikis:
+                    cikis = Path(args.cikis)
+                else:
+                    taban = Path(args.cikis) if args.cikis else p.parent
+                    if args.cikis and girdi.is_dir():
+                        taban /= p.relative_to(girdi).parent
+                    cikis = taban / f"{p.stem}_belge"
+                    if cikis in kullanilan:
+                        cikis = taban / f"{p.stem}_{p.suffix.lstrip('.')}_belge"
+                kullanilan.add(cikis)
+                try:
+                    kayit = disa_yaz(p, cikis, ayar, havuz)
+                    if not kayit.basarili:
+                        log.error("%s: %s", p, kayit.hata)
+                        hatali += 1
+                except OrtamHatasi:
+                    raise
+                except Exception as e:
+                    log.error("Belge işlenemedi: %s: %s", p, e)
+                    hatali += 1
+    return 1 if hatali else 0
+
+
+def _dizinle(args) -> int:
+    import sqlite3
+    from . import ayar as ayar_mod
+    from .dizin.dizinle import calistir
+    from .hatalar import IsHatasi
+    ayar = ayar_mod.yukle(yollar.kok())
+    if args.profil:
+        ayar.ocr.profil = args.profil
+    try:
+        return calistir(ayar, args.kok, args.depo, args.bir_kez, args.yalniz_ad, args.zorla_sil)
+    except (IsHatasi, OSError, sqlite3.Error) as e:
+        logging.getLogger("videohat").error("Dizinleme hatası: %s", e)
+        return 1
+
+
 def parser_olustur() -> argparse.ArgumentParser:
-    ap = argparse.ArgumentParser(prog="videohat")
+    ap = argparse.ArgumentParser(prog="videohat", description="Sarnıç Atölye — video, belge ve dizin işleme")
     alt = ap.add_subparsers(dest="komut", required=True)
     i = alt.add_parser("isle", help="dosya veya klasör işle")
     i.add_argument("girdi", nargs="+")
-    i.add_argument("--cikis", help="çıktı klasörü (varsayılan: videonun yanında <ad>_videoperisi)")
+    i.add_argument("--cikis", help="çıktı klasörü (varsayılan: videonun yanında <ad>_islenmis)")
     i.add_argument("--agir-ses", action="store_true", help="DeepFilterNet ağır mod")
     i.add_argument("--goruntu", action="store_true", help="görüntü iyileştirme")
     i.add_argument("--upscale", action="store_true", help="Real-ESRGAN x2 (isteğe bağlı)")
@@ -173,6 +248,17 @@ def parser_olustur() -> argparse.ArgumentParser:
     ig.add_argument("--cihaz", choices=["cpu", "cuda"])
     alt.add_parser("izle", help="is\\gelen klasörünü izle")
     alt.add_parser("kontrol", help="kendi kendine test")
+    d = alt.add_parser("dizinle", help="dosya ve belge dizinini güncelle")
+    d.add_argument("--kok", action="append", help="taranacak kök; tekrarlanabilir")
+    d.add_argument("--depo", help="dizin deposu")
+    d.add_argument("--bir-kez", action="store_true")
+    d.add_argument("--yalniz-ad", action="store_true")
+    d.add_argument("--zorla-sil", action="store_true", help="yüzde 50 silme korumasını aş")
+    d.add_argument("--profil", choices=["hizli", "uyarlamali", "kalite"])
+    b = alt.add_parser("belge", help="belgeden metin ve aranabilir PDF üret")
+    b.add_argument("girdi", nargs="+")
+    b.add_argument("--cikis")
+    b.add_argument("--profil", choices=["hizli", "uyarlamali", "kalite"])
     return ap
 
 
@@ -189,6 +275,10 @@ def main(argv=None) -> int:
             return _isle(args)
         if args.komut == "isle-grup":
             return _isle_grup(args)
+        if args.komut == "belge":
+            return _belge(args)
+        if args.komut == "dizinle":
+            return _dizinle(args)
         if args.komut == "izle":
             from . import ayar as ayar_mod, izle
             return izle.dongu(ayar_mod.yukle(kok))

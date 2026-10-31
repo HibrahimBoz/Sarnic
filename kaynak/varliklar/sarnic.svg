@@ -1,0 +1,32 @@
+<!-- Tasarım fikri: Yerebatan Sarnıcı'nın kemer mimarisini su yüzeyinde parlayan arama büyüteci ve video oynatma üçgeniyle birleştirerek dijital kurumsal depoda arama ve görüntülemeyi simgeler. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Arka Plan: Koyu Petrol / Lacivert Yuvarlatılmış Kare -->
+  <rect width="256" height="256" rx="48" fill="#0D2230"/>
+
+  <!-- Su Altı Sütun Yansımaları -->
+  <rect x="62" y="184" width="16" height="28" rx="2" fill="#1B4255"/>
+  <rect x="178" y="184" width="16" height="28" rx="2" fill="#1B4255"/>
+
+  <!-- Sarnıç Su Yüzeyi Dalgaları (Sakin Depo) -->
+  <path d="M 44 184 C 72 178, 100 188, 128 184 C 156 180, 184 188, 212 184" fill="none" stroke="#00BFA5" stroke-width="10" stroke-linecap="round"/>
+  <path d="M 72 206 C 96 202, 114 208, 128 206 C 142 204, 160 208, 184 206" fill="none" stroke="#00BFA5" stroke-width="8" stroke-linecap="round"/>
+  <path d="M 100 226 L 156 226" fill="none" stroke="#1B4255" stroke-width="8" stroke-linecap="round"/>
+
+  <!-- Sarnıç Taş Kemer ve Sütunları (Sıcak Açık Bej) -->
+  <path d="M 58 180 L 58 110 A 70 70 0 0 1 198 110 L 198 180 L 174 180 L 174 110 A 46 46 0 0 0 82 110 L 82 180 Z" fill="#F4E8CF"/>
+  <!-- Sütun Başlıkları (İmpost / Başlık Blokları) -->
+  <rect x="50" y="104" width="38" height="12" rx="3" fill="#F4E8CF"/>
+  <rect x="168" y="104" width="38" height="12" rx="3" fill="#F4E8CF"/>
+  <!-- Sütun Kaideleri -->
+  <rect x="52" y="172" width="34" height="10" rx="2" fill="#F4E8CF"/>
+  <rect x="170" y="172" width="34" height="10" rx="2" fill="#F4E8CF"/>
+
+  <!-- Arama ve Video Oynatma Portalı: Büyüteç Sapı -->
+  <line x1="146" y1="132" x2="174" y2="160" stroke="#5CF2D6" stroke-width="12" stroke-linecap="round"/>
+
+  <!-- Büyüteç Halkası (Optik Mercek Gövdesi) -->
+  <circle cx="128" cy="114" r="32" fill="#1B4255" stroke="#5CF2D6" stroke-width="10"/>
+
+  <!-- Video Oynatma Üçgeni (Camgöbeği Medya Vurgusu) -->
+  <path d="M 121 103 C 121 101, 123 100, 125 101 L 140 112 C 142 113, 142 115, 140 116 L 125 127 C 123 128, 121 127, 121 125 Z" fill="#5CF2D6"/>
+</svg>

@@ -1,0 +1,34 @@
+[
+ {
+  "girdi": "Rapor_v1.2.PDF",
+  "beklenen": "rapor_v1.2.pdf"
+ },
+ {
+  "girdi": "D:\\Arşiv\\Yönerge (son).docx",
+  "beklenen": "d:\\arsiv\\yonerge (son).docx"
+ },
+ {
+  "girdi": "\\\\sunucu\\EH Eğitimi\\ISIK.pdf",
+  "beklenen": "\\\\sunucu\\eh egitimi\\isik.pdf"
+ },
+ {
+  "girdi": "ÇĞİÖŞÜ çğıöşü Âî",
+  "beklenen": "cgiosu cgiosu ai"
+ },
+ {
+  "girdi": "a  b",
+  "beklenen": "a  b"
+ },
+ {
+  "girdi": "i̇.txt",
+  "beklenen": "i.txt"
+ },
+ {
+  "girdi": "ΑΒΓ.doc",
+  "beklenen": "αβγ.doc"
+ },
+ {
+  "girdi": "",
+  "beklenen": ""
+ }
+]

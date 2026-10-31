@@ -10,6 +10,8 @@ using LibVLCSharp.Shared;
 using LibVLCSharp.WPF;
 using Microsoft.Win32;
 using Portal.Cekirdek;
+using Portal.Uygulama.Kontroller;
+using Portal.Uygulama.Temalar;
 using MediaPlayer = LibVLCSharp.Shared.MediaPlayer;
 
 namespace Portal.Uygulama;
@@ -26,7 +28,7 @@ public partial class CokAciliOynaticiPenceresi : Window
     private readonly string? _transkriptYolu;
     private GorunumModu _gorunum = new GorunumModu.Izgara();
     private bool _kapatiliyor;
-    private bool _kaydiracSurukleniyor;
+    private readonly ZamanKaydiraciDavranisi _aramaDavranisi;
     private readonly ParolaGecikmeSayaci _parolaSayaci = ParolaGecikmeSayaci.Paylasilan;
     private bool _programatikSecimYapiliyor;
     private readonly DispatcherTimer _yoklamaZamanlayici;
@@ -38,6 +40,7 @@ public partial class CokAciliOynaticiPenceresi : Window
     private Transkript? _hamTranskript;
     private DersKaydi? _dersKaydi;
     private MetinAramaMotoru? _aramaMotoru;
+    private bool _ceviriGoster = KokYapilandirma.CeviriGosterOku();
 
     public CokAciliOynaticiPenceresi(DersTanimi ders, double baslangicSanalSn = 0)
         : this(ders, baslangicSanalSn, null, null)
@@ -54,11 +57,13 @@ public partial class CokAciliOynaticiPenceresi : Window
         ArgumentNullException.ThrowIfNull(ders);
         _aramaMotoru = aramaMotoru;
         InitializeComponent();
-        _libVlc = LibVlcAyarlari.Olustur();
+        Title = !string.IsNullOrWhiteSpace(ders.Ad) ? $"{UrunAdi.Etkin} — Oynatıcı — {ders.Ad}" : $"{UrunAdi.Etkin} — Oynatıcı";
+        _libVlc = LibVlcAyarlari.Paylasilan;
         _saat = new CokAciliSaat(ders);
         _saat.Ara(baslangicSanalSn);
-        _sureSn = Math.Max(0, ders.ToplamSureSn);
-        ZamanKaydiraci.Maximum = Math.Max(1, _sureSn);
+        _sureSn = double.IsFinite(ders.ToplamSureSn) ? Math.Max(0, ders.ToplamSureSn) : 0;
+        ZamanKaydiraci.Maximum = _sureSn > 0 ? _sureSn : 1;
+        _aramaDavranisi = new ZamanKaydiraciDavranisi(ZamanKaydiraci, () => _sureSn, ZamanKaydir);
         _klasor = Path.GetDirectoryName(ders.DosyaYolu ?? string.Empty) ?? string.Empty;
         _transkriptYolu = transkriptYolu;
         _dersKaydi = new DersKaydi(ders.Ad, _klasor, _transkriptYolu ?? string.Empty, null);
@@ -119,6 +124,10 @@ public partial class CokAciliOynaticiPenceresi : Window
                 KanaliGriYap(state, "Oynatıcı hatası");
             });
             player.EndReached += (_, _) => Dispatcher.InvokeAsync(() => KanalBitisiniIsle(state));
+            player.Playing += (_, _) => Dispatcher.InvokeAsync(() =>
+            {
+                if (!_kapatiliyor) BekleyenKonumuUygula(state);
+            });
             _kanallar.Add(kanal.Ad, state);
             SesKanaliSecici.Items.Add(kanal.Ad);
         }
@@ -154,7 +163,8 @@ public partial class CokAciliOynaticiPenceresi : Window
     /// Arama akışından veya taranan ders kaydından pencereyi açar.
     /// Ders klasöründe ders.json varsa çok açılı oynatıcı penceresi açılır; yoksa tekli oynatıcı açılır.
     /// </summary>
-    public static Window Ac(DersKaydi kayit, double baslangicSanalSn = 0, MetinAramaMotoru? aramaMotoru = null)
+    public static Window Ac(DersKaydi kayit, double baslangicSanalSn = 0, MetinAramaMotoru? aramaMotoru = null,
+        bool baslangictaCeviri = false)
     {
         ArgumentNullException.ThrowIfNull(kayit);
         string dersJson = Path.Combine(kayit.KlasorYolu, "ders.json");
@@ -162,12 +172,17 @@ public partial class CokAciliOynaticiPenceresi : Window
         {
             var ders = DersTanimiOkuyucu.Oku(dersJson);
             var pencere = new CokAciliOynaticiPenceresi(ders, baslangicSanalSn, kayit.JsonYolu, aramaMotoru);
+            if (baslangictaCeviri)
+            {
+                pencere.CeviriGorunumuneGec();
+            }
+
             pencere.Show();
             return pencere;
         }
 
         // ders.json yoksa tek video modunda oynatıcı açılır
-        var tekliPencere = new OynaticiPenceresi(kayit, baslangicSanalSn, aramaMotoru);
+        var tekliPencere = new OynaticiPenceresi(kayit, baslangicSanalSn, aramaMotoru, baslangictaCeviri);
         tekliPencere.Show();
         return tekliPencere;
     }
@@ -222,9 +237,14 @@ public partial class CokAciliOynaticiPenceresi : Window
             else
             {
                 string klasorAdi = Path.GetFileName(_klasor);
-                if (klasorAdi.EndsWith("_videoperisi", StringComparison.OrdinalIgnoreCase))
+                string ek = klasorAdi.EndsWith("_islenmis", StringComparison.OrdinalIgnoreCase)
+                    ? "_islenmis"
+                    : klasorAdi.EndsWith("_videoperisi", StringComparison.OrdinalIgnoreCase)
+                        ? "_videoperisi"
+                        : string.Empty;
+                if (ek.Length > 0)
                 {
-                    string beklenen = klasorAdi.Substring(0, klasorAdi.Length - "_videoperisi".Length);
+                    string beklenen = klasorAdi.Substring(0, klasorAdi.Length - ek.Length);
                     string adayVpJson = Path.Combine(_klasor, beklenen + ".json");
                     if (File.Exists(adayVpJson))
                     {
@@ -301,12 +321,39 @@ public partial class CokAciliOynaticiPenceresi : Window
         string duzeltmeKlasoru = DuzenlemeKontrolu.DuzeltmelerKlasoruBul();
         var depo = new DuzeltmeDeposu(duzeltmeKlasoru);
         var birlestirme = depo.Birlestir(_hamTranskript, duzeltmeKlasoru);
+        bool turkce = _ceviriGoster && _hamTranskript.CeviriVar;
         foreach (var ef in birlestirme.Segmentler)
         {
             string rozet = ef.Cakisma ? "  [ÇAKIŞMA]" : string.Empty;
-            _transkript.Add(new TranskriptSatiri(ef, ZamanBicimle(ef.Bas) + "  " + ef.Metin + rozet));
+            string metin = turkce && !string.IsNullOrWhiteSpace(ef.Ceviri) ? ef.Ceviri : ef.Metin;
+            _transkript.Add(new TranskriptSatiri(ef, ZamanBicimle(ef.Bas) + "  " + metin + rozet));
         }
         TranskriptDurumu.Text = _transkript.Count == 0 ? "Transkriptte gösterilecek segment yok." : string.Empty;
+        CeviriArayuzunuGuncelle();
+    }
+
+    /// <summary>
+    /// Arama sonucu çeviriden eşleştiyse pencere Türkçe görünümde açılır (kullanıcı ayarı değişmez).
+    /// </summary>
+    public void CeviriGorunumuneGec()
+    {
+        _ceviriGoster = true;
+        TranskriptiGuncelle();
+    }
+
+    private void CeviriArayuzunuGuncelle()
+    {
+        bool ceviriVar = _hamTranskript?.CeviriVar == true;
+        CeviriGecisDugmesi.Visibility = ceviriVar ? Visibility.Visible : Visibility.Collapsed;
+        CeviriGecisDugmesi.IsChecked = _ceviriGoster;
+        CeviriUyariMetni.Visibility = ceviriVar && _ceviriGoster ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void CeviriGecisDugmesi_Click(object sender, RoutedEventArgs e)
+    {
+        _ceviriGoster = CeviriGecisDugmesi.IsChecked == true;
+        KokYapilandirma.CeviriGosterKaydet(_ceviriGoster);
+        TranskriptiGuncelle();
     }
 
     private void Duzenle_Click(object sender, RoutedEventArgs e)
@@ -491,7 +538,7 @@ public partial class CokAciliOynaticiPenceresi : Window
         if (_kapatiliyor) return;
         TumKanallariGuncelle(false);
         double simdi = _saat.Simdi();
-        if (!_kaydiracSurukleniyor)
+        if (!_aramaDavranisi.Surukleniyor)
         {
             ZamanKaydiraci.Value = Math.Clamp(simdi, ZamanKaydiraci.Minimum, Math.Max(ZamanKaydiraci.Minimum, _sureSn));
         }
@@ -535,7 +582,7 @@ public partial class CokAciliOynaticiPenceresi : Window
             bool dosyaDegisti = !string.Equals(state.AktifDosya, kaynak, StringComparison.OrdinalIgnoreCase);
             bool oncedenGriydi = state.GriKutusu.Visibility == Visibility.Visible;
 
-            if (zorla || parcaDegisti || dosyaDegisti)
+            if (parcaDegisti || dosyaDegisti)
             {
                 state.OnizlemeMi = onizlemeMi;
                 state.OnizlemeYerelBas = onizlemeYerelBas;
@@ -548,7 +595,7 @@ public partial class CokAciliOynaticiPenceresi : Window
                 state.GriKutusu.Visibility = Visibility.Collapsed;
                 state.Video.Visibility = Visibility.Visible;
 
-                if (oncedenGriydi)
+                if (zorla || oncedenGriydi)
                 {
                     Konumlandir(state, onizlemeMi ? Math.Max(0, hedefYerelSn - onizlemeYerelBas) : hedefYerelSn, _saat.Oynatiliyor);
                     return;
@@ -557,13 +604,7 @@ public partial class CokAciliOynaticiPenceresi : Window
 
             if (state.BekleyenKonumSn.HasValue)
             {
-                state.Oynatici.Time = Math.Max(0, (long)(state.BekleyenKonumSn.Value * 1000));
-                state.BekleyenKonumSn = null;
-                if (state.BekleyenDuraklat)
-                {
-                    state.Oynatici.Pause();
-                    state.BekleyenDuraklat = false;
-                }
+                BekleyenKonumuUygula(state);
                 return;
             }
 
@@ -675,7 +716,7 @@ public partial class CokAciliOynaticiPenceresi : Window
         }
 
         var eski = state.AktifMedya;
-        state.Oynatici.Stop();
+        if (eski != null) state.Oynatici.Stop();
         state.Oynatici.Media = yeni;
         state.AktifMedya = yeni;
         state.AktifDosya = dosya;
@@ -689,9 +730,25 @@ public partial class CokAciliOynaticiPenceresi : Window
 
     private static void Konumlandir(KanalGorunumu state, double yerelSn, bool oynat)
     {
-        state.Oynatici.Play();
         state.BekleyenKonumSn = yerelSn;
         state.BekleyenDuraklat = !oynat;
+        BekleyenKonumuUygula(state);
+        if (state.BekleyenKonumSn.HasValue || oynat && !state.Oynatici.IsPlaying)
+            state.Oynatici.Play();
+    }
+
+    private static void BekleyenKonumuUygula(KanalGorunumu state)
+    {
+        if (state.BekleyenKonumSn is not double zaman || !state.Oynatici.IsSeekable ||
+            state.Oynatici.State is not (VLCState.Playing or VLCState.Paused)) return;
+
+        state.Oynatici.Time = Math.Max(0, (long)(zaman * 1000));
+        state.BekleyenKonumSn = null;
+        if (state.BekleyenDuraklat)
+        {
+            state.Oynatici.SetPause(true);
+            state.BekleyenDuraklat = false;
+        }
     }
 
     private void HazirlaSonrakiParca(KanalGorunumu state, double sanalSn)
@@ -822,14 +879,10 @@ public partial class CokAciliOynaticiPenceresi : Window
         }
     }
 
-    private void ZamanKaydiraci_MouseLeftButtonUp(object sender, MouseButtonEventArgs e) => ZamanKaydir();
-    private void ZamanKaydiraci_KeyUp(object sender, KeyEventArgs e) => ZamanKaydir();
-
-    private void ZamanKaydir()
+    private void ZamanKaydir(double zaman)
     {
-        _kaydiracSurukleniyor = false;
         KanalHatalariniTemizle();
-        _saat.Ara(ZamanKaydiraci.Value);
+        _saat.Ara(zaman);
         TumKanallariGuncelle(true);
         if (_saat.Oynatiliyor)
         {
@@ -838,12 +891,6 @@ public partial class CokAciliOynaticiPenceresi : Window
                 if (state.GriKutusu.Visibility != Visibility.Visible) state.Oynatici.Play();
             }
         }
-    }
-
-    private void ZamanKaydiraci_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-    {
-        if (ZamanKaydiraci.IsMouseCaptureWithin) _kaydiracSurukleniyor = true;
-        else if (!ZamanKaydiraci.IsKeyboardFocusWithin) _kaydiracSurukleniyor = false;
     }
 
     private void TranskriptListesi_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -1008,6 +1055,12 @@ public partial class CokAciliOynaticiPenceresi : Window
 
     private void Pencere_KeyDown(object sender, KeyEventArgs e)
     {
+        if (e.Key == Key.F11 || e.Key == Key.Escape && PencereYerlesimi.GetTamEkran(this))
+        {
+            TamEkran_Click(sender, e);
+            e.Handled = true;
+            return;
+        }
         if (Keyboard.FocusedElement is System.Windows.Controls.Primitives.TextBoxBase) return;
         if (e.Key == Key.G) { GorunumDegistir(new GorunumModu.Izgara()); e.Handled = true; return; }
         if (e.Key == Key.O) { Odak_Click(sender, e); e.Handled = true; return; }
@@ -1017,6 +1070,12 @@ public partial class CokAciliOynaticiPenceresi : Window
             GorunumDegistir(new GorunumModu.Tek(_kanallar.Keys.ElementAt(kanalNo - 1)));
             e.Handled = true;
         }
+    }
+
+    private void TamEkran_Click(object sender, RoutedEventArgs e)
+    {
+        PencereYerlesimi.TamEkraniAyarla(this, !PencereYerlesimi.GetTamEkran(this));
+        TamEkranDugmesi.Content = PencereYerlesimi.GetTamEkran(this) ? "Pencereli görünüm" : "Tam ekran";
     }
 
     private void Pencere_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
@@ -1033,7 +1092,6 @@ public partial class CokAciliOynaticiPenceresi : Window
             state.HazirMedya?.Dispose();
             state.Oynatici.Dispose();
         }
-        _libVlc.Dispose();
     }
 
     private static string ZamanBicimle(double saniye)

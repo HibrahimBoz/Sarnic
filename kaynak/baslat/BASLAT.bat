@@ -1,5 +1,5 @@
 @echo off
 chcp 65001 >nul
-title Video Perisi
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0VideoPerisi\araclar\baslat.ps1"
+title Video Transkriptör
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0SarnicAtolye\araclar\baslat.ps1"
 if errorlevel 1 pause

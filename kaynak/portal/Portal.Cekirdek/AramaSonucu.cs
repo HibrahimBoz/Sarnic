@@ -17,5 +17,6 @@ public record AramaSonucu(
     double BasSn,
     string Metin,
     double Puan,
-    (int Bas, int Uzunluk)[] Vurgular
+    (int Bas, int Uzunluk)[] Vurgular,
+    bool CevirideEslesti = false
 );

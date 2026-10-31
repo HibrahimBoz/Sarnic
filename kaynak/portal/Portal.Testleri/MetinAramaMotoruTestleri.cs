@@ -461,7 +461,7 @@ public class MetinAramaMotoruTestleri : IDisposable
     [Fact]
     public async Task DuzeltmeSonrasi_AramaYeniMetniBulur_Eskiyibulmaz()
     {
-        string dersKlasor = Path.Combine(_geciciKlasor, "mat101_videoperisi");
+        string dersKlasor = Path.Combine(_geciciKlasor, "mat101_islenmis");
         Directory.CreateDirectory(dersKlasor);
 
         string jsonYolu = Path.Combine(dersKlasor, "mat101.json");
@@ -794,8 +794,8 @@ public class MetinAramaMotoruTestleri : IDisposable
     [Fact]
     public async Task IndeksleAsync_AyniAdliIkiFarkliKlasorDersi_IkisiDeAranabilir()
     {
-        string klasorA = Path.Combine(_geciciKlasor, "donem1", "Hafta1_videoperisi");
-        string klasorB = Path.Combine(_geciciKlasor, "donem2", "Hafta1_videoperisi");
+        string klasorA = Path.Combine(_geciciKlasor, "donem1", "Hafta1_islenmis");
+        string klasorB = Path.Combine(_geciciKlasor, "donem2", "Hafta1_islenmis");
         Directory.CreateDirectory(klasorA);
         Directory.CreateDirectory(klasorB);
 

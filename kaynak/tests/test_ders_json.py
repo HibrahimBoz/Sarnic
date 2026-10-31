@@ -1,4 +1,4 @@
-"""Video Perisi - ders.json ve isle-grup birim testleri (≥ 20 test)."""
+"""Video Transkriptör - ders.json ve isle-grup birim testleri (≥ 20 test)."""
 from __future__ import annotations
 
 import json
@@ -567,6 +567,7 @@ class TestDersJsonVeGrup(unittest.TestCase):
 
         self.assertTrue(sonuc.basarili)
         cikis = sonuc.cikis_klasoru
+        self.assertEqual(cikis.name, f"{self.klasor.name}_islenmis")
         self.assertTrue((cikis / f"{self.klasor.name}.srt").exists())
         self.assertTrue((cikis / f"{self.klasor.name}.vtt").exists())
         self.assertTrue((cikis / f"{self.klasor.name}.txt").exists())

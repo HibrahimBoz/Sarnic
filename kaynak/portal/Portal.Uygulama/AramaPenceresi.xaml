@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:Portal.Uygulama"
         Style="{StaticResource PortalPencere}"
-        Title="Video Portalı - Ders Arama" Width="1100" Height="720"
+        Title="Sarnıç — Arama" Width="1100" Height="720"
         MinWidth="800" MinHeight="500"
         Loaded="Pencere_Loaded">
     <Grid>
@@ -60,132 +60,495 @@
                      Minimum="0" Maximum="100" Value="0"
                      Visibility="Collapsed"/>
 
-        <!-- Ana Alan: Ders Listesi ve Arama Sonuçları -->
-        <Grid Grid.Row="2" Margin="14,0,14,8">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="280" MinWidth="180"/>
-                <ColumnDefinition Width="6"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
+        <!-- Ana Sekmeler: Tümü / Dosyalar / Belgeler / Videolar -->
+        <TabControl x:Name="AnaSekmeler" Grid.Row="2" Margin="14,0,14,8"
+                    Background="Transparent" BorderThickness="0" Padding="0">
+            <TabControl.Resources>
+                <Style TargetType="TabItem">
+                    <Setter Property="Background" Value="Transparent"/>
+                    <Setter Property="Foreground" Value="{DynamicResource SolukMetinFircasi}"/>
+                    <Setter Property="Padding" Value="14,8"/>
+                    <Setter Property="FontSize" Value="13"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                    <Setter Property="Cursor" Value="Hand"/>
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="TabItem">
+                                <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                        BorderBrush="Transparent" BorderThickness="0,0,0,2"
+                                        Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
+                                    <ContentPresenter ContentSource="Header" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Foreground" Value="{DynamicResource MetinFircasi}"/>
+                                    </Trigger>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter Property="Foreground" Value="{DynamicResource VurguFircasi}"/>
+                                        <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource VurguFircasi}"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </TabControl.Resources>
 
-            <!-- Sol Panel: Ders Listesi Paneli -->
-            <DockPanel Grid.Column="0">
-                <TextBlock x:Name="DersListesiBaslik" DockPanel.Dock="Top" Text="Dersler (0)"
-                           FontWeight="SemiBold" FontSize="13" Foreground="{DynamicResource SolukMetinFircasi}" Margin="0,0,0,6"/>
-                <ListBox x:Name="DersListesi"
-                         MouseDoubleClick="DersListesi_MouseDoubleClick"
-                         KeyDown="DersListesi_KeyDown">
-                    <ListBox.ItemContainerStyle>
-                        <Style TargetType="ListBoxItem">
-                            <Setter Property="Padding" Value="8,6"/>
-                            <Setter Property="Margin" Value="2,1"/>
-                            <Setter Property="Background" Value="Transparent"/>
-                            <Setter Property="Cursor" Value="Hand"/>
-                            <Setter Property="Template">
-                                <Setter.Value>
-                                    <ControlTemplate TargetType="ListBoxItem">
-                                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
-                                                Padding="{TemplateBinding Padding}"
-                                                CornerRadius="4" SnapsToDevicePixels="True">
-                                            <ContentPresenter/>
-                                        </Border>
-                                        <ControlTemplate.Triggers>
-                                            <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Yuzey2Fircasi}"/>
-                                            </Trigger>
-                                            <Trigger Property="IsSelected" Value="True">
-                                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SeciliSatirFircasi}"/>
-                                                <Setter Property="Foreground" Value="{DynamicResource VurguFircasi}"/>
-                                            </Trigger>
-                                        </ControlTemplate.Triggers>
-                                    </ControlTemplate>
-                                </Setter.Value>
-                            </Setter>
-                        </Style>
-                    </ListBox.ItemContainerStyle>
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
-                            <DockPanel Margin="2,1">
-                                <TextBlock Text="{Binding Ad}" Foreground="{DynamicResource MetinFircasi}" TextTrimming="CharacterEllipsis"/>
-                            </DockPanel>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-            </DockPanel>
+            <!-- Tümü Sekmesi -->
+            <TabItem x:Name="TabTumu">
+                <TabItem.Header>
+                    <TextBlock x:Name="SekmeTumuBaslik" Text="Tümü (0)"/>
+                </TabItem.Header>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="0,8,0,0">
+                        <!-- Dosyalar Önizleme -->
+                        <Border Background="{DynamicResource YuzeyFircasi}" CornerRadius="6" Padding="12" Margin="0,0,0,12">
+                            <StackPanel>
+                                <DockPanel Margin="0,0,0,8">
+                                    <TextBlock Text="Dosyalar" FontWeight="SemiBold" FontSize="14" Foreground="{DynamicResource MetinFircasi}" VerticalAlignment="Center"/>
+                                    <Button x:Name="TumuDosyalarDugmesi" Content="Tümünü göster (0)" DockPanel.Dock="Right"
+                                            Padding="10,4" Click="TumuDosyalarDugmesi_Click" HorizontalAlignment="Right"/>
+                                </DockPanel>
+                                <ItemsControl x:Name="TumuDosyalarListesi">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="Transparent" Padding="6,4" Margin="0,1" CornerRadius="4"
+                                                    Cursor="Hand" MouseLeftButtonUp="TumuDosyaOgesi_Click">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Style.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter Property="Background" Value="{DynamicResource Yuzey2Fircasi}"/>
+                                                            </Trigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+                                                <DockPanel>
+                                                    <TextBlock Text="{Binding BoyutMetni}" DockPanel.Dock="Right" Foreground="{DynamicResource SolukMetinFircasi}" FontFamily="Consolas, monospace" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{Binding Ad}" FontWeight="Medium" Foreground="{DynamicResource MetinFircasi}" TextTrimming="CharacterEllipsis"/>
+                                                    <TextBlock Text="{Binding Klasor, StringFormat='  —  {0}'}" Foreground="{DynamicResource SolukMetinFircasi}" FontSize="12" TextTrimming="CharacterEllipsis"/>
+                                                </DockPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
 
-            <!-- GridSplitter Bölücü -->
-            <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Stretch" Background="Transparent"/>
+                        <!-- Belgeler Önizleme -->
+                        <Border Background="{DynamicResource YuzeyFircasi}" CornerRadius="6" Padding="12" Margin="0,0,0,12">
+                            <StackPanel>
+                                <DockPanel Margin="0,0,0,8">
+                                    <TextBlock Text="Belgeler" FontWeight="SemiBold" FontSize="14" Foreground="{DynamicResource MetinFircasi}" VerticalAlignment="Center"/>
+                                    <Button x:Name="TumuBelgelerDugmesi" Content="Tümünü göster (0)" DockPanel.Dock="Right"
+                                            Padding="10,4" Click="TumuBelgelerDugmesi_Click" HorizontalAlignment="Right"/>
+                                </DockPanel>
+                                <ItemsControl x:Name="TumuBelgelerListesi">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="Transparent" Padding="6,6" Margin="0,1" CornerRadius="4"
+                                                    Cursor="Hand" MouseLeftButtonUp="TumuBelgeOgesi_Click">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Style.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter Property="Background" Value="{DynamicResource Yuzey2Fircasi}"/>
+                                                            </Trigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+                                                <StackPanel>
+                                                    <DockPanel Margin="0,0,0,2">
+                                                        <TextBlock Text="{Binding Ad}" FontWeight="SemiBold" Foreground="{DynamicResource VurguFircasi}" TextTrimming="CharacterEllipsis"/>
+                                                        <TextBlock Text="{Binding Etiket, StringFormat='  ({0})'}" Foreground="{DynamicResource SolukMetinFircasi}"/>
+                                                    </DockPanel>
+                                                    <TextBlock local:VurguYardimcisi.VurguBilgisi="{Binding}" Foreground="{DynamicResource MetinFircasi}" TextWrapping="Wrap" MaxHeight="40" TextTrimming="CharacterEllipsis"/>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
 
-            <!-- Sağ Panel: Arama Sonuçları ListView -->
-            <DockPanel Grid.Column="2">
-                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,6">
-                    <TextBlock x:Name="SonucSayisiMetni" DockPanel.Dock="Left" Text="Arama Sonuçları"
-                               FontWeight="SemiBold" FontSize="13" Foreground="{DynamicResource SolukMetinFircasi}"/>
+                        <!-- Videolar Önizleme -->
+                        <Border Background="{DynamicResource YuzeyFircasi}" CornerRadius="6" Padding="12" Margin="0,0,0,12">
+                            <StackPanel>
+                                <DockPanel Margin="0,0,0,8">
+                                    <TextBlock Text="Videolar" FontWeight="SemiBold" FontSize="14" Foreground="{DynamicResource MetinFircasi}" VerticalAlignment="Center"/>
+                                    <Button x:Name="TumuVideolarDugmesi" Content="Tümünü göster (0)" DockPanel.Dock="Right"
+                                            Padding="10,4" Click="TumuVideolarDugmesi_Click" HorizontalAlignment="Right"/>
+                                </DockPanel>
+                                <ItemsControl x:Name="TumuVideolarListesi">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="Transparent" Padding="6,6" Margin="0,1" CornerRadius="4"
+                                                    Cursor="Hand" MouseLeftButtonUp="TumuVideoOgesi_Click">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Style.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter Property="Background" Value="{DynamicResource Yuzey2Fircasi}"/>
+                                                            </Trigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+                                                <DockPanel>
+                                                    <TextBlock Text="{Binding ZamanMetni}" DockPanel.Dock="Right" Foreground="{DynamicResource SolukMetinFircasi}" FontFamily="Consolas, monospace" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{Binding DersAd}" FontWeight="Medium" Foreground="{DynamicResource VurguFircasi}" Width="160" TextTrimming="CharacterEllipsis" Margin="0,0,10,0"/>
+                                                    <TextBlock local:VurguYardimcisi.VurguBilgisi="{Binding}" Foreground="{DynamicResource MetinFircasi}" TextWrapping="Wrap" TextTrimming="CharacterEllipsis"/>
+                                                </DockPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- Dosyalar Sekmesi -->
+            <TabItem x:Name="TabDosyalar">
+                <TabItem.Header>
+                    <TextBlock x:Name="SekmeDosyalarBaslik" Text="Dosyalar (0)"/>
+                </TabItem.Header>
+                <DockPanel Margin="0,8,0,0">
+                    <ListView x:Name="DosyaListesi" SelectionMode="Single"
+                              VirtualizingPanel.IsVirtualizing="True"
+                              VirtualizingPanel.VirtualizationMode="Recycling"
+                              ScrollViewer.IsDeferredScrollingEnabled="True"
+                              PreviewMouseRightButtonDown="DosyaListesi_PreviewMouseRightButtonDown"
+                              MouseDoubleClick="DosyaListesi_MouseDoubleClick"
+                              KeyDown="DosyaListesi_KeyDown"
+                              GridViewColumnHeader.Click="DosyaSutunBaslik_Click">
+                        <ListView.Resources>
+                            <ContextMenu x:Key="DosyaContextMenu" Opened="DosyaContextMenu_Opened">
+                                <MenuItem Header="Aç" Click="DosyaMenuAc_Click"/>
+                                <MenuItem x:Name="DosyaMenuDuzenle" Header="Düzenle"/>
+                                <MenuItem x:Name="DosyaMenuBirlikteAc" Header="Birlikte aç">
+                                    <MenuItem Header="Windows varsayılanı" Click="DosyaMenuAc_Click"/>
+                                </MenuItem>
+                                <MenuItem x:Name="DosyaMenuDuzenlenebilirKopya" Header="Düzenlenebilir kopyayı aç" Click="DosyaMenuDuzenlenebilirKopya_Click" Visibility="Collapsed"/>
+                                <Separator/>
+                                <MenuItem Header="Klasörünü aç" Click="DosyaMenuKlasor_Click"/>
+                                <MenuItem Header="Yolu kopyala" Click="DosyaMenuKopyala_Click"/>
+                                <Separator/>
+                                <MenuItem x:Name="DosyaMenuBelge" Header="Belgede göster" Click="DosyaMenuBelge_Click"/>
+                            </ContextMenu>
+                        </ListView.Resources>
+                        <ListView.ItemContainerStyle>
+                            <Style TargetType="ListViewItem">
+                                <Setter Property="Padding" Value="4,6"/>
+                                <Setter Property="Margin" Value="0,1"/>
+                                <Setter Property="Background" Value="Transparent"/>
+                                <Setter Property="Cursor" Value="Hand"/>
+                                <Setter Property="ContextMenu" Value="{StaticResource DosyaContextMenu}"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ListViewItem">
+                                            <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                                    BorderBrush="{DynamicResource KenarlikFircasi}"
+                                                    BorderThickness="0,0,0,1"
+                                                    Padding="{TemplateBinding Padding}"
+                                                    CornerRadius="4" SnapsToDevicePixels="True">
+                                                <GridViewRowPresenter VerticalAlignment="Center"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Yuzey2Fircasi}"/>
+                                                </Trigger>
+                                                <Trigger Property="IsSelected" Value="True">
+                                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SeciliSatirFircasi}"/>
+                                                    <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource VurguBasiliFircasi}"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </ListView.ItemContainerStyle>
+                        <ListView.View>
+                            <GridView>
+                                <GridViewColumn Header="Ad" Width="260">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Ad}" Foreground="{DynamicResource MetinFircasi}" FontWeight="Medium" TextTrimming="CharacterEllipsis"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                                <GridViewColumn Header="Klasör" Width="360">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Klasor}" Foreground="{DynamicResource SolukMetinFircasi}" TextTrimming="CharacterEllipsis"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                                <GridViewColumn Header="Boyut" Width="90">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding BoyutMetni}" Foreground="{DynamicResource SolukMetinFircasi}" FontFamily="Consolas, monospace"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                                <GridViewColumn Header="Değişme" Width="130">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding DegismeMetni}" Foreground="{DynamicResource SolukMetinFircasi}" FontFamily="Consolas, monospace"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                                <GridViewColumn Header="Tür" Width="80">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Tur}" Foreground="{DynamicResource SolukMetinFircasi}"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                            </GridView>
+                        </ListView.View>
+                    </ListView>
                 </DockPanel>
-                <ListView x:Name="SonucListesi" SelectionMode="Single"
-                          MouseDoubleClick="SonucListesi_MouseDoubleClick"
-                          KeyDown="SonucListesi_KeyDown">
-                    <ListView.ItemContainerStyle>
-                        <Style TargetType="ListViewItem">
-                            <Setter Property="Padding" Value="4,6"/>
-                            <Setter Property="Margin" Value="0,1"/>
-                            <Setter Property="Background" Value="Transparent"/>
-                            <Setter Property="Cursor" Value="Hand"/>
-                            <Setter Property="Template">
-                                <Setter.Value>
-                                    <ControlTemplate TargetType="ListViewItem">
-                                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
-                                                BorderBrush="{DynamicResource KenarlikFircasi}"
-                                                BorderThickness="0,0,0,1"
-                                                Padding="{TemplateBinding Padding}"
-                                                CornerRadius="4" SnapsToDevicePixels="True">
-                                            <GridViewRowPresenter VerticalAlignment="Center"/>
+            </TabItem>
+
+            <!-- Belgeler Sekmesi -->
+            <TabItem x:Name="TabBelgeler">
+                <TabItem.Header>
+                    <TextBlock x:Name="SekmeBelgelerBaslik" Text="Belgeler (0)"/>
+                </TabItem.Header>
+                <DockPanel Margin="0,8,0,0">
+                    <ListView x:Name="BelgeListesi" SelectionMode="Single"
+                              PreviewMouseRightButtonDown="BelgeListesi_PreviewMouseRightButtonDown"
+                              MouseLeftButtonUp="BelgeListesi_MouseLeftButtonUp"
+                              MouseDoubleClick="BelgeListesi_MouseDoubleClick"
+                              KeyDown="BelgeListesi_KeyDown">
+                        <ListView.Resources>
+                            <ContextMenu x:Key="BelgeContextMenu" Opened="BelgeContextMenu_Opened">
+                                <MenuItem Header="Aç" Click="BelgeMenuAc_Click"/>
+                                <MenuItem x:Name="BelgeMenuDuzenle" Header="Düzenle"/>
+                                <MenuItem x:Name="BelgeMenuBirlikteAc" Header="Birlikte aç">
+                                    <MenuItem Header="Windows varsayılanı" Click="BelgeMenuAsliniAc_Click"/>
+                                </MenuItem>
+                                <MenuItem x:Name="BelgeMenuDuzenlenebilirKopya" Header="Düzenlenebilir kopyayı aç" Click="BelgeMenuDuzenlenebilirKopya_Click" Visibility="Collapsed"/>
+                                <Separator/>
+                                <MenuItem Header="Klasörünü aç" Click="BelgeMenuKlasor_Click"/>
+                                <MenuItem Header="Yolu kopyala" Click="BelgeMenuKopyala_Click"/>
+                            </ContextMenu>
+                        </ListView.Resources>
+                        <ListView.GroupStyle>
+                            <GroupStyle>
+                                <GroupStyle.HeaderTemplate>
+                                    <DataTemplate>
+                                        <Border Background="{DynamicResource Yuzey2Fircasi}" BorderBrush="{DynamicResource KenarlikFircasi}"
+                                                BorderThickness="1" CornerRadius="4" Padding="8,6" Margin="0,6,0,2">
+                                            <DockPanel>
+                                                <Border DockPanel.Dock="Right" Background="{DynamicResource VurguFircasi}"
+                                                        CornerRadius="3" Padding="6,2" Margin="6,0,0,0"
+                                                        Visibility="{Binding Items[0].DersRozetiGorunurluk}">
+                                                    <TextBlock Text="Ders" Foreground="#1A1205" FontSize="11" FontWeight="Bold"/>
+                                                </Border>
+                                                <TextBlock Text="{Binding Items[0].Ad}" FontWeight="Bold" Foreground="{DynamicResource MetinFircasi}" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{Binding Items[0].Klasor, StringFormat='  —  {0}'}" Foreground="{DynamicResource SolukMetinFircasi}" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                            </DockPanel>
                                         </Border>
-                                        <ControlTemplate.Triggers>
-                                            <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Yuzey2Fircasi}"/>
-                                            </Trigger>
-                                            <Trigger Property="IsSelected" Value="True">
-                                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SeciliSatirFircasi}"/>
-                                                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource VurguBasiliFircasi}"/>
-                                            </Trigger>
-                                        </ControlTemplate.Triggers>
-                                    </ControlTemplate>
-                                </Setter.Value>
-                            </Setter>
-                        </Style>
-                    </ListView.ItemContainerStyle>
-                    <ListView.View>
-                        <GridView>
-                            <GridViewColumn Header="Ders" Width="180">
-                                <GridViewColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding DersAd}" Foreground="{DynamicResource VurguFircasi}" FontWeight="Medium"
-                                                   TextTrimming="CharacterEllipsis"/>
                                     </DataTemplate>
-                                </GridViewColumn.CellTemplate>
-                            </GridViewColumn>
-                            <GridViewColumn Header="Zaman" Width="80">
-                                <GridViewColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding ZamanMetni}" Foreground="{DynamicResource SolukMetinFircasi}"
-                                                   FontFamily="Consolas, monospace"/>
-                                    </DataTemplate>
-                                </GridViewColumn.CellTemplate>
-                            </GridViewColumn>
-                            <GridViewColumn Header="Cümle" Width="550">
-                                <GridViewColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <TextBlock local:VurguYardimcisi.VurguBilgisi="{Binding}"
-                                                   TextWrapping="Wrap" Foreground="{DynamicResource MetinFircasi}"/>
-                                    </DataTemplate>
-                                </GridViewColumn.CellTemplate>
-                            </GridViewColumn>
-                        </GridView>
-                    </ListView.View>
-                </ListView>
-            </DockPanel>
-        </Grid>
+                                </GroupStyle.HeaderTemplate>
+                            </GroupStyle>
+                        </ListView.GroupStyle>
+                        <ListView.ItemContainerStyle>
+                            <Style TargetType="ListViewItem">
+                                <Setter Property="Padding" Value="8,6"/>
+                                <Setter Property="Margin" Value="0,1"/>
+                                <Setter Property="Background" Value="Transparent"/>
+                                <Setter Property="Cursor" Value="Hand"/>
+                                <Setter Property="ContextMenu" Value="{StaticResource BelgeContextMenu}"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ListViewItem">
+                                            <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                                    BorderBrush="{DynamicResource KenarlikFircasi}"
+                                                    BorderThickness="0,0,0,1"
+                                                    Padding="{TemplateBinding Padding}"
+                                                    CornerRadius="4" SnapsToDevicePixels="True">
+                                                <ContentPresenter/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Yuzey2Fircasi}"/>
+                                                </Trigger>
+                                                <Trigger Property="IsSelected" Value="True">
+                                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SeciliSatirFircasi}"/>
+                                                    <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource VurguBasiliFircasi}"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </ListView.ItemContainerStyle>
+                        <ListView.ItemTemplate>
+                            <DataTemplate>
+                                <DockPanel>
+                                    <Border DockPanel.Dock="Right" Background="{DynamicResource Yuzey2Fircasi}"
+                                            BorderBrush="{DynamicResource KenarlikFircasi}" BorderThickness="1"
+                                            CornerRadius="3" Padding="5,1" Margin="6,0,0,0" VerticalAlignment="Center"
+                                            Visibility="{Binding CeviriRozetiGorunurluk}">
+                                        <TextBlock Text="çeviriden eşleşti" Foreground="{DynamicResource SolukMetinFircasi}" FontSize="11"/>
+                                    </Border>
+                                    <Border DockPanel.Dock="Right" Background="{DynamicResource Yuzey2Fircasi}"
+                                            BorderBrush="{DynamicResource KenarlikFircasi}" BorderThickness="1"
+                                            CornerRadius="3" Padding="5,1" Margin="6,0,0,0" VerticalAlignment="Center"
+                                            Visibility="{Binding OcrGorunur}">
+                                        <TextBlock Text="{Binding OcrMetni}" Foreground="{DynamicResource SolukMetinFircasi}" FontSize="11" FontFamily="Consolas, monospace"/>
+                                    </Border>
+                                    <TextBlock Text="{Binding Etiket}" DockPanel.Dock="Left" Foreground="{DynamicResource VurguFircasi}"
+                                               FontWeight="SemiBold" Width="100" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                                    <TextBlock local:VurguYardimcisi.VurguBilgisi="{Binding}"
+                                               TextWrapping="Wrap" Foreground="{DynamicResource MetinFircasi}" VerticalAlignment="Center"/>
+                                </DockPanel>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </DockPanel>
+            </TabItem>
+
+            <!-- Videolar Sekmesi -->
+            <TabItem x:Name="TabVideolar">
+                <TabItem.Header>
+                    <TextBlock x:Name="SekmeVideolarBaslik" Text="Videolar (0)"/>
+                </TabItem.Header>
+                <Grid Margin="0,8,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="280" MinWidth="180"/>
+                        <ColumnDefinition Width="6"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Sol Panel: Ders Listesi Paneli -->
+                    <DockPanel Grid.Column="0">
+                        <TextBlock x:Name="DersListesiBaslik" DockPanel.Dock="Top" Text="Dersler (0)"
+                                   FontWeight="SemiBold" FontSize="13" Foreground="{DynamicResource SolukMetinFircasi}" Margin="0,0,0,6"/>
+                        <ListBox x:Name="DersListesi"
+                                 MouseDoubleClick="DersListesi_MouseDoubleClick"
+                                 KeyDown="DersListesi_KeyDown">
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem">
+                                    <Setter Property="Padding" Value="8,6"/>
+                                    <Setter Property="Margin" Value="2,1"/>
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Setter Property="Cursor" Value="Hand"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="ListBoxItem">
+                                                <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                                        Padding="{TemplateBinding Padding}"
+                                                        CornerRadius="4" SnapsToDevicePixels="True">
+                                                    <ContentPresenter/>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Yuzey2Fircasi}"/>
+                                                    </Trigger>
+                                                    <Trigger Property="IsSelected" Value="True">
+                                                        <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SeciliSatirFircasi}"/>
+                                                        <Setter Property="Foreground" Value="{DynamicResource VurguFircasi}"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <DockPanel Margin="2,1">
+                                        <TextBlock Text="{Binding Ad}" Foreground="{DynamicResource MetinFircasi}" TextTrimming="CharacterEllipsis"/>
+                                    </DockPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </DockPanel>
+
+                    <!-- GridSplitter Bölücü -->
+                    <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Stretch" Background="Transparent"/>
+
+                    <!-- Sağ Panel: Arama Sonuçları ListView -->
+                    <DockPanel Grid.Column="2">
+                        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,6">
+                            <TextBlock x:Name="SonucSayisiMetni" DockPanel.Dock="Left" Text="Arama Sonuçları"
+                                       FontWeight="SemiBold" FontSize="13" Foreground="{DynamicResource SolukMetinFircasi}"/>
+                        </DockPanel>
+                        <ListView x:Name="SonucListesi" SelectionMode="Single"
+                                  MouseDoubleClick="SonucListesi_MouseDoubleClick"
+                                  KeyDown="SonucListesi_KeyDown">
+                            <ListView.ItemContainerStyle>
+                                <Style TargetType="ListViewItem">
+                                    <Setter Property="Padding" Value="4,6"/>
+                                    <Setter Property="Margin" Value="0,1"/>
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Setter Property="Cursor" Value="Hand"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="ListViewItem">
+                                                <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                                        BorderBrush="{DynamicResource KenarlikFircasi}"
+                                                        BorderThickness="0,0,0,1"
+                                                        Padding="{TemplateBinding Padding}"
+                                                        CornerRadius="4" SnapsToDevicePixels="True">
+                                                    <GridViewRowPresenter VerticalAlignment="Center"/>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Yuzey2Fircasi}"/>
+                                                    </Trigger>
+                                                    <Trigger Property="IsSelected" Value="True">
+                                                        <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SeciliSatirFircasi}"/>
+                                                        <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource VurguBasiliFircasi}"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </ListView.ItemContainerStyle>
+                            <ListView.View>
+                                <GridView>
+                                    <GridViewColumn Header="Ders" Width="180">
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding DersAd}" Foreground="{DynamicResource VurguFircasi}" FontWeight="Medium"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
+                                    <GridViewColumn Header="Zaman" Width="80">
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding ZamanMetni}" Foreground="{DynamicResource SolukMetinFircasi}"
+                                                           FontFamily="Consolas, monospace"/>
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
+                                    <GridViewColumn Header="Cümle" Width="550">
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <StackPanel>
+                                                    <TextBlock local:VurguYardimcisi.VurguBilgisi="{Binding}"
+                                                               TextWrapping="Wrap" Foreground="{DynamicResource MetinFircasi}"/>
+                                                    <TextBlock Text="çeviriden eşleşti" FontSize="11" Margin="0,2,0,0"
+                                                               Foreground="{DynamicResource SolukMetinFircasi}"
+                                                               Visibility="{Binding CeviriRozetiGorunurluk}"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
+                                </GridView>
+                            </ListView.View>
+                        </ListView>
+                    </DockPanel>
+                </Grid>
+            </TabItem>
+        </TabControl>
 
         <!-- Durum Çubuğu -->
         <StatusBar Grid.Row="3">
@@ -199,6 +562,10 @@
             <Separator Background="{DynamicResource KenarlikFircasi}" Margin="8,0"/>
             <StatusBarItem>
                 <TextBlock x:Name="DurumKok" Text="Kök: -"/>
+            </StatusBarItem>
+            <Separator Background="{DynamicResource KenarlikFircasi}" Margin="8,0"/>
+            <StatusBarItem>
+                <TextBlock x:Name="DurumDizin" Text="Dizin: Bekleniyor..."/>
             </StatusBarItem>
             <Separator Background="{DynamicResource KenarlikFircasi}" Margin="8,0"/>
             <StatusBarItem>
