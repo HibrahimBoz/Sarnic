@@ -1,24 +1,48 @@
-<!-- Tasarım fikri: Koyu gri fırın gövdesi içinde alev gradyanlı pişirme haznesi, fırın ızgarasında pişen beyaz hatlı veri tabanı silindiri ve fırın kapağı tutacağı. -->
+<!-- Tasarım fikri: Sarnıç kemer mimarisini işleme gücünü simgeleyen dişli çark ve havuza akan yapılandırılmış veri şeritleriyle birleştirerek transkript, OCR ve çeviri atölyesini simgeler. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
-  <!-- Arka plan: Koyu gri yuvarlatılmış kare -->
-  <rect x="16" y="16" width="224" height="224" rx="48" fill="#181A20"/>
+  <!-- Arka Plan: Koyu Petrol / Lacivert Yuvarlatılmış Kare -->
+  <rect width="256" height="256" rx="48" fill="#0D2230"/>
 
-  <!-- Fırın üst kontrol paneli: Kadranlar ve kapak tutacağı -->
-  <circle cx="56" cy="50" r="10" fill="#EA580C"/>
-  <rect x="80" y="43" width="96" height="14" rx="7" fill="#FFFFFF"/>
-  <circle cx="200" cy="50" r="10" fill="#DC2626"/>
+  <!-- Su Altı Sütun Yansımaları -->
+  <rect x="62" y="184" width="16" height="28" rx="2" fill="#1B4255"/>
+  <rect x="178" y="184" width="16" height="28" rx="2" fill="#1B4255"/>
 
-  <!-- Fırın gözetleme camı ve akkor pişirme haznesi -->
-  <rect x="42" y="72" width="172" height="136" rx="24" fill="#E2461C"/>
+  <!-- Yapılandırılmış Veri Şeritleri / Dizinleme Blokları (İşlenen Havuz) -->
+  <!-- 1. Seviye: Aktif İşleme ve Segmentasyon Şeridi -->
+  <rect x="44" y="179" width="46" height="10" rx="5" fill="#00BFA5"/>
+  <rect x="98" y="179" width="60" height="10" rx="5" fill="#5CF2D6"/>
+  <rect x="166" y="179" width="46" height="10" rx="5" fill="#00BFA5"/>
 
-  <!-- Veri Tabanı Silindiri: Üst disk, gövde ve katman ayracı -->
-  <ellipse cx="128" cy="106" rx="42" ry="14" fill="#181A20" stroke="#FFFFFF" stroke-width="12"/>
-  <path d="M 86 106 V 140 C 86 148 105 154 128 154 C 151 154 170 148 170 140 V 106" fill="#181A20" stroke="#FFFFFF" stroke-width="12" stroke-linejoin="round"/>
-  <path d="M 86 123 C 86 131 105 137 128 137 C 151 137 170 131 170 123" fill="none" stroke="#FFFFFF" stroke-width="12"/>
+  <!-- 2. Seviye: Transkript ve OCR Metin Satırları -->
+  <rect x="62" y="202" width="60" height="8" rx="4" fill="#00BFA5"/>
+  <rect x="134" y="202" width="60" height="8" rx="4" fill="#00BFA5"/>
 
-  <!-- Pişirme ızgarası -->
-  <line x1="58" y1="168" x2="198" y2="168" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round"/>
+  <!-- 3. Seviye: Dizinlenmiş Veri Tabanı Tabanı -->
+  <rect x="92" y="222" width="72" height="8" rx="4" fill="#1B4255"/>
 
-  <!-- Alt rezistans / ısı dalgası -->
-  <path d="M 82 189 Q 105 177 128 189 Q 151 177 174 189" fill="none" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round"/>
+  <!-- Sarnıç Taş Kemer ve Sütunları (Sıcak Açık Bej) -->
+  <path d="M 58 180 L 58 110 A 70 70 0 0 1 198 110 L 198 180 L 174 180 L 174 110 A 46 46 0 0 0 82 110 L 82 180 Z" fill="#F4E8CF"/>
+  <!-- Sütun Başlıkları (İmpost / Başlık Blokları) -->
+  <rect x="50" y="104" width="38" height="12" rx="3" fill="#F4E8CF"/>
+  <rect x="168" y="104" width="38" height="12" rx="3" fill="#F4E8CF"/>
+  <!-- Sütun Kaideleri -->
+  <rect x="52" y="172" width="34" height="10" rx="2" fill="#F4E8CF"/>
+  <rect x="170" y="172" width="34" height="10" rx="2" fill="#F4E8CF"/>
+
+  <!-- Kemere ve Havuza Akan Dikey Veri Akışı / İşleme Hatları -->
+  <line x1="114" y1="154" x2="114" y2="172" stroke="#00BFA5" stroke-width="8" stroke-linecap="round"/>
+  <line x1="128" y1="154" x2="128" y2="172" stroke="#5CF2D6" stroke-width="8" stroke-linecap="round"/>
+  <line x1="142" y1="154" x2="142" y2="172" stroke="#00BFA5" stroke-width="8" stroke-linecap="round"/>
+
+  <!-- Atölye İşleme Motoru: 6 Dişli Çark -->
+  <g fill="#5CF2D6">
+    <rect x="118" y="76" width="20" height="76" rx="3"/>
+    <rect x="118" y="76" width="20" height="76" rx="3" transform="rotate(60 128 114)"/>
+    <rect x="118" y="76" width="20" height="76" rx="3" transform="rotate(120 128 114)"/>
+    <circle cx="128" cy="114" r="26"/>
+  </g>
+  <!-- Çark Merkez Yuvası (İç Boşluk) -->
+  <circle cx="128" cy="114" r="13" fill="#0D2230"/>
+  <!-- Çark Göbek Vurgusu -->
+  <circle cx="128" cy="114" r="5" fill="#1B4255"/>
 </svg>

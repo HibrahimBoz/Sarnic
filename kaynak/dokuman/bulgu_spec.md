@@ -463,7 +463,9 @@ Dönüştürücüler (bulunduğu sırayla denenir): paketteki `araclar\libreoffi
   İndirme başarısızsa uyarı yazılır, paketleme sürer (ArtCraft isteğe bağlıdır).
 
 ### 11.5 Simgeler
-- Gemini her iki uygulama için adına göre SVG simge tasarlar: Sarnıç Atölye (veri + fırın), Sarnıç (büyüteç + belge/film).
-  256×256 görünüm kutusu, 16 piksele küçülünce de okunur, düz renk + en çok 3 renk, metin yok.
-  SVG → PNG (PyMuPDF) → çok boyutlu `.ico` (16, 24, 32, 48, 64, 128, 256; Pillow). Dosyalar: `kaynak/varliklar/sarnic-atolye.svg`,
-  `sarnic.svg` (simgelerin görseli henüz eski; yeni simge ayrı iş); portal `Varliklar\uygulama.ico` + `logo-256.png`, menü `baslat\logo-256.png` bunlarla değişir.
+- Kullanıcı kararı 2026-10-31: Gemini simge seti kullanılır. Ortak öğe tek bir taş kemerdir (sarnıç).
+  Sarnıç: büyüteç + oynat üçgeni + su çizgileri. Sarnıç Atölye: dişli çark + veri çizgileri.
+- Claude simge seti yedek olarak saklanır: `kaynak/varliklar/alternatif-claude/` (iki kemer + su yansıması).
+- SVG → PNG (PyMuPDF) → çok boyutlu `.ico` (16, 24, 32, 48, 64, 128, 256; Pillow). Her boyut SVG'den ayrı çizilir.
+  Dosyalar: `kaynak/varliklar/sarnic.svg`, `sarnic-atolye.svg` ve `.ico` eşleri; karşılaştırma `onizleme.png`.
+  Portal `Varliklar\uygulama.ico` + `logo-256.png` = `sarnic`; menü `baslat\logo-256.png` = `sarnic-atolye`.
