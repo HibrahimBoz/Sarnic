@@ -110,6 +110,7 @@ Whisper CT2 modelleri     : huggingface.co - Systran/faster-whisper-large-v3, Sy
 OCR modelleri             : PP-OCRv6 (Apache-2.0, PaddleOCR/RapidOCR)
 Sozluk                    : FrequencyWords tr_50k (CC BY-SA 4.0, hermitdave)
 PyMuPDF                   : PyMuPDF (AGPL-3.0)
+Ceviri modeli             : NLLB-200 distilled 1.3B CT2 int8 (Meta, CC-BY-NC 4.0, yalniz ticari olmayan kullanim)
 $($araclarListesi -join "`r`n")
 $($artcraftListesi -join "`r`n")
 

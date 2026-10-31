@@ -102,7 +102,9 @@ def ceviri_gecisi(db, depo, ayar, cevirmen=None, ilerleme=None):
             degisti = ceviri_ekle(veri, cevirmen)
             if degisti:
                 json_yaz(belge_json, veri)
-            vt.sayfalari_yaz(db, r["id"], veri.get("sayfalar", []))
+            # Hiçbir sayfaya dil yazılamadıysa (çeviri hatası) dizin satırları yeniden yazılmaz.
+            if degisti or any(s.get("dil") for s in veri.get("sayfalar", [])):
+                vt.sayfalari_yaz(db, r["id"], veri.get("sayfalar", []))
             db.commit()
             islenen += 1
             if ilerleme:

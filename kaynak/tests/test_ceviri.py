@@ -42,6 +42,7 @@ class CeviriTestleri(unittest.TestCase):
         self.assertEqual(dil_tahmin("f(x) fonksiyonu x değişkeni için türevlenebilir bir fonksiyondur"), "tr")
         self.assertEqual(dil_tahmin("Explain the experiment and the box plot for the next exam"), "en")
         self.assertEqual(dil_tahmin("Install Intel drivers"), "en")
+        self.assertEqual(dil_tahmin("RAPOR İÇİN VE BU KONU İLE İLGİLİ NOT"), "tr")
         self.assertEqual(dil_tahmin("Biz bu qerari xalq ucun verdik ve bu qanun olan bir xidmetdir"), "az")
 
     def test_dil_tahmin(self):

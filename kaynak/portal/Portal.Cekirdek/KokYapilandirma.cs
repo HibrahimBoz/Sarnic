@@ -14,7 +14,11 @@ public class KokYapilandirma
     private static readonly JsonSerializerOptions JsonAyar = new()
     {
         Encoder = JavaScriptEncoder.Create(UnicodeRanges.All),
-        WriteIndented = true
+        WriteIndented = true,
+        // Okuma kökü okuyan JsonDosyasindanKokOku ile aynı hoşgörüde ("KOK", yorum, sondaki virgül).
+        PropertyNameCaseInsensitive = true,
+        AllowTrailingCommas = true,
+        ReadCommentHandling = JsonCommentHandling.Skip
     };
 
     private static readonly JsonDocumentOptions DokumanAyar = new()

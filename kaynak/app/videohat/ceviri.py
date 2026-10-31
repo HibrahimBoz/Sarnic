@@ -161,7 +161,9 @@ def dil_tahmin(metin: str) -> str:
         return "az"
 
     # Durak sözcüğü sayımı
-    metin_kucuk = metin.lower()
+    # Python "İ".lower() birleştirici nokta üretir ve sözcüğü böler ("İÇİN" eşleşmez). "I" İngilizcede
+    # de geçtiği için yalnız "İ" elle küçültülür; Türkçe durak sözcüklerinde "ı" yok.
+    metin_kucuk = metin.replace("İ", "i").lower()
     sozcukler = re.findall(r"\b\w+\b", metin_kucuk, flags=re.UNICODE)
     tr_skor = sum(1 for s in sozcukler if s in _TR_DURAK)
     en_skor = sum(1 for s in sozcukler if s in _EN_DURAK)

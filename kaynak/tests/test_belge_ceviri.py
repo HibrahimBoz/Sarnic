@@ -42,6 +42,9 @@ class TestBelgeCeviri(unittest.TestCase):
         self.assertNotIn("dil", veri["sayfalar"][0])  # yeniden denenecek
         self.assertEqual(veri["sayfalar"][1]["dil"], "tr")
         self.assertTrue(any("Çeviri yapılamadı" in u for u in veri["uyarilar"]))
+        # Aynı hata ikinci kez değişiklik sayılmaz ve uyarı tekrar eklenmez.
+        self.assertFalse(ceviri_ekle.ceviri_ekle(veri, SahteCevirmen(hata_at=True)))
+        self.assertEqual(sum("Çeviri yapılamadı" in u for u in veri["uyarilar"]), 1)
 
         sahte = SahteCevirmen()
         ceviri_ekle.ceviri_ekle(veri, sahte)

@@ -40,8 +40,10 @@ public partial class BelgePenceresi : Window
     private readonly DosyaSonucu? _dosya;
     private IReadOnlyList<SayfaKaydi> _tumSayfalar = [];
     private readonly List<int> _eslesenSayfalar = [];
-    private readonly Dictionary<int, string> _normMetinOnbellek = [];
+    // Arka plan okuması sırasında değişmesin diye yerinde değiştirilmez; yeni sözlükle bütün olarak atanır.
+    private Dictionary<int, string> _normMetinOnbellek = [];
     private bool _ceviriGoster;
+    private int _eslesmeSurum;
     private int _toplamSayfa;
 
     private int _aktifSayfaNo;
@@ -407,6 +409,7 @@ public partial class BelgePenceresi : Window
         if (sayfa == null)
         {
             OcrBilgiKutusu.Visibility = Visibility.Collapsed;
+            CeviriPaneli.Visibility = Visibility.Collapsed;
             SayfaMetniBlok.Inlines.Clear();
             SayfaMetniBlok.Text = "(Bu sayfa için metin bulunamadı)";
             return;
@@ -499,20 +502,23 @@ public partial class BelgePenceresi : Window
     /// <summary>
     /// Türkçe görünümde çevirisi olan sayfanın çevirisi, yoksa özgün metni.
     /// </summary>
-    private string GosterilenMetin(SayfaKaydi sayfa)
+    private string GosterilenMetin(SayfaKaydi sayfa) => GosterilenMetin(sayfa, _ceviriGoster);
+
+    private static string GosterilenMetin(SayfaKaydi sayfa, bool ceviri)
     {
-        return _ceviriGoster && !string.IsNullOrWhiteSpace(sayfa.Ceviri) ? sayfa.Ceviri! : sayfa.Metin ?? string.Empty;
+        return ceviri && !string.IsNullOrWhiteSpace(sayfa.Ceviri) ? sayfa.Ceviri! : sayfa.Metin ?? string.Empty;
     }
 
     private async Task NormOnbellegiKurAsync()
     {
         var sayfalar = _tumSayfalar;
-        var yeni = await Task.Run(() =>
+        bool ceviri = _ceviriGoster;
+        _normMetinOnbellek = await Task.Run(() =>
         {
             var sozluk = new Dictionary<int, string>();
             foreach (var s in sayfalar)
             {
-                string metin = GosterilenMetin(s);
+                string metin = GosterilenMetin(s, ceviri);
                 if (!string.IsNullOrEmpty(metin))
                 {
                     sozluk[s.No] = TrNormalizasyon.Normalle(metin);
@@ -521,11 +527,6 @@ public partial class BelgePenceresi : Window
 
             return sozluk;
         });
-        _normMetinOnbellek.Clear();
-        foreach (var (no, norm) in yeni)
-        {
-            _normMetinOnbellek[no] = norm;
-        }
     }
 
     private async void CeviriGecisDugmesi_Click(object sender, RoutedEventArgs e)
@@ -546,6 +547,7 @@ public partial class BelgePenceresi : Window
 
     private async Task EslesenSayfalariBulAsync()
     {
+        int surum = ++_eslesmeSurum;
         _eslesenSayfalar.Clear();
         string aranan = BelgeAramaKutusu.Text?.Trim() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(aranan))
@@ -562,14 +564,16 @@ public partial class BelgePenceresi : Window
         }
 
         var sayfalar = _tumSayfalar;
+        var normOnbellek = _normMetinOnbellek;
+        bool ceviri = _ceviriGoster;
         var eslesenler = await Task.Run(() =>
         {
             var sonuc = new List<int>();
             foreach (var sayfa in sayfalar)
             {
-                string norm = _normMetinOnbellek.TryGetValue(sayfa.No, out var cachedNorm)
+                string norm = normOnbellek.TryGetValue(sayfa.No, out var cachedNorm)
                     ? cachedNorm
-                    : TrNormalizasyon.Normalle(GosterilenMetin(sayfa));
+                    : TrNormalizasyon.Normalle(GosterilenMetin(sayfa, ceviri));
 
                 bool onEslesme = false;
                 foreach (var k in kelimeler)
@@ -583,7 +587,7 @@ public partial class BelgePenceresi : Window
 
                 if (onEslesme)
                 {
-                    var vurgular = MetinEsleme.Vurgula(GosterilenMetin(sayfa), kelimeler);
+                    var vurgular = MetinEsleme.Vurgula(GosterilenMetin(sayfa, ceviri), kelimeler);
                     if (vurgular.Length > 0)
                     {
                         sonuc.Add(sayfa.No);
@@ -593,6 +597,12 @@ public partial class BelgePenceresi : Window
             return sonuc;
         });
 
+        if (surum != _eslesmeSurum)
+        {
+            return;  // Bu arada yeni arama başladı; eski sonuç yazılmaz.
+        }
+
+        _eslesenSayfalar.Clear();
         _eslesenSayfalar.AddRange(eslesenler);
         EslesmeDurumunuGuncelle();
     }

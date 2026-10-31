@@ -1,4 +1,5 @@
 """Belge sayfalarına dil tahmini ve Türkçe çeviri ekleme modülü."""
+import json
 import logging
 from typing import Any
 
@@ -16,7 +17,8 @@ def ceviri_ekle(veri: dict[str, Any], cevirmen: Any = None) -> bool:
     """
     if cevirmen is None:
         return False
-    degisti = False
+    # Hata sonrası geri alınan dil "değişiklik" sayılmasın: sonuç önceki durumla karşılaştırılır.
+    once = json.dumps([veri.get("sayfalar"), veri.get("ceviri_surum")], ensure_ascii=False, sort_keys=True)
     izinli = getattr(cevirmen, "diller", None)  # ayar.ceviri.diller; sahte çevirmende yok
     bekleyen: dict[str, list[dict[str, Any]]] = {}
 
@@ -26,7 +28,6 @@ def ceviri_ekle(veri: dict[str, Any], cevirmen: Any = None) -> bool:
         if not dil:
             dil = dil_tahmin(metin) if metin else "tr"
             sayfa["dil"] = dil
-            degisti = True
         if (dil != "tr" and metin and metin.strip() and not sayfa.get("ceviri")
                 and (izinli is None or dil in izinli)):
             bekleyen.setdefault(dil, []).append(sayfa)
@@ -39,17 +40,16 @@ def ceviri_ekle(veri: dict[str, Any], cevirmen: Any = None) -> bool:
         except Exception as e:
             hata_var = True
             log.warning("Çeviri yapılamadı: %s", e)
-            if isinstance(veri.get("uyarilar"), list):
-                veri["uyarilar"].append(f"Çeviri yapılamadı: {e}")
+            uyari = f"Çeviri yapılamadı: {e}"
+            if isinstance(veri.get("uyarilar"), list) and uyari not in veri["uyarilar"]:
+                veri["uyarilar"].append(uyari)
             for s in sayfalar:
                 s.pop("dil", None)
             continue
         for s, c in zip(sayfalar, sonuclar):
             if c and c.strip():
                 s["ceviri"] = c.strip()
-                degisti = True
 
-    if not hata_var and veri.get("ceviri_surum") != 1:
+    if not hata_var:
         veri["ceviri_surum"] = 1
-        degisti = True
-    return degisti
+    return json.dumps([veri.get("sayfalar"), veri.get("ceviri_surum")], ensure_ascii=False, sort_keys=True) != once
