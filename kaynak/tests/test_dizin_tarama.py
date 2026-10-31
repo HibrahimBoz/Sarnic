@@ -4,9 +4,9 @@ from pathlib import Path
 from unittest.mock import patch
 
 from belge_destek import GeciciTest, SahteHavuz
-from videohat.dizin import vt
-from videohat.dizin.tarayici import tara
-from videohat.dizin.dizinle import icerikleri_isle, calistir
+from sarnicatolye.dizin import vt
+from sarnicatolye.dizin.tarayici import tara
+from sarnicatolye.dizin.dizinle import icerikleri_isle, calistir
 
 
 class TaramaTest(GeciciTest):
@@ -73,8 +73,8 @@ class TaramaTest(GeciciTest):
                 raise OSError("ağ koptu")
             return gercek_scandir(p)
 
-        with patch("videohat.dizin.tarayici.os.scandir", side_effect=sahte_scandir), \
-                patch("videohat.dizin.tarayici._kok_erisim_kontrol", return_value=False):
+        with patch("sarnicatolye.dizin.tarayici.os.scandir", side_effect=sahte_scandir), \
+                patch("sarnicatolye.dizin.tarayici._kok_erisim_kontrol", return_value=False):
             sonuc = self.tara()
             self.assertFalse(sonuc.yayin_uygun)
 
@@ -95,7 +95,7 @@ class TaramaTest(GeciciTest):
         # 6. bulgu: _dongu içindeki yayinla() çağrıları ağ hatasında süreci çökertmez
         self.yaz("a.txt")
         self.ayar.dizin.calisma_db = str(self.kok / "yerel" / "dizin.db")
-        with patch("videohat.dizin.yayin.Yayinci.yayinla", side_effect=OSError("ağ hatası")):
+        with patch("sarnicatolye.dizin.yayin.Yayinci.yayinla", side_effect=OSError("ağ hatası")):
             kod = calistir(self.ayar, [self.agac], self.depo, bir_kez=True)
             self.assertIn(kod, (0, 1))
 
@@ -157,7 +157,7 @@ class TaramaTest(GeciciTest):
             if Path(p).name == "koru": raise PermissionError("paylaşım kapalı")
             return Girdiler(p)
 
-        with patch("videohat.dizin.tarayici.os.scandir", side_effect=tara_sahte):
+        with patch("sarnicatolye.dizin.tarayici.os.scandir", side_effect=tara_sahte):
             self.assertEqual(self.tara().silinen, 1)
         self.assertIsNotNone(self.kayit(korunan))
         self.assertIsNotNone(self.kayit(kalacak))
@@ -165,7 +165,7 @@ class TaramaTest(GeciciTest):
     def test_kok_kapali_yayin_yok_yuzde50_ve_zorla(self):
         dosyalar = [self.yaz(f"{i}.txt") for i in range(4)]
         self.tara()
-        with patch("videohat.dizin.tarayici.os.scandir", side_effect=PermissionError("ağ yok")):
+        with patch("sarnicatolye.dizin.tarayici.os.scandir", side_effect=PermissionError("ağ yok")):
             s = self.tara()
         self.assertFalse(s.yayin_uygun)
         self.assertEqual(self.db.execute("SELECT count(*) FROM dosya").fetchone()[0], 4)
@@ -189,11 +189,11 @@ class TaramaTest(GeciciTest):
                 raise PermissionError("ikinci kök kapalı")
             return gercek(p)
 
-        with patch("videohat.dizin.tarayici.os.scandir", side_effect=bak):
+        with patch("sarnicatolye.dizin.tarayici.os.scandir", side_effect=bak):
             s = tara(self.db, [self.agac, diger], zorla_sil=True)
         self.assertFalse(s.yayin_uygun)
         self.assertIsNone(self.kayit(sil))
-        with patch("videohat.dizin.dizinle.isle_belge", side_effect=AssertionError("KAPALI KÖK İŞLENDİ")):
+        with patch("sarnicatolye.dizin.dizinle.isle_belge", side_effect=AssertionError("KAPALI KÖK İŞLENDİ")):
             self.isle()
         self.assertEqual(self.kayit(bekleyen)["durum"], "bekliyor")
 
@@ -215,14 +215,14 @@ class TaramaTest(GeciciTest):
         self.ayar.dizin.max_dosya_mb = 1
         with buyuk.open("wb") as f: f.truncate(2 * 1024 * 1024)
         self.tara()
-        with patch("videohat.belge.ofis.yollar.libreoffice", return_value=None), \
-                patch("videohat.belge.ofis.yollar.artcraft_cli", return_value=None):
+        with patch("sarnicatolye.belge.ofis.yollar.libreoffice", return_value=None), \
+                patch("sarnicatolye.belge.ofis.yollar.artcraft_cli", return_value=None):
             self.assertEqual(self.isle(), 1)
         self.assertEqual(self.kayit(buyuk)["hata"], "Dosya çok büyük")
         self.assertEqual(self.kayit(eski)["durum"], "desteklenmiyor")
         self.assertEqual(self.kayit(bozuk)["durum"], "hata")
         self.tara()
-        with patch("videohat.dizin.dizinle.isle_belge", side_effect=AssertionError("TEKRAR")):
+        with patch("sarnicatolye.dizin.dizinle.isle_belge", side_effect=AssertionError("TEKRAR")):
             self.assertEqual(self.isle(), 0)
 
     def test_katalog_icerikten_once_yayin_ve_kok_hatasi(self):
@@ -233,18 +233,18 @@ class TaramaTest(GeciciTest):
         def yayinla(yayinci):
             durumlar.append(yayinci.db.execute("SELECT durum FROM dosya WHERE tur=?", ("belge",)).fetchone()[0])
 
-        with patch("videohat.dizin.yayin.Yayinci.yayinla", autospec=True, side_effect=yayinla):
+        with patch("sarnicatolye.dizin.yayin.Yayinci.yayinla", autospec=True, side_effect=yayinla):
             self.assertEqual(calistir(self.ayar, [self.agac], self.depo, bir_kez=True), 0)
         self.assertEqual(durumlar, ["bekliyor", "tamam"])
-        with patch("videohat.dizin.tarayici.os.scandir", side_effect=PermissionError("ağ")), \
-                patch("videohat.dizin.yayin.Yayinci.yayinla") as yayin:
+        with patch("sarnicatolye.dizin.tarayici.os.scandir", side_effect=PermissionError("ağ")), \
+                patch("sarnicatolye.dizin.yayin.Yayinci.yayinla") as yayin:
             calistir(self.ayar, [self.agac], self.depo, bir_kez=True, yalniz_ad=True)
         yayin.assert_not_called()
 
 
 class TranskriptTurTest(unittest.TestCase):
     def test_ders_klasorundeki_transkript_belge_sayilmaz(self):
-        from videohat.dizin.tarayici import tur_bul
+        from sarnicatolye.dizin.tarayici import tur_bul
         ders = Path("D:/k/ders1_islenmis")
         for ad in ("ders1.json", "ders1.srt", "ders1.vtt", "ders1.txt"):
             self.assertEqual(tur_bul(ders / ad), "diger")

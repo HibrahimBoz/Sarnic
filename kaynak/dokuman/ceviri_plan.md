@@ -3,7 +3,7 @@
 > Yürütme: ZORUNLU kodlama hattı (K3). Yazar Gemini Flash (Codex/Copilot tükenmiş, Grok kapalı), inceleyici Sonnet alt ajanı + Argon. Adımlar `- [ ]` ile izlenir.
 
 **Amaç:** en/az/ru konuşma dökümünü ve belge sayfasını Sarnıç Atölye'de NLLB ile Türkçeye çevirmek; Sarnıç'ta "Özgün / Türkçe" geçişi ve çeviride arama.
-**Mimari:** Python `videohat/ceviri.py` tek çeviri yüzeyidir. Döküm JSON'u segment başına `ceviri`, `belge.json` sayfa başına `dil` + `ceviri` taşır. Dizin `sayfa.dil`, `sayfa.ceviri` sütunları ve ayrı `sayfa_ceviri_fts` tablosu alır. Sarnıç yalnız okur.
+**Mimari:** Python `sarnicatolye/ceviri.py` tek çeviri yüzeyidir. Döküm JSON'u segment başına `ceviri`, `belge.json` sayfa başına `dil` + `ceviri` taşır. Dizin `sayfa.dil`, `sayfa.ceviri` sütunları ve ayrı `sayfa_ceviri_fts` tablosu alır. Sarnıç yalnız okur.
 **Teknoloji:** CTranslate2 4.8.2, sentencepiece, NLLB-200 distilled 1.3B int8; .NET 8 WPF, Microsoft.Data.Sqlite.
 **Tasarım:** `kaynak/dokuman/ceviri_tasarim.md`.
 
@@ -28,15 +28,15 @@
 ---
 
 ### Görev 1: Çeviri çekirdeği
-**Dosyalar:** Yeni `kaynak/app/videohat/ceviri.py`; değişen `ayar.py` (`CeviriAyar`), `kaynak/ayar.toml` (`[ceviri]`), `yollar.py`, `hatalar.py`; test `kaynak/tests/test_ceviri.py`.
+**Dosyalar:** Yeni `kaynak/app/sarnicatolye/ceviri.py`; değişen `ayar.py` (`CeviriAyar`), `kaynak/ayar.toml` (`[ceviri]`), `yollar.py`, `hatalar.py`; test `kaynak/tests/test_ceviri.py`.
 **Üretir:**
 - `cumlelere_bol(metin: str) -> list[str]` — `[.!?…]+\s+` ve boş satır (`\n\s*\n`) böler; tek `\n` BÖLMEZ (OCR satırları cümle ortasında kırılır), boşluğa çevrilir. Noktadan önceki sözcük Romen rakamı, sayı ya da kapalı kısaltma listesindeyse bölmez: `Dr Prof Mr Mrs Ms No vs vb bkz örn St Jr г т др им` (büyük/küçük harf duyarsız). 400 karakteri aşan parça son boşlukta, boşluk yoksa 400 karakterlik sabit dilimle bölünür.
 - `dil_tahmin(metin: str) -> str` — sırayla: harf < 5 → `"tr"`; Kiril harf oranı ≥ 0.5 → `"ru"`; `ə/Ə` var ya da (harf ≥ 20 ve (`q`+`x`) oranı ≥ 0.01) → `"az"`; sonra durak sözcüğü sayımı (sözcük sınırında, küçük harf): tr `ve bir bu için ile olarak da de çok daha gibi olan` / en `the and of to is in that for with as are on` / az `və bir bu üçün ilə olan edir deyil kimi daha çox` — en yüksek sayı kazanır; eşitlikte ya da hepsi 0 ise Türkçe harf (ğ ı ş İ ç ö ü) oranı ≥ 0.02 → `"tr"`, değilse `"en"`. Gerekçe (Argon, doğrulandı `belge/ocr.py:284`): OCR Türkçe sözlüğü Kiril dışı her satıra uygulanır ve İngilizce/Azerice metne Türkçe harf ekleyebilir; yalnız harf oranı yanıltır.
-- `class CeviriHatasi(VideoHatHatasi)`.
+- `class CeviriHatasi(SarnicAtolyeHatasi)`.
 - `class Cevirmen` — `__init__(self, model_yolu: Path, cihaz: str, compute_type: str, cevirici=None)`; `cevir(self, metinler: list[str], kaynak_dil: str) -> list[str]`; model yoksa `CeviriHatasi`. `cevirici` test için sahte CTranslate2 nesnesi. Önbellek: süreç içi `dict[(dil, sha256(metin))] -> str`.
 - `ayar.CeviriAyar(etkin: bool = True, model: str = "", diller: tuple = ("en","az","ru"), batch: int = 16)`; boş `model` → `yollar.ceviri_modeli()` = `<paket kök>/modeller/nllb-200-distilled-1.3B-ct2-int8`.
 - [ ] Testler: `test_cumle_sira_sayisi` ("I. Dünya Savaşı başladı. Sonra bitti." → 2 cümle); `test_kisa_sozcuk_sonu` ("Bugün iş. Yarın ay." → 2 cümle); `test_tek_satir_sonu_bolmez` ("Toplantı\nyarın başlar." → 1 cümle); `test_bosluksuz_uzun` (900 karakter boşluksuz → 3 parça); `test_dil_tahmin`: ru/az/tr/en birer örnek; "Bu raporda 'meeting minutes' geçiyor ve bu çok önemli." → tr; ə'siz Azerice "Biz bu qerari xalq ucun verdik ve bu qanun olan bir xidmetdir" → az; Türkçe harf eklenmiş İngilizce "The meeting ıs on Friday and the report ış ready for the team" → en; "Q3 Report" → en (q/x kuralı 20 harfin altında çalışmaz); "OK" → tr (harf < 5); `test_bos_metin_cevrilmez` (`["", "  "]` → `["", "  "]`, sahte çevirici çağrılmaz); `test_uzun_parca` (600 karakter noktasız → sahte çeviriciye giden her parça ≤ 400 karakter); `test_model_yok` (`CeviriHatasi`); `test_tr_cevrilmez` (`kaynak_dil="tr"` → girdi aynen).
-- [ ] Koş: paket Python ile `unittest` (`dist/VideoHat-GPU/python/python.exe`, sys.path eklemesiyle; özet dosyası «Komutlar»).
+- [ ] Koş: paket Python ile `unittest` (`dist/SarnicAtolye-GPU/python/python.exe`, sys.path eklemesiyle; özet dosyası «Komutlar»).
 - [ ] Commit.
 
 ### Görev 2: Döküm çevirisi
@@ -89,5 +89,5 @@
 - [ ] Commit.
 
 ## Komutlar
-- Python: `dist/VideoHat-GPU/python/python.exe -c "import sys; sys.path[:0]=['kaynak/app','kaynak/tests','<pylib>']; import unittest; unittest.main(module=None, argv=['x','discover','-s','kaynak/tests','-p','test_ceviri*.py'])"` (CUDA için `dist/VideoHat-GPU/cuda` PATH'te).
+- Python: `dist/SarnicAtolye-GPU/python/python.exe -c "import sys; sys.path[:0]=['kaynak/app','kaynak/tests','<pylib>']; import unittest; unittest.main(module=None, argv=['x','discover','-s','kaynak/tests','-p','test_ceviri*.py'])"` (CUDA için `dist/SarnicAtolye-GPU/cuda` PATH'te).
 - C#: `dotnet test kaynak/portal/Portal.Testleri -c Release`.

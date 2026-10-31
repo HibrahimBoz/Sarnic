@@ -15,7 +15,7 @@ from . import vt
 from .tarayici import tara
 from .yayin import Yayinci
 
-log = logging.getLogger("videohat")
+log = logging.getLogger("sarnicatolye")
 
 
 def icerikleri_isle(db, depo, ayar, havuz, yayinci=None, cevirmen=None):

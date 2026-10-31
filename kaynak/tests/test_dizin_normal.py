@@ -2,10 +2,10 @@ import json
 import unittest
 from dataclasses import asdict
 
-from videohat import yollar
-from videohat.ayar import DizinAyar, OcrAyar
-from videohat.hatalar import AyarHatasi
-from videohat.dizin.normal import icerik_normalle, dosya_normalle
+from sarnicatolye import yollar
+from sarnicatolye.ayar import DizinAyar, OcrAyar
+from sarnicatolye.hatalar import AyarHatasi
+from sarnicatolye.dizin.normal import icerik_normalle, dosya_normalle
 
 
 class NormalTest(unittest.TestCase):

@@ -1,4 +1,4 @@
-"""Video Transkriptör - 8 Kusur Regresyon Testleri.
+"""Sarnıç Atölye - 8 Kusur Regresyon Testleri.
 
 Hafif, GPU/model/ffmpeg gerektirmeyen birim testleri.
 """
@@ -23,10 +23,10 @@ for p in (str(kok_dizin), str(app_dizin)):
     if p not in sys.path:
         sys.path.insert(0, p)
 
-from videohat import __main__ as main_mod, cikti, ders_json, grup, izle, parca_zinciri, ses
-from videohat.hat import Bayraklar, Sonuc
-from videohat.parca_zinciri import Parca, SanalZamanCizelgesi
-from videohat.stt import Segment
+from sarnicatolye import __main__ as main_mod, cikti, ders_json, grup, izle, parca_zinciri, ses
+from sarnicatolye.hat import Bayraklar, Sonuc
+from sarnicatolye.parca_zinciri import Parca, SanalZamanCizelgesi
+from sarnicatolye.stt import Segment
 
 
 class TestKusur1KanalBulma(unittest.TestCase):
@@ -102,7 +102,7 @@ class TestKusur3TamBantTranskriptKomut(unittest.TestCase):
 
     def test_ses_cikar_komutu_ar_parametresi(self):
         """ses.cikar_komutu verilen sr değerini -ar parametresine koymalıdır."""
-        with patch("videohat.yollar.ffmpeg", return_value=Path("ffmpeg.exe")):
+        with patch("sarnicatolye.yollar.ffmpeg", return_value=Path("ffmpeg.exe")):
             cmd = ses.cikar_komutu("giris.mp4", "cikis.wav", sr=16000)
         self.assertIn("-ar", cmd)
         idx = cmd.index("-ar")
@@ -110,7 +110,7 @@ class TestKusur3TamBantTranskriptKomut(unittest.TestCase):
 
     def test_ses_yukle_komutu_ar_parametresi(self):
         """grup.ses_yukle_komutu verilen sr değerini -ar parametresine koymalıdır."""
-        with patch("videohat.yollar.ffmpeg", return_value=Path("ffmpeg.exe")):
+        with patch("sarnicatolye.yollar.ffmpeg", return_value=Path("ffmpeg.exe")):
             cmd = grup.ses_yukle_komutu("giris.mp4", sr=16000)
         self.assertIn("-ar", cmd)
         idx = cmd.index("-ar")
@@ -135,7 +135,7 @@ class TestKusur3TamBantTranskriptKomut(unittest.TestCase):
         tmp_cikis = Path(tempfile.mkdtemp())
         try:
             ref_ses = np.zeros(16000, dtype=np.float32)
-            with patch("videohat.hat.isle_tek", side_effect=sahte_isle_tek):
+            with patch("sarnicatolye.hat.isle_tek", side_effect=sahte_isle_tek):
                 _ = grup._varsayilan_transkript(ref_ses, tmp_cikis, None, None, sr=16000)
             self.assertEqual(yakalanan_framerate, [16000])
         finally:
@@ -222,7 +222,7 @@ class TestKusur5GrupUlasimVeBat(unittest.TestCase):
     """5. Kusur: isle-grup komutu, grup.bat, baslat.ps1 ve KULLANIM.txt entegrasyonu."""
 
     def test_isle_grup_cli_model_ve_cihaz_secenekleri(self):
-        """videohat isle-grup alt komutu --model ve --cihaz seçeneklerini kabul eder."""
+        """sarnicatolye isle-grup alt komutu --model ve --cihaz seçeneklerini kabul eder."""
         ap = main_mod.parser_olustur()
         args = ap.parse_args(["isle-grup", "D:/ders", "--model", "large-v3", "--cihaz", "cuda"])
         self.assertEqual(args.model, "large-v3")
@@ -235,11 +235,11 @@ class TestKusur5GrupUlasimVeBat(unittest.TestCase):
         self.assertTrue(ps1_yolu.read_bytes().startswith(b"\xef\xbb\xbf"))
 
     def test_grup_bat_dosyasi_mevcut_ve_isle_grup_cagirir(self):
-        """kaynak/bat/grup.bat dosyası mevcut olmalı ve 'videohat isle-grup %*' çalıştırmalıdır."""
+        """kaynak/bat/grup.bat dosyası mevcut olmalı ve 'sarnicatolye isle-grup %*' çalıştırmalıdır."""
         bat_yolu = kok_dizin / "bat" / "grup.bat"
         self.assertTrue(bat_yolu.exists(), f"grup.bat bulunamadı: {bat_yolu}")
         icerik = bat_yolu.read_text(encoding="utf-8")
-        self.assertIn("videohat isle-grup %*", icerik)
+        self.assertIn("sarnicatolye isle-grup %*", icerik)
 
     def test_baslat_ps1_grup_secenegi(self):
         """baslat.ps1 menüsünde grup ders seçeneği bulunmalıdır."""
@@ -294,7 +294,7 @@ class TestKusur6MetaAlanlariAktarimi(unittest.TestCase):
             return Sonuc(ad=video.stem, basarili=True, hata=None)
 
         bay = Bayraklar(model="large-v3", cihaz="cuda")
-        with patch("videohat.hat.isle_tek", side_effect=sahte_isle_tek):
+        with patch("sarnicatolye.hat.isle_tek", side_effect=sahte_isle_tek):
             sonuc = grup.isle_grup(
                 self.tmp,
                 bayraklar=bay,

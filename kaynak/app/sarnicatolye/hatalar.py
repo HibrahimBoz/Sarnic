@@ -1,25 +1,25 @@
-"""VideoHat özel hata sınıfları."""
+"""Sarnıç Atölye özel hata sınıfları."""
 
 
-class VideoHatHatasi(Exception):
-    """Tüm VideoHat hatalarının tabanı."""
+class SarnicAtolyeHatasi(Exception):
+    """Tüm Sarnıç Atölye hatalarının tabanı."""
 
 
-class AyarHatasi(VideoHatHatasi):
+class AyarHatasi(SarnicAtolyeHatasi):
     """ayar.toml okunamadı veya bozuk."""
 
 
-class OrtamHatasi(VideoHatHatasi):
+class OrtamHatasi(SarnicAtolyeHatasi):
     """Eksik dosya/araç/model gibi ortam sorunu (çıkış kodu 2)."""
 
 
-class IsHatasi(VideoHatHatasi):
+class IsHatasi(SarnicAtolyeHatasi):
     """Tek bir işin (video) işlenmesi sırasındaki hata (çıkış kodu 1)."""
 
 
-class UpscaleHatasi(VideoHatHatasi):
+class UpscaleHatasi(SarnicAtolyeHatasi):
     """Real-ESRGAN çalışmadı (Vulkan yok vb.); iş devam eder."""
 
 
-class CeviriHatasi(VideoHatHatasi):
+class CeviriHatasi(SarnicAtolyeHatasi):
     """Çeviri modeli yüklenemedi veya çeviri sırasında hata oluştu."""

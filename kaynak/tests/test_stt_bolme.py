@@ -7,13 +7,13 @@ from types import SimpleNamespace
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "app"))
-from videohat.stt import (  # noqa: E402
+from sarnicatolye.stt import (  # noqa: E402
     Segment, _adaylari_sec, _ikinci_gecis_bolgeleri, _istem_yap,
     _parca_siniri_tekrar_temizle, bolumleri_kes, filtrele_halusinasyonlar,
     bosluk_bul, bosluk_butcesi_sec, bosluk_ek_filtrele, cakisma_ayikla,
     enerji_aktif,
 )
-from videohat.ayar import yukle  # noqa: E402
+from sarnicatolye.ayar import yukle  # noqa: E402
 
 
 def kelime(start, end, text, probability=0.99):

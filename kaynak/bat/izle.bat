@@ -7,8 +7,8 @@ set "TRANSFORMERS_OFFLINE=1"
 set "HF_HUB_DISABLE_TELEMETRY=1"
 set "PYTHONNOUSERSITE=1"
 set "PYTHONUTF8=1"
-set "VIDEOHAT_KOK=%ROOT%"
+set "SARNICATOLYE_KOK=%ROOT%"
 set "PATH=%ROOT%ffmpeg\bin;%ROOT%cuda;%ROOT%python;%SystemRoot%\System32;%SystemRoot%"
 
-"%ROOT%python\python.exe" -m videohat izle
+"%ROOT%python\python.exe" -m sarnicatolye izle
 exit /b %ERRORLEVEL%

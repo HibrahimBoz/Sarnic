@@ -1,6 +1,6 @@
 # Uzun kayıt testi: süre + tepe bellek ölçer. Kullanım: pwsh -File uzun_test.ps1 -Girdi x.wav -Cikis dir [-Paket ...] [-Cihaz cpu]
-param([string]$Girdi, [string]$Cikis, [string]$Paket = 'C:\Users\Halil\Documents\VideoHat\dist\SarnicAtolye-GPU', [string]$Cihaz = '')
-$env:VIDEOHAT_PAUSE = '0'
+param([string]$Girdi, [string]$Cikis, [string]$Paket = (Join-Path $PSScriptRoot '..\..\dist\SarnicAtolye-GPU'), [string]$Cihaz = '')
+$env:SARNICATOLYE_PAUSE = '0'
 if (Test-Path $Cikis) { Remove-Item $Cikis -Recurse -Force }
 $arg = "/c `"`"$Paket\calistir.bat`" `"$Girdi`" --cikis `"$Cikis`" $(if($Cihaz){"--cihaz $Cihaz"})`""
 $sw = [Diagnostics.Stopwatch]::StartNew()

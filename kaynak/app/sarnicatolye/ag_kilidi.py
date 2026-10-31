@@ -1,6 +1,6 @@
 """Ağ kilidi (test amaçlı): dış bağlantı denemesini engeller ve günlüğe yazar.
 
-Etkinleştirme: VIDEOHAT_AG_KILIDI=1 ortam değişkeni (python -m videohat başlarken kur() çağrılır).
+Etkinleştirme: SARNICATOLYE_AG_KILIDI=1 ortam değişkeni (python -m sarnicatolye başlarken kur() çağrılır).
 Loopback (127.0.0.0/8, ::1) ve Unix soketleri serbesttir.
 """
 import ipaddress

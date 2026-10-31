@@ -1,4 +1,4 @@
-"""VideoHat upscale yardımcı fonksiyonları birim testleri."""
+"""Sarnıç Atölye upscale yardımcı fonksiyonları birim testleri."""
 import sys
 import unittest
 from pathlib import Path
@@ -7,13 +7,13 @@ kok = Path(__file__).resolve().parent.parent / "app"
 if str(kok) not in sys.path:
     sys.path.insert(0, str(kok))
 
-from videohat.goruntu import (
+from sarnicatolye.goruntu import (
     _fps_oran,
     _olcek_sec,
     _parca_plani,
     _re_komutu,
 )
-from videohat.hatalar import UpscaleHatasi
+from sarnicatolye.hatalar import UpscaleHatasi
 
 
 class TestFpsOran(unittest.TestCase):

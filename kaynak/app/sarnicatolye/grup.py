@@ -1,4 +1,4 @@
-"""Video Transkriptör - Çok kameralı grup işleme ve orkestrasyon modülü."""
+"""Sarnıç Atölye - Çok kameralı grup işleme ve orkestrasyon modülü."""
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -21,7 +21,7 @@ from .hat import Bayraklar
 from .parca_zinciri import dogal_siralama_anahtari
 from .stt import Segment
 
-gunluk = logging.getLogger("videohat")
+gunluk = logging.getLogger("sarnicatolye")
 VIDEO_UZANTILARI = {".mp4", ".mkv", ".mov", ".avi", ".m4a", ".wav", ".mp3"}
 _UZANTI_DESENI = "|".join(sorted(re.escape(u.lstrip(".")) for u in VIDEO_UZANTILARI))
 KALIP_REGEX = re.compile(rf"^(.*?)[_-]?(\d+)\.({_UZANTI_DESENI})$", re.IGNORECASE)

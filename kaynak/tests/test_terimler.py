@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "app"))
-from videohat import terimler as T  # noqa: E402
+from sarnicatolye import terimler as T  # noqa: E402
 
 kok = Path(__file__).resolve().parent.parent
 tm = T.yukle(kok / "terimler.txt")

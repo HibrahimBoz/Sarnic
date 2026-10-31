@@ -1,4 +1,4 @@
-"""VideoHat görüntü iyileştirme ve Real-ESRGAN ile büyütme (upscale) modülü."""
+"""Sarnıç Atölye görüntü iyileştirme ve Real-ESRGAN ile büyütme (upscale) modülü."""
 import json
 import logging
 import shutil

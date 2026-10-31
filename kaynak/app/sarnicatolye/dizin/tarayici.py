@@ -8,7 +8,7 @@ from ..belge import BELGE_UZANTILARI, GORUNTU_UZANTILARI
 from .normal import dosya_normalle
 from .vt import _kanon
 
-log = logging.getLogger("videohat")
+log = logging.getLogger("sarnicatolye")
 VIDEO = frozenset(".mp4 .mkv .mov .avi .m4a .wav .mp3".split())
 
 

@@ -1,4 +1,4 @@
-"""VideoHat tek video işleme hattı."""
+"""Sarnıç Atölye tek video işleme hattı."""
 import logging
 import shutil
 import subprocess
@@ -104,7 +104,7 @@ def isle_tek(
     cikis_dir = Path(cikis_dir)
     ad = video.stem
     sonuc = Sonuc(ad=ad, basarili=False, hata=None)
-    gunluk = logging.getLogger("videohat")
+    gunluk = logging.getLogger("sarnicatolye")
 
     if not _ses_akisi_var(video):
         sonuc.hata = "ses akışı yok"

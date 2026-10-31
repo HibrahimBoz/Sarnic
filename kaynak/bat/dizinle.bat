@@ -8,8 +8,8 @@ set "HF_HUB_DISABLE_TELEMETRY=1"
 set "PYTHONNOUSERSITE=1"
 set "PYTHONUTF8=1"
 set "PYTHONIOENCODING=utf-8"
-set "VIDEOHAT_KOK=%ROOT%"
+set "SARNICATOLYE_KOK=%ROOT%"
 set "PATH=%ROOT%ffmpeg\bin;%ROOT%cuda;%ROOT%python;%SystemRoot%\System32;%SystemRoot%"
 
-"%ROOT%python\python.exe" -m videohat dizinle %*
+"%ROOT%python\python.exe" -m sarnicatolye dizinle %*
 exit /b %ERRORLEVEL%

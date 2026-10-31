@@ -1,4 +1,4 @@
-"""Video Transkriptör - ders.json ve isle-grup birim testleri (≥ 20 test)."""
+"""Sarnıç Atölye - ders.json ve isle-grup birim testleri (≥ 20 test)."""
 from __future__ import annotations
 
 import json
@@ -17,8 +17,8 @@ for p in (str(kok_dizin), str(app_dizin)):
     if p not in sys.path:
         sys.path.insert(0, p)
 
-from videohat import cikti, ders_json, grup
-from videohat.stt import Segment
+from sarnicatolye import cikti, ders_json, grup
+from sarnicatolye.stt import Segment
 
 
 def _sentetik_konusma(sure_sn: float, sr: int = 8000, tohum: int = 42) -> np.ndarray:
@@ -652,7 +652,7 @@ class TestDersJsonVeGrup(unittest.TestCase):
     def test_27_varsayilan_transkript_gecici_klasor_temizligi(self):
         """_varsayilan_transkript ara çıktıları geçici klasörde üretip temizler, cikis_dir'i kirletmez."""
         from unittest.mock import patch
-        from videohat.hat import Sonuc
+        from sarnicatolye.hat import Sonuc
 
         ref_ses = np.zeros(8000, dtype=np.float32)
         cikis_dir = self.klasor / "temiz_cikis"
@@ -674,7 +674,7 @@ class TestDersJsonVeGrup(unittest.TestCase):
             (hedef_path / f"{video.stem}.json").write_text(json.dumps(meta), encoding="utf-8")
             return Sonuc(ad=video.stem, basarili=True, hata=None)
 
-        with patch("videohat.hat.isle_tek", side_effect=sahte_isle_tek):
+        with patch("sarnicatolye.hat.isle_tek", side_effect=sahte_isle_tek):
             segmentler = grup._varsayilan_transkript(ref_ses, cikis_dir, None, None)
 
         self.assertEqual(len(segmentler), 1)
@@ -695,7 +695,7 @@ class TestDersJsonVeGrup(unittest.TestCase):
     def test_28_isle_grup_gercek_transkript_yolu_cikis_temiz(self):
         """transkript_fn enjekte edilmediğinde isle_grup ara çıktılardan arındırılmış temiz klasör üretir."""
         from unittest.mock import patch
-        from videohat.hat import Sonuc
+        from sarnicatolye.hat import Sonuc
 
         (self.klasor / "tek_cam").mkdir()
         (self.klasor / "tek_cam" / "01.mp4").touch()
@@ -718,7 +718,7 @@ class TestDersJsonVeGrup(unittest.TestCase):
             (hedef_path / f"{video.stem}.json").write_text(json.dumps(meta), encoding="utf-8")
             return Sonuc(ad=video.stem, basarili=True, hata=None)
 
-        with patch("videohat.hat.isle_tek", side_effect=sahte_isle_tek):
+        with patch("sarnicatolye.hat.isle_tek", side_effect=sahte_isle_tek):
             sonuc = grup.isle_grup(
                 self.klasor,
                 prob_fn=sahte_prob,
@@ -743,7 +743,7 @@ class TestDersJsonVeGrup(unittest.TestCase):
     def test_29_varsayilan_transkript_isle_tek_hatasi_yukari_tasinir(self):
         """hat.isle_tek başarısız olduğunda _varsayilan_transkript hatayı yutmaz, RuntimeError fırlatır."""
         from unittest.mock import patch
-        from videohat.hat import Sonuc
+        from sarnicatolye.hat import Sonuc
 
         ref_ses = np.zeros(8000, dtype=np.float32)
         cikis_dir = self.klasor / "hata_cikis"
@@ -752,7 +752,7 @@ class TestDersJsonVeGrup(unittest.TestCase):
         def sahte_isle_tek_basarisiz(video, hedef_cikis, ayar, bayraklar):
             return Sonuc(ad=video.stem, basarili=False, hata="STT modeli CUDA OOM")
 
-        with patch("videohat.hat.isle_tek", side_effect=sahte_isle_tek_basarisiz):
+        with patch("sarnicatolye.hat.isle_tek", side_effect=sahte_isle_tek_basarisiz):
             with self.assertRaises(RuntimeError) as ctx:
                 grup._varsayilan_transkript(ref_ses, cikis_dir, None, None)
             self.assertIn("STT modeli CUDA OOM", str(ctx.exception))
@@ -764,7 +764,7 @@ class TestDersJsonVeGrup(unittest.TestCase):
     def test_30_isle_grup_isle_tek_basarisiz_olunca_hata_dondurur(self):
         """isle_tek başarısız olduğunda isle_grup basarili=False ve hata mesajı ile döner."""
         from unittest.mock import patch
-        from videohat.hat import Sonuc
+        from sarnicatolye.hat import Sonuc
 
         (self.klasor / "tek_cam").mkdir()
         (self.klasor / "tek_cam" / "01.mp4").touch()
@@ -778,7 +778,7 @@ class TestDersJsonVeGrup(unittest.TestCase):
         def sahte_isle_tek_basarisiz(video, hedef_cikis, ayar, bayraklar):
             return Sonuc(ad=video.stem, basarili=False, hata="Whisper bellek yetersiz")
 
-        with patch("videohat.hat.isle_tek", side_effect=sahte_isle_tek_basarisiz):
+        with patch("sarnicatolye.hat.isle_tek", side_effect=sahte_isle_tek_basarisiz):
             sonuc = grup.isle_grup(
                 self.klasor,
                 prob_fn=sahte_prob,
@@ -857,7 +857,7 @@ class TestDersJsonVeGrup(unittest.TestCase):
     def test_34_isle_grup_meta_alanlari_aktarimi(self):
         """hat.isle_tek'in ürettiği cihaz, model, compute_type ve süreler alanları son JSON'a aktarılır."""
         from unittest.mock import patch
-        from videohat.hat import Bayraklar, Sonuc
+        from sarnicatolye.hat import Bayraklar, Sonuc
 
         (self.klasor / "tek_cam").mkdir()
         (self.klasor / "tek_cam" / "01.mp4").touch()
@@ -883,7 +883,7 @@ class TestDersJsonVeGrup(unittest.TestCase):
             return Sonuc(ad=video.stem, basarili=True, hata=None)
 
         bay = Bayraklar(model="large-v3", cihaz="cuda")
-        with patch("videohat.hat.isle_tek", side_effect=sahte_isle_tek):
+        with patch("sarnicatolye.hat.isle_tek", side_effect=sahte_isle_tek):
             sonuc = grup.isle_grup(
                 self.klasor,
                 bayraklar=bay,

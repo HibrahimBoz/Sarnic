@@ -13,7 +13,7 @@ import tempfile
 from ..hatalar import IsHatasi
 from ..belge.onbellek import json_yaz
 
-log = logging.getLogger("videohat")
+log = logging.getLogger("sarnicatolye")
 
 
 class Yayinci:

@@ -3,10 +3,10 @@ from pathlib import Path
 import unittest
 from unittest.mock import Mock
 
-from videohat import yollar
-from videohat.ayar import CeviriAyar
-from videohat.ceviri import cumlelere_bol, dil_tahmin, Cevirmen
-from videohat.hatalar import CeviriHatasi
+from sarnicatolye import yollar
+from sarnicatolye.ayar import CeviriAyar
+from sarnicatolye.ceviri import cumlelere_bol, dil_tahmin, Cevirmen
+from sarnicatolye.hatalar import CeviriHatasi
 
 
 class CeviriTestleri(unittest.TestCase):

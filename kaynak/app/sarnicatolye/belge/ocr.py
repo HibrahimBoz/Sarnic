@@ -18,7 +18,7 @@ from .sira import sirala, birlestir, ortalama
 from .sozluk import Sozluk
 from .surec import calistir
 
-log = logging.getLogger("videohat")
+log = logging.getLogger("sarnicatolye")
 
 
 def _indirme_yasak(*args, **kwargs):

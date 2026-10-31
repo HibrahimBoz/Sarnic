@@ -1,4 +1,4 @@
-"""VideoHat senkron motoru kabul testleri."""
+"""Sarnıç Atölye senkron motoru kabul testleri."""
 import math
 import sys
 import unittest
@@ -9,7 +9,7 @@ if str(kok) not in sys.path:
     sys.path.insert(0, str(kok))
 
 import numpy as np
-from videohat.senkron import (
+from sarnicatolye.senkron import (
     SenkronSonucu,
     gcc_phat,
     hazirla,

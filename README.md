@@ -8,7 +8,7 @@ Kapalı ağda çalışan birleşik arama paketi üç temel yetenek sunar:
 
 Paket iki parçadan oluşur:
 
-1. **Sarnıç Atölye** (`kaynak/app/videohat`, Python): Videolardan transkript çıkarır, belgelerden metin çıkarıp OCR uygular, eski belge biçimlerini dönüştürür ve arama dizini üretir. Elektronik harp terim sözlüğü (`kaynak/terimler.txt`) ve düzeltme katmanı içerir. Çok kameralı ve parçalı kayıtlar için `isle-grup` komutu ve ses tabanlı senkron (`senkron.py`, `parca_zinciri.py`, `ders_json.py`) vardır.
+1. **Sarnıç Atölye** (`kaynak/app/sarnicatolye`, Python): Videolardan transkript çıkarır, belgelerden metin çıkarıp OCR uygular, eski belge biçimlerini dönüştürür ve arama dizini üretir. Elektronik harp terim sözlüğü (`kaynak/terimler.txt`) ve düzeltme katmanı içerir. Çok kameralı ve parçalı kayıtlar için `isle-grup` komutu ve ses tabanlı senkron (`senkron.py`, `parca_zinciri.py`, `ders_json.py`) vardır.
 2. **Sarnıç** (`kaynak/portal`, .NET 8 + WPF + LibVLCSharp): Dosya adlarını, belge sayfalarını ve video transkriptlerini tek noktadan arar. Transkriptteki cümleye tıklayınca videoyu o dakikada açar, belge sonucuna tıklayınca ilgili sayfayı açar, çok açılı dersleri senkron oynatır. Sonuçları doğrudan ArtCraft taşınabilir uygulamalarıyla açıp düzenleme olanağı sunar. Düzenleme modu parola ister; her düzeltme ayrı dosyadır ve kimin yazdığı kaydedilir.
 
 Yeni çıktı klasörleri `<ad>_islenmis` ekiyle oluşturulur. Sarnıç eski `<ad>_videoperisi` klasörlerini de tarar.
@@ -19,10 +19,10 @@ Portal paketindeki `ayar.json` dosyasının `kurum` alanı pencere başlığına
 
 ## Belge ve dizin
 
-Komutlar `videohat` paketi üzerinden çalıştırılır:
+Komutlar `sarnicatolye` paketi üzerinden çalıştırılır:
 ```
-python -m videohat dizinle --kok "\\sunucu\Dersler"
-python -m videohat belge "D:\belgeler\rapor.pdf" --profil uyarlamali
+python -m sarnicatolye dizinle --kok "\\sunucu\Dersler"
+python -m sarnicatolye belge "D:\belgeler\rapor.pdf" --profil uyarlamali
 ```
 
 Tasarım sözleşmesi ve ortak şema dosyaları:

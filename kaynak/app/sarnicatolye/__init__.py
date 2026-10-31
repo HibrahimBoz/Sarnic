@@ -1,11 +1,11 @@
-"""VideoHat: çevrimdışı Türkçe video transkript + ses/görüntü iyileştirme hattı."""
+"""Sarnıç Atölye: çevrimdışı Türkçe video transkript + ses/görüntü iyileştirme hattı."""
 import os
 from pathlib import Path
 
 
 def _cuda_dll_ekle() -> None:
     """cuda\\ klasörünü, ctranslate2 import edilmeden ÖNCE DLL arama yoluna ekler."""
-    kok = Path(os.environ.get("VIDEOHAT_KOK") or Path(__file__).resolve().parent.parent.parent)
+    kok = Path(os.environ.get("SARNICATOLYE_KOK") or Path(__file__).resolve().parent.parent.parent)
     cuda = kok / "cuda"
     if cuda.is_dir():
         os.environ["PATH"] = str(cuda) + os.pathsep + os.environ.get("PATH", "")

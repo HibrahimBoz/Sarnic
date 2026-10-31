@@ -20,7 +20,7 @@ from .onbellek import json_yaz
 from .pdf_katman import olustur
 
 SURUM = 1
-log = logging.getLogger("videohat")
+log = logging.getLogger("sarnicatolye")
 _YOK = object()
 
 

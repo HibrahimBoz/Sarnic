@@ -7,9 +7,9 @@ import tempfile
 from pathlib import Path
 
 from . import yollar
-from .hatalar import VideoHatHatasi
+from .hatalar import SarnicAtolyeHatasi
 
-log = logging.getLogger("videohat")
+log = logging.getLogger("sarnicatolye")
 ORNEK = Path(__file__).parent / "ornek"
 
 
@@ -44,7 +44,7 @@ def calistir() -> int:
     try:
         c = subprocess.run([str(yollar.ffmpeg()), "-version"], capture_output=True, text=True, timeout=30)
         ekle("ffmpeg", c.returncode == 0, c.stdout.splitlines()[0] if c.stdout else "?")
-    except (VideoHatHatasi, OSError, subprocess.SubprocessError) as e:
+    except (SarnicAtolyeHatasi, OSError, subprocess.SubprocessError) as e:
         ekle("ffmpeg", False, str(e))
 
     # 2. modeller
@@ -61,7 +61,7 @@ def calistir() -> int:
         ekle("gpu", True, str(bilgi) if bilgi else "GPU yok / nvidia-smi yok (CPU yolu)")
         secim = cihaz.sec(ayar)
         ekle("cihaz seçimi", True, f"{secim.device}/{secim.compute_type}/{secim.model_ad}: {secim.neden}")
-    except (VideoHatHatasi, Exception) as e:  # noqa: BLE001 — kontrol raporu her hatada düşmemeli
+    except (SarnicAtolyeHatasi, Exception) as e:  # noqa: BLE001 — kontrol raporu her hatada düşmemeli
         ekle("cihaz seçimi", False, f"{type(e).__name__}: {e}")
 
     # 4. uçtan uca (örnek ses)
@@ -72,7 +72,7 @@ def calistir() -> int:
     elif secim is not None:
         try:
             from .hat import Bayraklar, isle_tek
-            gecici_kok = Path(tempfile.mkdtemp(prefix="videohat_kontrol_"))
+            gecici_kok = Path(tempfile.mkdtemp(prefix="sarnicatolye_kontrol_"))
             gecici = gecici_kok / f"{wav.stem}_islenmis"
             try:
                 gecici.mkdir()
@@ -99,7 +99,7 @@ def calistir() -> int:
     except Exception as e:  # noqa: BLE001
         ekle("ağ ihlali", False, str(e))
 
-    print("\n=== Video Transkriptör kontrol ===")
+    print("\n=== Sarnıç Atölye kontrol ===")
     for ad, tamam, ayrinti in satirlar:
         print(f"[{'TAMAM' if tamam else 'HATA '}] {ad}: {ayrinti}")
     gecti = all(t for _, t, _ in satirlar)

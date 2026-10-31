@@ -20,7 +20,7 @@ function Kaydet($ad, $gecti, $ayrinti) {
     Write-Host ("[{0}] {1}: {2}" -f $(if ($gecti) { 'TAMAM' } else { 'HATA ' }), $ad, $ayrinti)
 }
 function Ortam([string]$paket, [hashtable]$ek = @{}) {
-    $env:VIDEOHAT_PAUSE = '0'; $env:VIDEOHAT_AG_KILIDI = '1'
+    $env:SARNICATOLYE_PAUSE = '0'; $env:SARNICATOLYE_AG_KILIDI = '1'
     $env:HTTP_PROXY = 'http://127.0.0.1:9'; $env:HTTPS_PROXY = 'http://127.0.0.1:9'
     foreach ($k in $ek.Keys) { Set-Item "env:$k" $ek[$k] }
 }
@@ -96,7 +96,7 @@ if (Test-Path $dll) {
 
 # a: ağ kilidi
 $n = if (Test-Path $gunluk) { @(Get-Content $gunluk).Count } else { 0 }
-$kontrol = & cmd /c "`"$Paket\python\python.exe`" -c `"import sys; sys.path.insert(0, r'$Paket\app'); import os; os.environ['VIDEOHAT_KOK']=r'$Paket'; from videohat import ag_kilidi; ag_kilidi.kur(); import socket; socket.create_connection(('1.1.1.1',80),timeout=2)`" 2>&1"
+$kontrol = & cmd /c "`"$Paket\python\python.exe`" -c `"import sys; sys.path.insert(0, r'$Paket\app'); import os; os.environ['SARNICATOLYE_KOK']=r'$Paket'; from sarnicatolye import ag_kilidi; ag_kilidi.kur(); import socket; socket.create_connection(('1.1.1.1',80),timeout=2)`" 2>&1"
 $kancaCalisiyor = ($kontrol -join ' ') -match 'PermissionError'
 if (Test-Path $gunluk) { Remove-Item $gunluk -Force }   # kontrol denemesinin kaydını sil
 Kaydet 'a ağ kapalı (ihlal=0, kanca doğrulandı)' ($n -eq 0 -and $kancaCalisiyor) "ihlal=$n, kanca PermissionError verdi: $kancaCalisiyor"
@@ -144,11 +144,11 @@ Kaydet 'f izleme (3 iş, 1 yinelenen, 0 hata)' ($isDizin -eq 3 -and $islenmisEki
 
 if ($Atla -notcontains 'g') {
 # g: taşınabilirlik
-$hedefPaket = Join-Path $env:TEMP 'Deneme Ğüş\VideoHat'
+$hedefPaket = Join-Path $env:TEMP 'Deneme Ğüş\SarnicAtolye'
 if (Test-Path (Split-Path $hedefPaket)) { Remove-Item (Split-Path $hedefPaket) -Recurse -Force }
 robocopy $Paket $hedefPaket /E /NFL /NDL /NJH /NJS /NP | Out-Null
 $ortam = & cmd /c "set PATH=%SystemRoot%\System32&& where python 2>&1 & where ffmpeg 2>&1 & where py 2>&1"
-$kg = & cmd /c "set PATH=%SystemRoot%\System32&& set VIDEOHAT_PAUSE=0&& call `"$hedefPaket\kontrol.bat`" 2>&1"
+$kg = & cmd /c "set PATH=%SystemRoot%\System32&& set SARNICATOLYE_PAUSE=0&& call `"$hedefPaket\kontrol.bat`" 2>&1"
 $kgKod = $LASTEXITCODE
 $ortamTemiz = -not (($ortam -join ' ') -match 'python\.exe|ffmpeg\.exe|py\.exe')
 Kaydet 'g taşınabilirlik (başka yol, Türkçe karakter, PATH temiz)' ($kgKod -eq 0 -and $ortamTemiz) "kontrol çıkış=$kgKod; sistem PATH'inde python/ffmpeg yok=$ortamTemiz"

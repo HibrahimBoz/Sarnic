@@ -1,7 +1,7 @@
 from belge_destek import GeciciTest
-from videohat.belge.sozluk import Sozluk
-from videohat.belge.model import OcrSatir
-from videohat.belge.sira import sirala, birlestir, ortalama
+from sarnicatolye.belge.sozluk import Sozluk
+from sarnicatolye.belge.model import OcrSatir
+from sarnicatolye.belge.sira import sirala, birlestir, ortalama
 
 
 class SozlukTest(GeciciTest):

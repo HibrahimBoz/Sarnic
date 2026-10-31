@@ -14,7 +14,7 @@ from .belge import UZANTILAR as BELGE_UZANTILARI
 
 UZANTILAR = {".mp4", ".mkv", ".mov", ".avi", ".m4a", ".wav", ".mp3"}
 UZANTILAR |= BELGE_UZANTILARI
-log = logging.getLogger("videohat")
+log = logging.getLogger("sarnicatolye")
 
 
 def parmak_izi(yol: Path) -> str:

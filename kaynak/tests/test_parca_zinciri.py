@@ -18,7 +18,7 @@ for p in (str(kok_dizin), str(app_dizin)):
         sys.path.insert(0, p)
 
 try:
-    from app.videohat.parca_zinciri import (
+    from app.sarnicatolye.parca_zinciri import (
         Dilim,
         Parca,
         SanalZaman,
@@ -29,7 +29,7 @@ try:
         dogal_siralama_anahtari,
     )
 except ImportError:
-    from videohat.parca_zinciri import (
+    from sarnicatolye.parca_zinciri import (
         Dilim,
         Parca,
         SanalZaman,
