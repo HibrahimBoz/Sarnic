@@ -14,9 +14,16 @@ $env:SARNICATOLYE_PAUSE = '0'
 
 function Baslik {
     Clear-Host
-    Write-Host '=============================================' -ForegroundColor Cyan
+    Write-Host '      ___________________________________' -ForegroundColor Cyan
+    Write-Host '     |   _     _     _     _     _     _   |' -ForegroundColor Cyan
+    Write-Host '     |  / \   / \   / \   / \   / \   / \  |' -ForegroundColor Cyan
+    Write-Host '     | |   | |   | |   | |   | |   | |   | |' -ForegroundColor Cyan
+    Write-Host '     | |   | |   | |   | |   | |   | |   | |' -ForegroundColor Cyan
+    Write-Host '     |~|~~~|~|~~~|~|~~~|~|~~~|~|~~~|~|~~~|~|' -ForegroundColor DarkCyan
+    Write-Host '     |~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|' -ForegroundColor DarkCyan
+    Write-Host ''
     Write-Host '  Sarnıç Atölye  -  video transkript, belge, OCR, dizin' -ForegroundColor Cyan
-    Write-Host '=============================================' -ForegroundColor Cyan
+    Write-Host '  ----------------------------------------------------' -ForegroundColor Cyan
     Write-Host ''
 }
 
@@ -196,7 +203,10 @@ while ($true) {
                 $klasor = $k[0]
                 Write-Host ''
                 Write-Host "Dizinleme başlatılıyor: $klasor (Ctrl+C ile durur; pencere açık kalsın)..." -ForegroundColor Green
+                Write-Host 'Dizin deposu: dizin dosyalarının yazılacağı klasör. Sunucu dosyalarına dokunulmaz.'
+                $depo = Read-Host 'Depo klasörü (boş bırakın: kök klasörün içine _sarnic yazılır)'
                 $pyArgs = @('-m', 'sarnicatolye', 'dizinle', '--kok', $klasor)
+                if (-not [string]::IsNullOrWhiteSpace($depo)) { $pyArgs += @('--depo', $depo.Trim().Trim('"')) }
                 $kod = Calistir-Python $pyArgs
                 Write-Host ''
                 if ($kod -eq 0) { Write-Host 'BİTTİ. Dizinleme tamamlandı.' -ForegroundColor Green }

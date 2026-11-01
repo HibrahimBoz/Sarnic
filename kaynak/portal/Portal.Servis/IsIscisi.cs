@@ -77,18 +77,22 @@ public sealed class IsIscisi
     private readonly ISurecPlani _plan;
     private readonly string _gunlukKlasoru;
     private readonly TimeSpan _bekleme;
+    private readonly AjanIscisi? _ajan;
+    /// <summary>Art arda en çok bu kadar soru: sorular uzun işi süresiz bekletmesin.</summary>
+    private const int ArtArdaEnCokSoru = 5;
     private readonly object _kilit = new();
     private Process? _surec;
     private long _calisanId;
     private bool _iptalIstendi;
     private static readonly TimeSpan SatirAraligi = TimeSpan.FromSeconds(1);
 
-    public IsIscisi(IsKuyrugu kuyruk, ISurecPlani plan, string gunlukKlasoru, TimeSpan? bekleme = null)
+    public IsIscisi(IsKuyrugu kuyruk, ISurecPlani plan, string gunlukKlasoru, TimeSpan? bekleme = null, AjanIscisi? ajan = null)
     {
         _kuyruk = kuyruk;
         _plan = plan;
         _gunlukKlasoru = gunlukKlasoru;
         _bekleme = bekleme ?? TimeSpan.FromSeconds(1);
+        _ajan = ajan;
         Directory.CreateDirectory(gunlukKlasoru);
     }
 
@@ -139,11 +143,20 @@ public sealed class IsIscisi
 
     public async Task CalistirAsync(CancellationToken durdur)
     {
+        int artArda = 0;
         while (!durdur.IsCancellationRequested)
         {
+            // Tek GPU: soru ve iş aynı anda çalışmaz. Model yalnız soru varken ayaktadır.
+            if (_ajan != null && artArda < ArtArdaEnCokSoru && await _ajan.SoruIsleAsync(durdur))
+            {
+                artArda++;
+                continue;
+            }
+            artArda = 0;
             IsKaydi? kayit = SiradakiniAl();
             if (kayit == null)
             {
+                _ajan?.BostaysaKapat();
                 try
                 {
                     await Task.Delay(_bekleme, durdur);
@@ -154,8 +167,10 @@ public sealed class IsIscisi
                 }
                 continue;
             }
+            _ajan?.Kapat();
             await TekIsAsync(kayit, durdur);
         }
+        _ajan?.Kapat();
     }
 
     public async Task TekIsAsync(IsKaydi kayit, CancellationToken durdur)

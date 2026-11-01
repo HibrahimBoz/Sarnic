@@ -8,6 +8,7 @@ using Portal.Servis;
 
 // Kullanım: SarnicServis --depo \\sunucu\Sarnic-Veri [--port 8765] [--kok <atölye>]
 //           SarnicServis --parola-ayarla [--kok <atölye>]
+//           Ajan: varsayılan <atölye>\\ajan\\llama\\llama-server.exe ve <atölye>\\ajan\\model\\*.gguf; --llama, --ajan-model ile değişir.
 string? Arguman(string ad)
 {
     int i = Array.IndexOf(args, ad);
@@ -52,8 +53,17 @@ X509Certificate2 sertifika = SertifikaYukle(Path.Combine(isKlasoru, "servis.pfx"
 string yonetimKlasoru = Path.Combine(depo, YonetimDosyalari.KlasorAdi);
 
 var kuyruk = new IsKuyrugu(Path.Combine(isKlasoru, "kuyruk.db"));
-var isci = new IsIscisi(kuyruk, new AtolyeSurecPlani(kok, depo), Path.Combine(isKlasoru, "gunluk", "servis"));
-var cekirdek = new YonetimCekirdegi(kuyruk, isci, parola, Path.Combine(isKlasoru, "denetim.log"), kok);
+string llamaYolu = Arguman("--llama") ?? Path.Combine(kok, "ajan", "llama", "llama-server.exe");
+string? modelYolu = Arguman("--ajan-model") ?? (Directory.Exists(Path.Combine(kok, "ajan", "model"))
+    ? Directory.EnumerateFiles(Path.Combine(kok, "ajan", "model"), "*.gguf").FirstOrDefault()
+    : null);
+using var dizin = new Portal.Cekirdek.Dizin.DizinKaynagi(depo, Path.Combine(isKlasoru, "ajan_dizin"));
+var modelKaynagi = new LlamaModelKaynagi(llamaYolu, modelYolu);
+// Servis çökmüşse eski model GPU belleğini tutar; ilk iş bellek yetmezliğine düşmesin.
+modelKaynagi.ArtiklariDurdur();
+var ajan = new AjanIscisi(kuyruk, modelKaynagi, new DizinAramaKaynagi(dizin));
+var isci = new IsIscisi(kuyruk, new AtolyeSurecPlani(kok, depo), Path.Combine(isKlasoru, "gunluk", "servis"), ajan: ajan);
+var cekirdek = new YonetimCekirdegi(kuyruk, isci, parola, Path.Combine(isKlasoru, "denetim.log"), kok, ajan: ajan);
 var dosyaKanali = new DosyaKanali(cekirdek, yonetimKlasoru);
 
 var bilgi = new ServisBilgisi
@@ -73,7 +83,7 @@ var app = builder.Build();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGet("/api/durum", () => cekirdek.Durum()).RequireAuthorization();
+app.MapGet("/api/durum", () => cekirdek.DurumOnbellekli()).RequireAuthorization();
 app.MapPost("/api/komut", async (YonetimKomutu komut, HttpContext ctx) =>
     await cekirdek.IsleAsync(komut, ctx.User.Identity?.Name ?? "bilinmiyor", "ag")).RequireAuthorization();
 

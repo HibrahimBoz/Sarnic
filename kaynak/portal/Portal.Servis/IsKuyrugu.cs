@@ -5,7 +5,7 @@ using Microsoft.Data.Sqlite;
 using Portal.Cekirdek.Yonetim;
 
 /// <summary>Kalıcı iş kuyruğu. Yalnız yol kaydeder, dosya kopyalamaz.</summary>
-public sealed class IsKuyrugu
+public sealed partial class IsKuyrugu
 {
     public const int EnCokBekleyen = 200;
     private readonly string _baglanti;
@@ -25,6 +25,7 @@ public sealed class IsKuyrugu
                   son_satir TEXT, cikis_kodu INTEGER);
                 CREATE INDEX IF NOT EXISTS is_durum ON is_kaydi(durum, id);
                 """);
+            SoruTablosunuKur(db);
             // Servis çöktüyse yarım kalan iş yeniden sıraya girer.
             Calistir(db, "UPDATE is_kaydi SET durum=$b, baslama=NULL WHERE durum=$c",
                 ("$b", IsSabitleri.Bekliyor), ("$c", IsSabitleri.Calisiyor));
@@ -147,7 +148,8 @@ public sealed class IsKuyrugu
         lock (_kilit)
         {
             using var db = Ac();
-            return Calistir(db, "DELETE FROM is_kaydi WHERE durum<>$c", ("$c", IsSabitleri.Calisiyor));
+            return Calistir(db, "DELETE FROM is_kaydi WHERE durum<>$c", ("$c", IsSabitleri.Calisiyor))
+                + Calistir(db, "DELETE FROM soru WHERE durum<>$c", ("$c", IsSabitleri.Calisiyor));
         }
     }
 

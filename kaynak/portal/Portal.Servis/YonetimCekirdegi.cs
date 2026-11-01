@@ -49,19 +49,24 @@ public sealed class YonetimCekirdegi
     private readonly string _denetimYolu;
     private readonly TimeSpan _hataGecikmesi;
     private readonly string _diskKoku;
+    private readonly AjanIscisi? _ajan;
+    private readonly object _durumKilidi = new();
+    private YonetimDurumu? _sonDurum;
+    private DateTime _sonDurumZamani;
     private readonly ConcurrentDictionary<string, DateTime> _gorulen = new();
     private readonly object _denetimKilidi = new();
     private readonly SemaphoreSlim _parolaSirasi = new(1, 1);
     private const int EnCokGorulen = 100_000;
     private DateTime _sonBudama = DateTime.MinValue;
 
-    public YonetimCekirdegi(IsKuyrugu kuyruk, IsIscisi isci, YonetimParolasi? parola, string denetimYolu, string diskKoku, TimeSpan? hataGecikmesi = null)
+    public YonetimCekirdegi(IsKuyrugu kuyruk, IsIscisi isci, YonetimParolasi? parola, string denetimYolu, string diskKoku, TimeSpan? hataGecikmesi = null, AjanIscisi? ajan = null)
     {
         _kuyruk = kuyruk;
         _isci = isci;
         _parola = parola;
         _denetimYolu = denetimYolu;
         _diskKoku = diskKoku;
+        _ajan = ajan;
         _hataGecikmesi = hataGecikmesi ?? TimeSpan.FromSeconds(2);
     }
 
@@ -86,12 +91,33 @@ public sealed class YonetimCekirdegi
             Makine = Environment.MachineName,
             DiskBosGb = bos,
             Isler = _kuyruk.SonIsler(),
+            SoruBekleyen = _kuyruk.BekleyenSoruSayisi(),
+            AjanKurulu = _ajan?.Kurulu == true,
         };
+    }
+
+    /// <summary>Ağ kanalı için: 100 istemci aynı anda sorsa da veritabanı saniyede en çok bir kez okunur.</summary>
+    public YonetimDurumu DurumOnbellekli()
+    {
+        lock (_durumKilidi)
+        {
+            if (_sonDurum == null || DateTime.UtcNow - _sonDurumZamani >= TimeSpan.FromSeconds(1))
+            {
+                _sonDurum = Durum();
+                _sonDurumZamani = DateTime.UtcNow;
+            }
+            return _sonDurum;
+        }
     }
 
     /// <param name="kimlik">Taşıyıcının kanıtladığı kullanıcı. A'da Windows kimliği, B'de yalnız bildirim.</param>
     public async Task<KomutSonucu> IsleAsync(YonetimKomutu komut, string kimlik, string kanal)
     {
+        // Salt okuma: yoklama denetim kaydını ve tekrar listesini şişirmesin.
+        if (komut.Eylem == Eylemler.SoruListele)
+        {
+            return new KomutSonucu { Basarili = true, Sorular = _kuyruk.KullaniciSorulari(kimlik) };
+        }
         KomutSonucu sonuc = await IcIsleAsync(komut, kimlik, kanal);
         Denetle(komut, kimlik, kanal, sonuc);
         return sonuc;
@@ -156,9 +182,34 @@ public sealed class YonetimCekirdegi
                 return _kuyruk.YenidenDene(tekrarId) ? Tamam("İş yeniden sıraya girdi.") : Hata("Yalnız hatalı veya iptal edilen iş yeniden denenir.");
             case Eylemler.Temizle:
                 return Tamam($"{_kuyruk.Temizle()} kayıt temizlendi. Kaynak ve çıktı dosyaları silinmedi.");
+            case Eylemler.SoruSor:
+                return await SoruSorAsync(komut, kimlik);
+            case Eylemler.SoruIptal:
+                if (komut.IsId is not long soruId)
+                {
+                    return Hata("Soru seçilmedi.");
+                }
+                return _kuyruk.SoruyuIptalEt(soruId, kimlik) || _ajan?.CalisaniIptalEt(soruId, kimlik) == true
+                    ? Tamam("Soru iptal edildi.")
+                    : Hata("Soru iptal edilemedi. Soru bitmiş olabilir.");
             default:
                 return Hata("Bilinmeyen komut.");
         }
+    }
+
+    private async Task<KomutSonucu> SoruSorAsync(YonetimKomutu k, string kimlik)
+    {
+        if (_ajan == null || !_ajan.Kurulu)
+        {
+            return Hata("Ajan modeli bu Atölye bilgisayarında kurulu değil.");
+        }
+        string soru = (k.Soru ?? string.Empty).Trim();
+        if (soru.Length == 0 || soru.Length > IsKuyrugu.EnUzunSoru)
+        {
+            return Hata($"Soru 1-{IsKuyrugu.EnUzunSoru} karakter olmalı.");
+        }
+        (long? id, string? hata) = _kuyruk.SoruEkle(kimlik, soru, await _ajan.DizinSurumuAsync());
+        return id == null ? Hata(hata!) : new KomutSonucu { Basarili = true, Mesaj = "Soru sıraya girdi.", SoruId = id };
     }
 
     private KomutSonucu IsEkle(YonetimKomutu k, string kimlik)

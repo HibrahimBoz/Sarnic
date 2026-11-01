@@ -16,6 +16,10 @@
 
         <!-- Arama Kutusu ve Kök Değiştirme -->
         <DockPanel Grid.Row="0" Margin="14,14,14,8">
+            <Button x:Name="AjanButonu" DockPanel.Dock="Right" Content="Ajana Sor"
+                    Height="40" Margin="10,0,0,0" Padding="16,0"
+                    FontWeight="SemiBold"
+                    Click="AjanButonu_Click"/>
             <Button x:Name="YonetimButonu" DockPanel.Dock="Right" Content="Atölye Yönetimi"
                     Height="40" Margin="10,0,0,0" Padding="16,0"
                     FontWeight="SemiBold"

@@ -84,3 +84,13 @@ Python'un port açması yönetici istemez. Asıl engel gelen bağlantıyı kapat
 
 ## Ortam
 - Windows etki alanı var (kullanıcı). Port izni bilinmiyor.
+
+## Ajan: yapılan ve ölçülen (2026-11-01)
+- Çalıştırıcı: llama.cpp b12029 Vulkan. Model: Qwen3-8B Q4_K_M (5,03 GB, Apache-2.0). Yalnız 127.0.0.1 üzerinde açılır.
+- Ajan yalnız okur: `belge_ara`, `dosya_ara`, `sayfa_oku`. Dosya yazmaz, komut çalıştırmaz.
+- Ön arama ve istenen sayfa kodla yapılır. Kaynak numarası servisçe denetlenir, uydurma numara silinir.
+- Video transkripti ajanın kapsamında değil: servisin video kök klasörü yok.
+- Ölçüm (RTX 3070 Laptop 8 GB, deneme verisi): 58-60 belirteç/sn, model açılışı yaklaşık 20 sn, GPU belleği 7155 MiB.
+- Yük (45 sn, ağ kanalı, tek Windows hesabı): 100 istemcide 0 hata, durum p95 2 ms, komut p95 5 ms.
+- Kuyruk: 100 ayrı kişinin sorusu 177 sn'de bitti (100 bitti, 0 hata). Belgeler kısa olduğu için cevap süresi gerçek arşivde daha uzun olabilir (ölçülmedi).
+- Kabul edilen risk: paylaşım kanalında dosya sahibi okunamazsa kimlik bildirimdir. Bu kanal güvenilir ekip içindir.
