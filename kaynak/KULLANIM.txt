@@ -1,5 +1,14 @@
 Sarnıç Atölye — çevrimdışı video transkript, belge metni, OCR ve dizin
 ===========================================================================
+
+YÖNETİM SERVİSİ (Atölye'yi Sarnıç'tan yönetme)
+  1. Parolayı bir kez kurun: servis.bat --parola-ayarla
+  2. Servisi kurun (yönetici izni istemez):
+     powershell -ExecutionPolicy Bypass -File araclar\servis-kur.ps1 -Depo \\sunucu\Sarnic-Veri
+  3. Sarnıç'ta ayar.json "dizin" alanına aynı depo yolunu yazın. "Atölye Yönetimi" düğmesine basın.
+  Port izni varsa ağ servisi (HTTPS, port 8765) kullanılır. Yoksa Sarnıç paylaşım klasörüne geçer.
+  Her iş ayrı süreçte çalışır. Aynı anda tek iş çalışır. İş bitince model bellekten çıkar.
+  Kuyruğu temizleme yalnız kayıtları siler. Kaynak ve çıktı dosyaları silinmez.
 KURULUM YOK. Bu klasörü hedef makineye olduğu gibi kopyalayın (USB/robocopy). Python, ffmpeg,
 internet, yönetici yetkisi GEREKMEZ. Yol boşluk/Türkçe karakter içerebilir.
 
@@ -168,3 +177,16 @@ Whisper'a ipucu olarak verilir. ayar.toml'dan model/ses/görüntü parametreleri
 
 Ölçülen (RTX 3070 Laptop, 51 sn sentetik Türkçe ders): GPU large-v3 13 sn, WER %7,7; CPU medium int8 36 sn, WER %8,7.
 Gürültü giderme transkripti bozmaz (WER ağır modda %7,7). Gerçek ders kaydında WER daha yüksek olabilir.
+
+AJAN (SARNIÇ'TAN SORU SORMA)
+Ajan, sorunuzu dizindeki belgelerde arar ve kaynaklı cevap yazar.
+1. Atölye bilgisayarında servisi başlatın.
+2. Sarnıç'ta "Ajana Sor" düğmesine basın.
+3. Soruyu yazın. "Sor" düğmesine basın.
+4. Cevabı kaynak dosyadan doğrulayın.
+Sınırlar:
+- Kişi başına en çok 3 açık soru olur. Kuyrukta en çok 200 bekleyen soru olur.
+- Soru ve Atölye işi aynı anda çalışmaz. Uzun bir iş sürerken soru sırada bekler.
+- Model yalnız soru varken açıktır. 60 saniye boşta kalınca kapanır.
+- Ajan video transkriptlerinde aramaz. Yalnız dizindeki belgelerde arar.
+- Atölye bilgisayarı kapalıysa ajan çalışmaz. Normal arama çalışmaya devam eder.

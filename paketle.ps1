@@ -28,7 +28,33 @@ Copy-Item (Join-Path $proje 'kaynak\KULLANIM.txt') $vh -Force
 New-Item -ItemType Directory -Force (Join-Path $vh 'araclar') | Out-Null
 Copy-Item (Join-Path $proje 'kaynak\baslat\baslat.ps1') (Join-Path $vh 'araclar') -Force
 Copy-Item (Join-Path $proje 'kaynak\baslat\BASLAT.bat') $cikis -Force
+Copy-Item (Join-Path $proje 'kaynak\baslat\servis-kur.ps1') (Join-Path $vh 'araclar') -Force
+Copy-Item (Join-Path $proje 'kaynak\varliklar\sarnic-atolye.ico') $vh -Force
+Copy-Item (Join-Path $proje 'kaynak\bat\servis.bat') $vh -Force
+# Yönetim servisi: self-contained, hedefte .NET kurulumu gerekmez.
+dotnet publish (Join-Path $proje 'kaynak\portal\Portal.Servis\Portal.Servis.csproj') -c Release -r win-x64 --self-contained true -o (Join-Path $vh 'servis') --nologo -v q
+if ($LASTEXITCODE -ne 0) { throw "Servis yayını başarısız (kod $LASTEXITCODE)" }
 Copy-Item (Join-Path $proje 'kaynak\baslat\OKU-BENI.txt') $cikis -Force
+# Simgeli başlatıcı: paket kökünde tek exe, hedefte .NET kurulumu gerekmez.
+dotnet publish (Join-Path $proje 'kaynak\portal\Portal.Baslatici\Portal.Baslatici.csproj') -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true -o $cikis --nologo -v q
+if ($LASTEXITCODE -ne 0) { throw "Başlatıcı yayını başarısız (kod $LASTEXITCODE)" }
+Get-ChildItem $cikis -Filter 'SarnicAtolye.pdb' | Remove-Item -Force
+
+# Ajan: yerel model ve çalıştırıcı. Dosya yoksa paket ajansız üretilir ve uyarı yazılır.
+$ajanKaynak = Join-Path $proje '_indir\ajan'
+$ajanZip = Get-ChildItem $ajanKaynak -Filter 'llama-*-bin-win-vulkan-x64.zip' -ErrorAction SilentlyContinue | Select-Object -Last 1
+$ajanModel = Get-ChildItem $ajanKaynak -Filter '*.gguf' -ErrorAction SilentlyContinue | Select-Object -Last 1
+$ajanSatiri = 'Ajan                      : pakette yok'
+if ($ajanZip -and $ajanModel) {
+    $ajanLlama = Join-Path $vh 'ajan\llama'
+    New-Item -ItemType Directory -Force $ajanLlama, (Join-Path $vh 'ajan\model') | Out-Null
+    Expand-Archive $ajanZip.FullName $ajanLlama -Force
+    Get-ChildItem $ajanLlama -Filter '*.exe' | Where-Object { $_.Name -ne 'llama-server.exe' } | Remove-Item -Force
+    Copy-Item $ajanModel.FullName (Join-Path $vh 'ajan\model') -Force
+    $ajanSatiri = "llama.cpp                 : github.com/ggml-org/llama.cpp (MIT), $($ajanZip.Name)`r`nAjan modeli               : huggingface.co/unsloth/Qwen3-8B-GGUF (Apache-2.0), $($ajanModel.Name)"
+} else {
+    Write-Warning "Ajan dosyaları yok: $ajanKaynak. Paket ajansız üretiliyor."
+}
 
 # SURUMLER.txt: gerçek dosyalardan (dist-info, commit_sha.txt) yeniden üretilir; hazirla.ps1'in eski çıktısı atılır
 $sp = Join-Path $vh 'python\Lib\site-packages'
@@ -111,6 +137,7 @@ OCR modelleri             : PP-OCRv6 (Apache-2.0, PaddleOCR/RapidOCR)
 Sozluk                    : FrequencyWords tr_50k (CC BY-SA 4.0, hermitdave)
 PyMuPDF                   : PyMuPDF (AGPL-3.0)
 Ceviri modeli             : NLLB-200 distilled 1.3B CT2 int8 (Meta, CC-BY-NC 4.0, yalniz ticari olmayan kullanim)
+$ajanSatiri
 $($araclarListesi -join "`r`n")
 $($artcraftListesi -join "`r`n")
 

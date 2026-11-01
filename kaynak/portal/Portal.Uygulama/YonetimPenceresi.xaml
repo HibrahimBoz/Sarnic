@@ -1,0 +1,86 @@
+<Window x:Class="Portal.Uygulama.YonetimPenceresi"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Style="{StaticResource PortalPencere}"
+        Title="Sarnıç — Atölye Yönetimi"
+        Width="1100" Height="680" MinWidth="820" MinHeight="460"
+        WindowStartupLocation="CenterOwner">
+    <Grid Margin="14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock x:Name="DurumMetni" Grid.Row="0" Text="Atölye servisine bağlanılıyor..."
+                   Foreground="{DynamicResource SolukMetinFircasi}" Margin="0,0,0,10" TextWrapping="Wrap"/>
+
+        <Border Grid.Row="1" Background="{DynamicResource YuzeyFircasi}" BorderBrush="{DynamicResource KenarlikFircasi}"
+                BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="160"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Column="1" Text="İş türü" Foreground="{DynamicResource SolukMetinFircasi}" Margin="0,0,8,3"/>
+                <TextBlock Grid.Column="2" Text="Sunucu yolu (dosya veya klasör)" Foreground="{DynamicResource SolukMetinFircasi}" Margin="0,0,8,3"/>
+                <TextBlock Grid.Column="3" Text="Çıktı klasörü (boşsa kaynağın yanına)" Foreground="{DynamicResource SolukMetinFircasi}" Margin="0,0,8,3"/>
+                <ComboBox x:Name="TurKutusu" Grid.Row="1" Grid.Column="1" Margin="0,0,8,0" SelectedIndex="0"
+                          SelectionChanged="TurKutusu_SelectionChanged"/>
+                <TextBox x:Name="YolKutusu" Grid.Row="1" Grid.Column="2" Margin="0,0,8,0" Padding="6,5"/>
+                <TextBox x:Name="CikisKutusu" Grid.Row="1" Grid.Column="3" Margin="0,0,8,0" Padding="6,5"/>
+                <Button x:Name="EkleDugmesi" Grid.Row="1" Grid.Column="4" Content="Kuyruğa ekle" Padding="14,6"
+                        Style="{StaticResource BirincilDugme}" Click="Ekle_Click"/>
+            </Grid>
+        </Border>
+
+        <DataGrid x:Name="IsTablosu" Grid.Row="2" AutoGenerateColumns="False" IsReadOnly="True"
+                  HeadersVisibility="Column" SelectionMode="Single" GridLinesVisibility="Horizontal"
+                  Background="{DynamicResource YuzeyFircasi}" Foreground="{DynamicResource MetinFircasi}"
+                  RowBackground="{DynamicResource YuzeyFircasi}" AlternatingRowBackground="{DynamicResource Yuzey2Fircasi}"
+                  BorderBrush="{DynamicResource KenarlikFircasi}" HorizontalGridLinesBrush="{DynamicResource KenarlikFircasi}"
+                  SelectionChanged="IsTablosu_SelectionChanged">
+            <DataGrid.ColumnHeaderStyle>
+                <Style TargetType="DataGridColumnHeader">
+                    <Setter Property="Background" Value="{DynamicResource Yuzey2Fircasi}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource MetinFircasi}"/>
+                    <Setter Property="Padding" Value="8,5"/>
+                </Style>
+            </DataGrid.ColumnHeaderStyle>
+            <DataGrid.CellStyle>
+                <Style TargetType="DataGridCell">
+                    <Setter Property="BorderThickness" Value="0"/>
+                    <Style.Triggers>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter Property="Background" Value="{DynamicResource SeciliSatirFircasi}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource MetinFircasi}"/>
+                        </Trigger>
+                    </Style.Triggers>
+                </Style>
+            </DataGrid.CellStyle>
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="No" Binding="{Binding Id}" Width="55"/>
+                <DataGridTextColumn Header="Tür" Binding="{Binding TurMetni}" Width="110"/>
+                <DataGridTextColumn Header="Durum" Binding="{Binding DurumMetni}" Width="90"/>
+                <DataGridTextColumn Header="Yol" Binding="{Binding Yol}" Width="2*"/>
+                <DataGridTextColumn Header="Ekleyen" Binding="{Binding Ekleyen}" Width="120"/>
+                <DataGridTextColumn Header="Son satır" Binding="{Binding SonSatir}" Width="3*"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <DockPanel Grid.Row="3" Margin="0,10,0,0" LastChildFill="False">
+            <Button x:Name="IptalDugmesi" Content="Seçili işi iptal et" Padding="14,6" Margin="0,0,8,0" IsEnabled="False" Click="Iptal_Click"/>
+            <Button x:Name="TekrarDugmesi" Content="Yeniden dene" Padding="14,6" IsEnabled="False" Click="Tekrar_Click"/>
+            <Button x:Name="TemizleDugmesi" DockPanel.Dock="Right" Content="Kuyruğu temizle" Padding="14,6" Click="Temizle_Click"/>
+            <TextBlock x:Name="SonucMetni" Margin="14,0" VerticalAlignment="Center" Foreground="{DynamicResource SolukMetinFircasi}"/>
+        </DockPanel>
+    </Grid>
+</Window>
