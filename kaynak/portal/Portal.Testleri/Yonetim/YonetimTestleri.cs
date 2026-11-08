@@ -71,6 +71,14 @@ public sealed class YonetimTestleri : IDisposable
     }
 
     [Fact]
+    public void Imza_metni_eski_surumle_ayni_kalir()
+    {
+        // Eski sürüm sonda "soru" alanını (boş) imzalıyordu; eski Sarnıç yeni servisle çalışabilmeli.
+        var k = new YonetimKomutu { Id = "a", Zaman = 1, Eylem = Eylemler.Temizle, Kullanici = "k" };
+        Assert.Equal("a\n1\ntemizle\nk\n\n\n\n\n", k.ImzaMetni());
+    }
+
+    [Fact]
     public void Temizleme_parolasiz_reddedilir_ve_kuyruk_kalir()
     {
         var o = Kur();

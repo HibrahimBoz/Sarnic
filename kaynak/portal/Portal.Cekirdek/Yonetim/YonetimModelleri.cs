@@ -67,7 +67,8 @@ public sealed class YonetimKomutu
     [JsonPropertyName("imza")] public string? Imza { get; set; }
 
     /// <summary>İmzalanan metin. Komutun her alanı içindedir; değiştirilirse imza tutmaz.</summary>
-    public string ImzaMetni() => string.Join("\n", Id, Zaman, Eylem, Kullanici, IsId, Tur, Yol, Cikis);
+    /// <remarks>Sondaki boş alan eski "soru" alanının yeridir. Kaldırılırsa eski Sarnıç sürümlerinin imzası tutmaz.</remarks>
+    public string ImzaMetni() => string.Join("\n", Id, Zaman, Eylem, Kullanici, IsId, Tur, Yol, Cikis, string.Empty);
 }
 
 public sealed class KomutSonucu

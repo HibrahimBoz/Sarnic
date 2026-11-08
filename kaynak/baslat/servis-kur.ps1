@@ -45,15 +45,18 @@ $ayar = New-ScheduledTaskSettingsSet -RestartCount 999 -RestartInterval (New-Tim
 Register-ScheduledTask -TaskName $gorevAdi -Action $eylem -Trigger $tetik -Settings $ayar -Force | Out-Null
 Stop-ScheduledTask -TaskName $gorevAdi -ErrorAction SilentlyContinue
 Start-Sleep -Seconds 1
+# Doğrulama yalnız bu başlatmadan sonra değişen bilgi dosyasını kabul eder.
+# Zaman sunucu saatinden gelebilir; bu yüzden yerel saatle değil, önceki dosya zamanıyla karşılaştırılır.
+$bilgi = Join-Path $Depo 'yonetim\servis.json'
+$onceki = if (Test-Path $bilgi) { (Get-Item $bilgi).LastWriteTimeUtc } else { [DateTime]::MinValue }
 Start-ScheduledTask -TaskName $gorevAdi
 Write-Host "Görev kuruldu ve başlatıldı: $gorevAdi"
 
 # Doğrulama: servis kendi bilgi dosyasını depoya yazar.
-$bilgi = Join-Path $Depo 'yonetim\servis.json'
 $sinir = (Get-Date).AddSeconds(45)
 $yazildi = $false
 while ((Get-Date) -lt $sinir) {
-    if ((Test-Path $bilgi) -and ((Get-Item $bilgi).LastWriteTime -gt (Get-Date).AddMinutes(-2))) { $yazildi = $true; break }
+    if ((Test-Path $bilgi) -and ((Get-Item $bilgi).LastWriteTimeUtc -ne $onceki)) { $yazildi = $true; break }
     Start-Sleep -Seconds 1
 }
 Write-Host ''
