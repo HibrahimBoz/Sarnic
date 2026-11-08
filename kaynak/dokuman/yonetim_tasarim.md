@@ -1,4 +1,6 @@
-# Sarnıç'tan Atölye yönetimi ve ajan — tasarım taslağı (2026-11-01)
+# Sarnıç'tan Atölye yönetimi — tasarım taslağı (2026-11-01)
+
+> 2026-11-08: Ajan ("Ajana Sor", yerel sohbet modeli) kaldırıldı. Aşağıdaki ajan, soru kuyruğu ve 100 kullanıcı soru yükü notları tarihsel kayıttır; kodda karşılığı yoktur.
 
 Durum: onaylandı (2026-11-01).
 

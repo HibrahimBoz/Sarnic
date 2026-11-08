@@ -29,9 +29,6 @@ public static class Eylemler
     public const string Iptal = "iptal";
     public const string YenidenDene = "yeniden_dene";
     public const string Temizle = "temizle";
-    public const string SoruSor = "soru_sor";
-    public const string SoruIptal = "soru_iptal";
-    public const string SoruListele = "soru_listele";
 }
 
 public sealed class IsKaydi
@@ -55,8 +52,6 @@ public sealed class YonetimDurumu
     [JsonPropertyName("makine")] public string Makine { get; set; } = "";
     [JsonPropertyName("disk_bos_gb")] public double DiskBosGb { get; set; }
     [JsonPropertyName("isler")] public List<IsKaydi> Isler { get; set; } = new();
-    [JsonPropertyName("soru_bekleyen")] public int SoruBekleyen { get; set; }
-    [JsonPropertyName("ajan_kurulu")] public bool AjanKurulu { get; set; }
 }
 
 public sealed class YonetimKomutu
@@ -69,11 +64,10 @@ public sealed class YonetimKomutu
     [JsonPropertyName("tur")] public string? Tur { get; set; }
     [JsonPropertyName("yol")] public string? Yol { get; set; }
     [JsonPropertyName("cikis")] public string? Cikis { get; set; }
-    [JsonPropertyName("soru")] public string? Soru { get; set; }
     [JsonPropertyName("imza")] public string? Imza { get; set; }
 
     /// <summary>İmzalanan metin. Komutun her alanı içindedir; değiştirilirse imza tutmaz.</summary>
-    public string ImzaMetni() => string.Join("\n", Id, Zaman, Eylem, Kullanici, IsId, Tur, Yol, Cikis, Soru);
+    public string ImzaMetni() => string.Join("\n", Id, Zaman, Eylem, Kullanici, IsId, Tur, Yol, Cikis);
 }
 
 public sealed class KomutSonucu
@@ -81,32 +75,8 @@ public sealed class KomutSonucu
     [JsonPropertyName("basarili")] public bool Basarili { get; set; }
     [JsonPropertyName("mesaj")] public string Mesaj { get; set; } = "";
     [JsonPropertyName("yetki_gerekli")] public bool YetkiGerekli { get; set; }
-    [JsonPropertyName("soru_id")] public long? SoruId { get; set; }
-    [JsonPropertyName("sorular")] public List<SoruKaydi>? Sorular { get; set; }
 }
 
-/// <summary>Ajanın kaynak gösterdiği belge sayfası.</summary>
-public sealed class AjanKaynagi
-{
-    [JsonPropertyName("no")] public int No { get; set; }
-    [JsonPropertyName("yol")] public string Yol { get; set; } = "";
-    [JsonPropertyName("ad")] public string Ad { get; set; } = "";
-    [JsonPropertyName("sayfa")] public int Sayfa { get; set; }
-    [JsonPropertyName("etiket")] public string Etiket { get; set; } = "";
-}
-
-/// <summary>Ajana sorulan soru ve cevabı. Sira yalnız bekleyen soruda doludur.</summary>
-public sealed class SoruKaydi
-{
-    [JsonPropertyName("id")] public long Id { get; set; }
-    [JsonPropertyName("kullanici")] public string Kullanici { get; set; } = "";
-    [JsonPropertyName("soru")] public string Soru { get; set; } = "";
-    [JsonPropertyName("durum")] public string Durum { get; set; } = IsSabitleri.Bekliyor;
-    [JsonPropertyName("cevap")] public string? Cevap { get; set; }
-    [JsonPropertyName("kaynaklar")] public List<AjanKaynagi> Kaynaklar { get; set; } = new();
-    [JsonPropertyName("eklenme")] public string Eklenme { get; set; } = "";
-    [JsonPropertyName("sira")] public int? Sira { get; set; }
-}
 
 /// <summary>Servisin paylaşım klasörüne yazdığı bağlantı bilgisi. Gizli değer içermez.</summary>
 public sealed class ServisBilgisi

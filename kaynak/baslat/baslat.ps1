@@ -51,6 +51,13 @@ function Cihaz-Ozeti {
     Write-Host '  Ekran kartı: NVIDIA bulunamadı -> işlemci (CPU) ile çalışır, daha yavaş olur.' -ForegroundColor Yellow
 }
 
+function Kayitli-Depo {
+    # Servis kurulurken girilen depo yolu burada saklanır; tekrar sorulmaz.
+    $y = Join-Path $kok 'is\servis_ayar.json'
+    if (Test-Path $y) { try { return [string]((Get-Content $y -Raw -Encoding UTF8 | ConvertFrom-Json).depo) } catch { } }
+    return ''
+}
+
 function Evet-Mi([string]$soru, [string]$varsayilan = 'h') {
     $c = Read-Host "$soru (e/h) [$varsayilan]"
     if ([string]::IsNullOrWhiteSpace($c)) { $c = $varsayilan }
@@ -140,6 +147,7 @@ while ($true) {
     Write-Host '  7) Çok kameralı grup ders klasörü işle (senkron + ders.json)'
     Write-Host '  8) Belge/görüntü seç ve işle (metin + aranabilir PDF)'
     Write-Host '  9) Dizinlemeyi başlat (arama portalı için; pencere açık kalsın)'
+    Write-Host '  S) Atölye servisini kur / yeniden başlat (Sarnıç''tan yönetim için)'
     Write-Host '  0) Çıkış'
     Write-Host ''
     $s = Read-Host 'Seçiminiz'
@@ -204,7 +212,13 @@ while ($true) {
                 Write-Host ''
                 Write-Host "Dizinleme başlatılıyor: $klasor (Ctrl+C ile durur; pencere açık kalsın)..." -ForegroundColor Green
                 Write-Host 'Dizin deposu: dizin dosyalarının yazılacağı klasör. Sunucu dosyalarına dokunulmaz.'
-                $depo = Read-Host 'Depo klasörü (boş bırakın: kök klasörün içine _sarnic yazılır)'
+                $kayitliDepo = Kayitli-Depo
+                if ($kayitliDepo) {
+                    $depo = Read-Host "Depo klasörü (Enter: $kayitliDepo)"
+                    if ([string]::IsNullOrWhiteSpace($depo)) { $depo = $kayitliDepo }
+                } else {
+                    $depo = Read-Host 'Depo klasörü (boş bırakın: kök klasörün içine _sarnic yazılır)'
+                }
                 $pyArgs = @('-m', 'sarnicatolye', 'dizinle', '--kok', $klasor)
                 if (-not [string]::IsNullOrWhiteSpace($depo)) { $pyArgs += @('--depo', $depo.Trim().Trim('"')) }
                 $kod = Calistir-Python $pyArgs
@@ -212,6 +226,10 @@ while ($true) {
                 if ($kod -eq 0) { Write-Host 'BİTTİ. Dizinleme tamamlandı.' -ForegroundColor Green }
                 else { Write-Host "Hata oluştu (kod $kod). Ayrıntı: $kok\is\gunluk" -ForegroundColor Red }
             }
+            Read-Host 'Devam için Enter' | Out-Null
+        }
+        { $_ -in 'S', 's' } {
+            & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'servis-kur.ps1')
             Read-Host 'Devam için Enter' | Out-Null
         }
         '0' { exit 0 }

@@ -9,6 +9,7 @@ KURULUM YOK. 7z dosyasını açın (örn. D:\SarnicAtolye-Paketi) ve BASLAT.bat 
   SarnicAtolye\        transkript + belge/OCR + dizinleme motoru (KULLANIM.txt içinde ayrıntı)
   Kdenlive\           Kdenlive 26.08.1 (taşınabilir; Kdenlive\...\bin\kdenlive.exe)
   Menü 8 ve 9         Menü 8 belge/görüntü işler (metin + aranabilir PDF); Menü 9 portal için dizinleme başlatır.
+  Menü S              Atölye servisini tek adımda kurar (Sarnıç'tan yönetim için): depo yolunu sorar, parolayı kurar, doğrular.
   artcraft\           ArtCraft taşınabilir ofis/belge araçları (WordCraft, GridCraft, DeckCraft, PdfCraft, PhotoCraft)
 
 İLK ÇALIŞTIRMA

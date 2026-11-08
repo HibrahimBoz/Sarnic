@@ -12,6 +12,7 @@ Paket iki parçadan oluşur:
 2. **Sarnıç** (`kaynak/portal`, .NET 8 + WPF + LibVLCSharp): Dosya adlarını, belge sayfalarını ve video transkriptlerini tek noktadan arar. Transkriptteki cümleye tıklayınca videoyu o dakikada açar, belge sonucuna tıklayınca ilgili sayfayı açar, çok açılı dersleri senkron oynatır. Sonuçları doğrudan ArtCraft taşınabilir uygulamalarıyla açıp düzenleme olanağı sunar. Düzenleme modu parola ister; her düzeltme ayrı dosyadır ve kimin yazdığı kaydedilir.
 
 Yeni çıktı klasörleri `<ad>_islenmis` ekiyle oluşturulur. Sarnıç eski `<ad>_videoperisi` klasörlerini de tarar.
+Atölye servisi `BASLAT.bat` menüsündeki **S** ile tek adımda kurulur (depo yolu, parola, doğrulama). Portal paketini `paketle-portal.ps1 -Depo \\sunucu\Sarnic-Veri` ile üretirseniz `ayar.json` içindeki `dizin` hazır gelir.
 Portal paketindeki `ayar.json` dosyasının `kurum` alanı pencere başlığına ön ek olur: `<kurum> Sarnıç`.
 
 - **Eski belge biçimleri (2000 ve öncesi)**: LibreOffice, DjVuLibre ve 7-Zip entegrasyonuyla eski metin, hesap tablosu, sunum ve arşiv biçimleri modern biçimlere dönüştürülür ve düzenlenebilir kopyaları (`duzenlenebilir.docx` vb.) depoda saklanır.

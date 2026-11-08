@@ -2,6 +2,8 @@
 param(
     [string]$SevenZip = 'C:\Program Files\7-Zip\7z.exe',
     [string]$Kok = '',          # ayar.json "kok" değeri (örn. D:\Dersler); boşsa portal klasör sorar
+    [string]$Depo = '',         # ayar.json "dizin" değeri: Atölye servisinin deposu (örn. \\sunucu\Sarnic-Veri)
+    [string]$Kurum = '',        # ayar.json "kurum" değeri
     [string[]]$ArtCraft = @('wordcraft', 'gridcraft', 'deckcraft', 'pdfcraft', 'photocraft')
 )
 $ErrorActionPreference = 'Stop'
@@ -160,7 +162,10 @@ foreach ($ad in $ArtCraft) {
 }
 
 Write-Host '[4/5] ayar.json ve OKU-BENI...'
-if ($Kok) { Set-Content (Join-Path $cikis 'ayar.json') (@{ kok = $Kok } | ConvertTo-Json) -Encoding UTF8 }
+if ($Kok -or $Depo -or $Kurum) {
+    $ayar = [ordered]@{ kok = $Kok; dizin = $Depo; kurum = $Kurum }
+    Set-Content (Join-Path $cikis 'ayar.json') ($ayar | ConvertTo-Json) -Encoding UTF8
+}
 @"
 Sarnıç (kapalı ağ)
 KURULUM YOK. Bu klasörü yerel diske açın (örn. D:\Sarnic). Sarnic.exe dosyasını çalıştırın.

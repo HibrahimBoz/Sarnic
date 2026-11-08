@@ -25,7 +25,6 @@ public sealed partial class IsKuyrugu
                   son_satir TEXT, cikis_kodu INTEGER);
                 CREATE INDEX IF NOT EXISTS is_durum ON is_kaydi(durum, id);
                 """);
-            SoruTablosunuKur(db);
             // Servis çöktüyse yarım kalan iş yeniden sıraya girer.
             Calistir(db, "UPDATE is_kaydi SET durum=$b, baslama=NULL WHERE durum=$c",
                 ("$b", IsSabitleri.Bekliyor), ("$c", IsSabitleri.Calisiyor));
@@ -148,8 +147,7 @@ public sealed partial class IsKuyrugu
         lock (_kilit)
         {
             using var db = Ac();
-            return Calistir(db, "DELETE FROM is_kaydi WHERE durum<>$c", ("$c", IsSabitleri.Calisiyor))
-                + Calistir(db, "DELETE FROM soru WHERE durum<>$c", ("$c", IsSabitleri.Calisiyor));
+            return Calistir(db, "DELETE FROM is_kaydi WHERE durum<>$c", ("$c", IsSabitleri.Calisiyor));
         }
     }
 
