@@ -19,7 +19,7 @@ public sealed class TestDizini : IDisposable
     /// </summary>
     public TestDizini(string? surum = "1", bool guncelYaz = true)
     {
-        KokKlasor = Path.Combine(Path.GetTempPath(), "bulgu_test_" + Guid.NewGuid().ToString("N"));
+        KokKlasor = Path.Combine(Path.GetTempPath(), "sarnic_test_" + Guid.NewGuid().ToString("N"));
         YayinKlasoru = Path.Combine(KokKlasor, "yayin");
         YerelKlasor = Path.Combine(KokKlasor, "yerel");
 

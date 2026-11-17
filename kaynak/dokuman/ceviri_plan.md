@@ -84,8 +84,8 @@
 - [ ] Commit.
 
 ### Görev 7: Paket, belge ve ölçüm testi
-**Dosyalar:** `hazirla.ps1` (`sentencepiece` tekerleği GPU+CPU listesine ve satır 188/226 `Test-Path` varlık kontrolüne; model klasörünü `_indir/modeller-ceviri`'den pakete `modeller\` altına kopyala), `paketle.ps1` (model klasörü dahil), `kaynak/baslat/OKU-BENI.txt` (lisans satırı: `NLLB-200 (Meta), CC-BY-NC 4.0 — yalnız ticari olmayan kullanım`), `bulgu_spec.md` (§11.6 Çeviri, ölçümler), yeni `kaynak/tests/test_ceviri_olcum.py` (24 cümle; model yoksa `skipTest`; chrF++ en ≥ 80, az ≥ 65, ru ≥ 65; GPU yoksa CPU süresini yazdırır).
-- [ ] Ölçüm testini GPU ve CPU'da koş; CPU süresini `bulgu_spec.md`'ye yaz.
+**Dosyalar:** `hazirla.ps1` (`sentencepiece` tekerleği GPU+CPU listesine ve satır 188/226 `Test-Path` varlık kontrolüne; model klasörünü `_indir/modeller-ceviri`'den pakete `modeller\` altına kopyala), `paketle.ps1` (model klasörü dahil), `kaynak/baslat/OKU-BENI.txt` (lisans satırı: `NLLB-200 (Meta), CC-BY-NC 4.0 — yalnız ticari olmayan kullanım`), `sarnic_spec.md` (§11.6 Çeviri, ölçümler), yeni `kaynak/tests/test_ceviri_olcum.py` (24 cümle; model yoksa `skipTest`; chrF++ en ≥ 80, az ≥ 65, ru ≥ 65; GPU yoksa CPU süresini yazdırır).
+- [ ] Ölçüm testini GPU ve CPU'da koş; CPU süresini `sarnic_spec.md`'ye yaz.
 - [ ] Commit.
 
 ## Komutlar

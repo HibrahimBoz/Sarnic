@@ -27,7 +27,7 @@ python -m sarnicatolye belge "D:\belgeler\rapor.pdf" --profil uyarlamali
 ```
 
 Tasarım sözleşmesi ve ortak şema dosyaları:
-- Tasarım sözleşmesi: `kaynak/dokuman/bulgu_spec.md`
+- Tasarım sözleşmesi: `kaynak/dokuman/sarnic_spec.md`
 - Ortak veritabanı şeması: `kaynak/ortak/dizin_sema.sql`
 - Normalizasyon test vakaları: `kaynak/ortak/normalizasyon_vakalari.json` ve `kaynak/ortak/dosya_normalizasyon_vakalari.json`
 

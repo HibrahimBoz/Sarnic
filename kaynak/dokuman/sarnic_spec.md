@@ -1,4 +1,4 @@
-# Bulgu — birleşik arama paketi: tasarım sözleşmesi (sürüm 1)
+# Sarnıç — birleşik arama paketi: tasarım sözleşmesi (sürüm 1)
 
 Bu belge yazarların uyacağı sözleşmedir. Ortak dosyalar: `kaynak/ortak/dizin_sema.sql` (veritabanı şeması,
 TEK KAYNAK) ve `kaynak/ortak/normalizasyon_vakalari.json` (Python ve C# normalizasyonunun aynı sonucu
@@ -17,18 +17,18 @@ Kapalı ağda (internetsiz) tek paket, üç yetenek, tek arama kutusu:
 Belgeler derse bağlı olabilir (ders klasöründe) ya da bağımsız olabilir. Ölçek: yüz binlerce sayfa, tek belgede
 1000+ sayfa.
 
-**Ad:** paketin ürün adı **Bulgu**. Parçalar: *Bulgu Portalı* (WPF arayüz) ve *Bulgu İşleyici* (Python:
+**Ad:** paketin ürün adı **Sarnıç**. Parçalar: *Sarnıç Portalı* (WPF arayüz) ve *Sarnıç Atölye* (Python:
 video transkript + belge/OCR + dizinleyici). İç kod adları: `sarnicatolye` paketi, `Portal.*` ad alanları, `_islenmis` eki.
 
 ## 2. Mimari
 
 ```
-kök klasör(ler) ──► Bulgu İşleyici `dizinle` (tek yazar)
+kök klasör(ler) ──► Sarnıç Atölye `dizinle` (tek yazar)
                      ├─ 1. tarama: dosya/klasör kataloğu (ad, yol, boyut, tarih)  → dizin.db
                      ├─ 2. içerik: metin çıkarma + OCR + aranabilir PDF          → depo/belgeler/<sha>/
                      └─ 3. yayın: VACUUM INTO depo/yayin/dizin-<zaman>.db + guncel.txt
                                              │
-Bulgu Portalı (çok okur) ── guncel.txt'yi izler, anlık görüntüyü yerel diske kopyalar, salt okur
+Sarnıç Portalı (çok okur) ── guncel.txt'yi izler, anlık görüntüyü yerel diske kopyalar, salt okur
                          ├─ Dosyalar sekmesi   (dosya + dosya_fts)
                          ├─ Belgeler sekmesi   (sayfa + sayfa_fts)
                          ├─ Videolar sekmesi   (mevcut MetinAramaMotoru)
@@ -45,8 +45,8 @@ okur kendi yerel kopyasını açar. Okurlar birbirini ve yazarı kilitlemez.
 ```toml
 [dizin]
 kokler = []                 # taranacak kökler; boşsa komut satırındaki --kok zorunlu
-depo = ""                   # dizin deposu; boşsa <ilk kök>\_bulgu
-haric = ["_bulgu", "$RECYCLE.BIN", "System Volume Information", "_ara", ".git", "node_modules"]
+depo = ""                   # dizin deposu; boşsa <ilk kök>\_sarnic
+haric = ["_sarnic", "$RECYCLE.BIN", "System Volume Information", "_ara", ".git", "node_modules"]
 calisma_db = ""             # yazarın yerel veritabanı; boşsa <paket kökü>\is\dizin\dizin.db
 yayin_dk = 30               # en geç bu kadar dakikada bir yayın (yalnız değişiklik varsa)
 tarama_dk = 15              # izleme kipinde iki tarama arası
@@ -73,7 +73,7 @@ Geçersiz değer → `AyarHatasi` (mevcut desen: `__post_init__`).
 ```json
 { "kok": "", "dizin": "" }
 ```
-`dizin` boşsa `<kok>\_bulgu`. Portal yayın klasörünü `<dizin>\yayin` olarak okur.
+`dizin` boşsa `<kok>\_sarnic`. Portal yayın klasörünü `<dizin>\yayin` olarak okur.
 
 ## 4. Normalizasyon (iki dilde aynı) — iki ayrı işlev
 
@@ -98,7 +98,7 @@ değişmez, boşluk daraltılmaz. Vakalar: `kaynak/ortak/dosya_normalizasyon_vak
 ile düzenlenir (PDF bağlaçları `ﬁ` → `fi`, ayrışık harfler birleşir). Böylece C# tarafında görünen metin ile
 normalize metin arasındaki eşleme (MetinEsleme) karakter karakter kurulabilir.
 
-## 5. Bulgu İşleyici (Python) — yeni modüller
+## 5. Sarnıç Atölye (Python) — yeni modüller
 
 Paket: `kaynak/app/sarnicatolye/`. Yeni alt paketler `belge/` ve `dizin/`. Mevcut kod üslubu: Türkçe ad, kısa yorum,
 `logging.getLogger("sarnicatolye")`, hatalar `hatalar.py`'deki sınıflarla (`IsHatasi` vb.).
@@ -269,18 +269,18 @@ Adımlar:
   `is\bitti\<ad>_belge\` klasörüne gider; mevcut video akışı değişmez.
 - **Bat dosyaları**: `kaynak/bat/dizinle.bat` (izleme kipi), `kaynak/bat/belge.bat` (üstüne sürükle-bırak).
 
-## 6. Bulgu Portalı (C#)
+## 6. Sarnıç Portalı (C#)
 
 ### 6.1 Çekirdek (`Portal.Cekirdek/Dizin/`, paket `Microsoft.Data.Sqlite` 9.0.4)
 - İçerik normalizasyonu `TrNormalizasyon.Normalle` (4.1'deki iki ek bu sınıfa eklenir: Mn atılır, vekil çift →
   boşluk); dosya adı normalizasyonu yeni `DosyaNormalizasyon.Normalle` (4.2).
 - `DizinKaynagi`: `dizin` klasörünü alır; `yayin\guncel.txt`'yi okur; anlık görüntüyü
-  `%LOCALAPPDATA%\Bulgu\dizin\` altına önce `<ad>.tmp`'ye kopyalar, boyut doğrulanınca `File.Move` ile `<ad>`
+  `%LOCALAPPDATA%\Sarnic\dizin\` altına önce `<ad>.tmp`'ye kopyalar, boyut doğrulanınca `File.Move` ile `<ad>`
   yapar (aynı adlı tam kopya zaten varsa kopyalamaz). Bağlantı `Mode=ReadOnly;Pooling=False` ile **sorgu başına**
   açılır (paylaşılan uzun ömürlü bağlantı yok; dosya kilidi kalmaz). `Yenile()` guncel.txt değiştiyse yeni
   kopyayı arka planda hazırlar, sonra etkin dosya yolunu atomik değiştirir; çalışan sorgu eski dosyada biter;
   eski kopyalar silinmeye çalışılır (kilitliyse sonraki `Yenile`'de).
-  Durum: `Hazir | Yok | Hata` + Türkçe ileti ("Dizin bulunamadı. Bulgu İşleyici'de dizinle.bat'ı çalıştırın.").
+  Durum: `Hazir | Yok | Hata` + Türkçe ileti ("Dizin bulunamadı. Sarnıç Atölye'de dizinle.bat'ı çalıştırın.").
   Şema sürümü `meta.surum != 1` → `Hata`.
 - `DosyaSorgusu.Ayristir(string)` — Everything benzeri sözdizimi (anahtar sözcükler Türkçe ve İngilizce):
   - boşlukla ayrılmış terimler VE; `|` VEYA (terimler arası); `!terim` DEĞİL; `"tırnaklı ifade"` tek terim;
@@ -326,7 +326,7 @@ Adımlar:
 ### 6.2 Arayüz (`Portal.Uygulama`)
 - `TargetFramework` → `net8.0-windows10.0.19041.0` (PDF işleme için `Windows.Data.Pdf`); `SupportedOSPlatformVersion`
   `10.0.17763.0`.
-- Pencere başlıkları: `Bulgu — Arama`, `Bulgu — Oynatıcı`, `Bulgu — Belge`. Logo/ikon aynı kalabilir.
+- Pencere başlıkları: `Sarnıç — Arama`, `Sarnıç — Oynatıcı`, `Sarnıç — Belge`. Logo/ikon aynı kalabilir.
 - **Arama penceresi**: arama kutusunun altında sekme şeridi: `Tümü`, `Dosyalar`, `Belgeler`, `Videolar` (sayılarıyla).
   - `Dosyalar`: sanallaştırılmış `ListView` + `GridView` (Ad, Klasör, Boyut, Değişme, Tür); sütun başlığına
     tıklayınca sıralama; çift tık/Enter → kabukla aç (`Process.Start` + `UseShellExecute`); sağ tık menüsü:
@@ -338,7 +338,7 @@ Adımlar:
   - Alt durum çubuğu: dizin durumu ("Dizin: 182.344 dosya, 412.003 sayfa — 30.10.2026 07:40").
 - **Belge görüntüleyici** (`BelgePenceresi`): üst çubuk (önceki/sonraki sayfa, sayfa no kutusu, yakınlaştırma,
   belge içi arama + sonraki/önceki eşleşme, `Aslını aç`, `Klasörünü aç`). Gövde iki bölme: solda sayfa görüntüsü
-  (PDF ya da görüntü belgelerinde; `aranabilir.pdf` varsa o, yoksa özgün; dosya önce `%LOCALAPPDATA%\Bulgu\gorunum\`
+  (PDF ya da görüntü belgelerinde; `aranabilir.pdf` varsa o, yoksa özgün; dosya önce `%LOCALAPPDATA%\Sarnic\gorunum\`
   altına kopyalanır — ağdaki dosya açık tutulup kilitlenmesin; `Windows.Data.Pdf` ile arka planda,
   sayfa başına önbellek), sağda sayfa metni (`sayfa.metin`, eşleşmeler vurgulu; OCR sayfasında güven rozeti).
   Görüntülenemeyen biçimlerde yalnız metin bölmesi tam genişlikte. 1000+ sayfada yalnız görünen sayfa işlenir.

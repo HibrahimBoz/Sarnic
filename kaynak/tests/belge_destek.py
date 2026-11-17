@@ -56,7 +56,7 @@ def pdf_yaz(yol, sayi=1, taranmis=False, donus=0):
 
 class GeciciTest(unittest.TestCase):
     def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory(prefix="bulgu-test-")
+        self.tmp = tempfile.TemporaryDirectory(prefix="sarnic-test-")
         self.addCleanup(self.tmp.cleanup)
         self.kok = Path(self.tmp.name)
         self.ayar = Ayar(yollar.kok(), dizin=DizinAyar(isci=1),

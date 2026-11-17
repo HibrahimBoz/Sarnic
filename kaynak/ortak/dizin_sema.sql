@@ -1,4 +1,4 @@
--- Bulgu dizin veritabanı şeması, sürüm 1.
+-- Sarnıç dizin veritabanı şeması, sürüm 1.
 -- TEK KAYNAK: Python dizinleyici (sarnicatolye/dizin/vt.py) bu dosyayı okuyup çalıştırır,
 -- C# testleri aynı dosyadan veritabanı kurar. Değişiklikte meta.surum artırılır.
 

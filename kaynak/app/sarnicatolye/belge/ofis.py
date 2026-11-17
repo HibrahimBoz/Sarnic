@@ -31,7 +31,7 @@ def docx_bolumleri(yol):
     from docx.table import Table
     # python-docx, macro content type'ını reddeder. Yalnız paket türünü geçici kopyada düzelt.
     if yol.suffix.lower() == ".docm":
-        with tempfile.TemporaryDirectory(prefix="bulgu-docm-") as tmp:
+        with tempfile.TemporaryDirectory(prefix="sarnic-docm-") as tmp:
             yeni = Path(tmp) / "belge.docx"
             with zipfile.ZipFile(yol) as z, zipfile.ZipFile(yeni, "w") as out:
                 for ad in z.namelist():

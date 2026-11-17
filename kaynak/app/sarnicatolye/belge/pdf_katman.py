@@ -8,7 +8,7 @@ from .gorsel import kare_oku
 
 
 def _metin_ekle(sayfa, kayit, dpi, font, font_ad, font_yol):
-    if font_ad == "bulgu" and font_yol.is_file():
+    if font_ad == "sarnic" and font_yol.is_file():
         try:
             sayfa.insert_font(fontname=font_ad, fontfile=str(font_yol))
         except Exception:
@@ -45,7 +45,7 @@ def olustur(yol: Path, sayfalar, hedef: Path, dpi: int):
     font_yol = Path("C:/Windows/Fonts/arial.ttf")
     if font_yol.is_file():
         font = pymupdf.Font(fontfile=str(font_yol))
-        font_ad = "bulgu"
+        font_ad = "sarnic"
     else:
         font_ad, font = "helv", pymupdf.Font("helv")
     hedef.parent.mkdir(parents=True, exist_ok=True)

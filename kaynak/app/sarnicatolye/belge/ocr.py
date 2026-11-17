@@ -202,7 +202,7 @@ class OcrMotoru:
 
     def _tesseract(self, kirpinti):
         from PIL import Image
-        with tempfile.TemporaryDirectory(prefix="bulgu-tess-") as tmp:
+        with tempfile.TemporaryDirectory(prefix="sarnic-tess-") as tmp:
             yol = Path(tmp) / "satir.png"
             Image.fromarray(kirpinti).save(yol)
             cikti = calistir([self.tesseract, yol, "stdout", "-l", "tur+eng", "--psm", "7", "tsv"],
